@@ -54,7 +54,7 @@ The project direction identifies Landing, Lab, Me, and a possible site-guide cha
 
 ### Current Status
 
-Active. The minimal UI foundation is implemented; prototype sandbox work has not started.
+Active. The minimal UI foundation and isolated prototype sandbox are implemented; follow-up product-surface prototype tasks have not been prepared yet.
 
 ### Completed
 
@@ -63,15 +63,18 @@ Active. The minimal UI foundation is implemented; prototype sandbox work has not
 - Replaced the default initializer presentation with a neutral, non-product placeholder and project metadata.
 - Established global visual tokens for color, typography, spacing, radius, borders, and layout width, including system light and dark modes.
 - Chose a native-first component strategy: keep the existing Tailwind setup, use CSS Modules for scoped custom styles, and extract shared React components only when repetition or behavior justifies them.
+- Created Task 02 to implement the isolated prototype sandbox, its conventions, and only the reusable primitives demonstrated by it.
+- Added an unlinked, `noindex` `/sandbox` route backed by a colocated experiment registry so provisional experiments can be inspected together without changing production-facing navigation.
+- Documented conventions for adding, comparing, and removing experiments and for keeping one-off styling out of the shared primitive layer.
+- Added the demonstrated `PrototypeSection`, `PrototypeGrid`, and `PrototypePanel` primitives plus a foundation baseline experiment covering reading and native interaction surfaces.
+- Re-evaluated `shadcn/ui` against the sandbox implementation and kept it deferred: the current native disclosure and static layout do not establish a concrete dependency need.
 
 ### Next
 
-- Create a focused implementation issue for the prototype sandbox and its conventions.
 - Use sandbox findings to prepare later, separately reviewable prototype issues for Landing, Lab, Me, and site-guide chat.
 
 ### Open Questions
 
-- What is the smallest sandbox shape that keeps experiments easy to access during development and clearly separate from production surfaces?
 - Which product surface should be explored first after the foundation and sandbox are ready?
 - Should the first site-guide chat prototype be a static interaction study or a limited functional prototype?
 
@@ -80,6 +83,8 @@ Active. The minimal UI foundation is implemented; prototype sandbox work has not
 - Product-surface prototypes follow the foundation and sandbox work rather than being bundled into it.
 - Global CSS owns design tokens, resets, and document-level defaults; component-specific styling stays colocated through Tailwind utilities or CSS Modules.
 - Do not initialize `shadcn/ui` yet. Reconsider it only when repeated interactive primitives or accessibility requirements make its value concrete, and then add components individually.
+- Keep the sandbox at the unlinked `/sandbox` route with `noindex` metadata. Render its registry entries together for comparison and colocate non-route code in private `_components` and `_experiments` folders.
+- Keep sandbox primitives provisional and sandbox-local. Promote only demonstrated shared semantics, layout, or behavior; remove primitives when their experiments no longer exercise them.
 
 ## Closure Summary
 

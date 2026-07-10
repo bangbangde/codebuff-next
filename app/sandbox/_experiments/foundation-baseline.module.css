@@ -1,0 +1,63 @@
+.specimen {
+  display: grid;
+  align-content: start;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-code);
+  font-size: var(--text-xs);
+}
+
+.title {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.body {
+  margin: var(--space-3) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+
+.code {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: var(--space-6);
+  overflow-wrap: anywhere;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-code);
+  font-size: var(--text-xs);
+}
+
+.disclosure {
+  margin-top: var(--space-6);
+  border-top: var(--border-width) solid var(--border);
+  padding-top: var(--space-4);
+}
+
+.disclosure summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--foreground);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.disclosure summary:hover {
+  color: var(--accent);
+}
+
+.disclosure p {
+  margin: var(--space-3) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
