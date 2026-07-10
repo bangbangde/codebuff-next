@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Color */
+  --background: #f3f4ef;
+  --surface: #fbfcf8;
+  --surface-muted: #e9ece5;
+  --foreground: #171b17;
+  --muted-foreground: #5f675f;
+  --accent: #2f684e;
+  --accent-soft: #dbe9de;
+  --border: #cdd3ca;
+
+  /* Typography */
+  --font-body: var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-code: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-display: clamp(2.25rem, 6vw, 4.75rem);
+  --leading-tight: 1.05;
+  --leading-body: 1.65;
+  --tracking-label: 0.08em;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Shape and borders */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --border-width: 1px;
+  --shadow-subtle: 0 1.25rem 4rem rgb(24 31 25 / 0.08);
+
+  /* Layout */
+  --layout-max: 72rem;
+  --layout-reading: 44rem;
+  --layout-gutter: clamp(1.25rem, 4vw, 3rem);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-border: var(--border);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --background: #101310;
+    --surface: #171b17;
+    --surface-muted: #202620;
+    --foreground: #edf0ea;
+    --muted-foreground: #aab2a8;
+    --accent: #91c8a7;
+    --accent-soft: #243c2f;
+    --border: #343b34;
+    --shadow-subtle: 0 1.25rem 4rem rgb(0 0 0 / 0.24);
   }
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+  text-rendering: optimizeLegibility;
+}
+
 body {
+  min-height: 100%;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }

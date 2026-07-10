@@ -54,16 +54,19 @@ The project direction identifies Landing, Lab, Me, and a possible site-guide cha
 
 ### Current Status
 
-Active. The Milestone Contract is initialized; implementation has not started.
+Active. The minimal UI foundation is implemented; prototype sandbox work has not started.
 
 ### Completed
 
 - Created and activated the milestone.
 - Defined the boundary between foundation and sandbox work and later product-surface prototypes.
+- Replaced the default initializer presentation with a neutral, non-product placeholder and project metadata.
+- Established global visual tokens for color, typography, spacing, radius, borders, and layout width, including system light and dark modes.
+- Chose a native-first component strategy: keep the existing Tailwind setup, use CSS Modules for scoped custom styles, and extract shared React components only when repetition or behavior justifies them.
 
 ### Next
 
-- Create focused implementation issues for the minimal UI foundation, basic styling direction, and prototype sandbox.
+- Create a focused implementation issue for the prototype sandbox and its conventions.
 - Use sandbox findings to prepare later, separately reviewable prototype issues for Landing, Lab, Me, and site-guide chat.
 
 ### Open Questions
@@ -75,7 +78,8 @@ Active. The Milestone Contract is initialized; implementation has not started.
 ### Milestone-local Decisions
 
 - Product-surface prototypes follow the foundation and sandbox work rather than being bundled into it.
-- A component library is not selected during milestone initialization.
+- Global CSS owns design tokens, resets, and document-level defaults; component-specific styling stays colocated through Tailwind utilities or CSS Modules.
+- Do not initialize `shadcn/ui` yet. Reconsider it only when repeated interactive primitives or accessibility requirements make its value concrete, and then add components individually.
 
 ## Closure Summary
 
