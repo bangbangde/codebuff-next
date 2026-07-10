@@ -2,7 +2,7 @@
 
 Current milestone:
 
-`docs/milestones/001-product-surface-prototype/README.md`
+`docs/milestones/001-ui-foundation-and-prototype-sandbox/README.md`
 
 Agents should read the referenced milestone README before making product, UI, architecture, or workflow changes.
 
