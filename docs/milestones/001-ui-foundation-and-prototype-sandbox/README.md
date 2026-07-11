@@ -54,7 +54,7 @@ The project direction identifies Landing, Lab, Me, and a possible site-guide cha
 
 ### Current Status
 
-Active. The minimal UI foundation and isolated prototype sandbox are implemented; follow-up product-surface prototype tasks have not been prepared yet.
+Active, pending owner closure review. The UI foundation, isolated prototype sandbox, conventions, and sequenced product-surface prototype backlog are complete. Task 03 maps the delivered work to the milestone acceptance criteria and proposes closure without changing the owner-led closure decision.
 
 ### Completed
 
@@ -68,15 +68,20 @@ Active. The minimal UI foundation and isolated prototype sandbox are implemented
 - Documented conventions for adding, comparing, and removing experiments and for keeping one-off styling out of the shared primitive layer.
 - Added the demonstrated `PrototypeSection`, `PrototypeGrid`, and `PrototypePanel` primitives plus a foundation baseline experiment covering reading and native interaction surfaces.
 - Re-evaluated `shadcn/ui` against the sandbox implementation and kept it deferred: the current native disclosure and static layout do not establish a concrete dependency need.
+- Created Task 03 to produce issue-ready Landing, Lab, Me, and site-guide chat prototype briefs, resolve their sequencing and chat-prototype approach, and prepare the milestone closure handoff.
+- Prepared separately reviewable prototype briefs for Lab, Landing, Me, and site-guide chat with concrete sandbox shapes, constraints, acceptance criteria, review evidence, and intended downstream decisions.
+- Sequenced the backlog as Landing, Lab, Me, then site-guide chat; Lab and Me may proceed in parallel after Landing records its provisional orientation and destination assumptions.
+- Chose a deterministic static interaction study for the first site-guide chat prototype, with preset prompts, fixed responses, and conventional navigation fallback.
+- Prepared a closure handoff that maps the implemented foundation, styling direction, sandbox, conventions, and prototype backlog to every milestone acceptance criterion.
 
 ### Next
 
-- Use sandbox findings to prepare later, separately reviewable prototype issues for Landing, Lab, Me, and site-guide chat.
+- Review the Task 03 closure proposal and decide whether to close Milestone 001 and initialize the recommended follow-up prototype milestone.
 
 ### Open Questions
 
-- Which product surface should be explored first after the foundation and sandbox are ready?
-- Should the first site-guide chat prototype be a static interaction study or a limited functional prototype?
+- Should the project owner accept the closure proposal and close Milestone 001?
+- Should the next milestone execute the prototype backlog beginning with the owner-requested Landing-first exploration, with Lab and Me eligible to proceed in parallel afterward?
 
 ### Milestone-local Decisions
 
@@ -85,6 +90,8 @@ Active. The minimal UI foundation and isolated prototype sandbox are implemented
 - Do not initialize `shadcn/ui` yet. Reconsider it only when repeated interactive primitives or accessibility requirements make its value concrete, and then add components individually.
 - Keep the sandbox at the unlinked `/sandbox` route with `noindex` metadata. Render its registry entries together for comparison and colocate non-route code in private `_components` and `_experiments` folders.
 - Keep sandbox primitives provisional and sandbox-local. Promote only demonstrated shared semantics, layout, or behavior; remove primitives when their experiments no longer exercise them.
+- Explore Landing first, then Lab and Me, and site-guide chat last. Allow Lab and Me to proceed in parallel after Landing records its provisional orientation, content promises, and destination labels.
+- Keep the first site-guide chat prototype static and deterministic. It supplements visible conventional navigation and does not include free-form input, AI behavior, retrieval, persistence, or backend capability.
 
 ## Closure Summary
 
