@@ -2,8 +2,9 @@
 
 ## Metadata
 
-- Status: Active
+- Status: Closed
 - Initialized: 2026-07-11
+- Closed: 2026-07-11
 
 ## Milestone Contract
 
@@ -54,7 +55,7 @@ The project direction identifies Landing, Lab, Me, and a possible site-guide cha
 
 ### Current Status
 
-Active, pending owner closure review. The UI foundation, isolated prototype sandbox, conventions, and sequenced product-surface prototype backlog are complete. Task 03 maps the delivered work to the milestone acceptance criteria and proposes closure without changing the owner-led closure decision.
+Closed by the project owner. The UI foundation, isolated prototype sandbox, conventions, and sequenced product-surface prototype backlog are complete, and the delivered evidence satisfies the Milestone Contract.
 
 ### Completed
 
@@ -76,12 +77,11 @@ Active, pending owner closure review. The UI foundation, isolated prototype sand
 
 ### Next
 
-- Review the Task 03 closure proposal and decide whether to close Milestone 001 and initialize the recommended follow-up prototype milestone.
+- Initialize a follow-up milestone for product-surface prototype exploration, beginning with Landing, when its Contract is ready.
 
 ### Open Questions
 
-- Should the project owner accept the closure proposal and close Milestone 001?
-- Should the next milestone execute the prototype backlog beginning with the owner-requested Landing-first exploration, with Lab and Me eligible to proceed in parallel afterward?
+- None within this closed milestone.
 
 ### Milestone-local Decisions
 
@@ -95,4 +95,34 @@ Active, pending owner closure review. The UI foundation, isolated prototype sand
 
 ## Closure Summary
 
-Not yet closed.
+### Outcome
+
+Milestone 001 established a small, intentional UI foundation and an isolated prototype sandbox without turning either into a final design system or production product surface. The application now has documented visual tokens, a native-first component strategy, a neutral production placeholder, and an unlinked `noindex` sandbox with a registry, removal conventions, and three demonstrated sandbox-local primitives.
+
+The milestone also produced issue-ready briefs for Landing, Lab, Me, and site-guide chat. Each brief defines a focused sandbox experiment, representative placeholder content, reuse boundaries, review evidence, exclusions, acceptance criteria, and the decisions it should enable. The acceptance review and supporting evidence are recorded in [Task 03's closure handoff](./task-03/handoff.md).
+
+### Selected Directions
+
+- Carry forward the global visual tokens and native-first styling strategy as a provisional baseline for prototype work.
+- Keep experiments isolated under `/sandbox`, registered together for comparison, and colocated with experiment-specific styling.
+- Promote sandbox primitives only after repeated use or a meaningful shared semantic or behavioral need is demonstrated.
+- Explore Landing first. After Landing records its provisional orientation and destination assumptions, Lab and Me may proceed in parallel; site-guide chat remains last.
+- Keep the first site-guide chat study static and deterministic, with preset prompts, fixed responses, and conventional navigation available as a fallback.
+
+### Rejected or Deferred Directions
+
+- Do not initialize `shadcn/ui` without a concrete repeated interaction or accessibility need.
+- Do not promote the sandbox, its primitives, or any prototype composition into production-facing navigation or product surfaces yet.
+- Defer final visual identity, information architecture, content strategy, production routes, real content infrastructure, and functional AI chat capability to later milestones.
+
+### Unresolved Questions
+
+- Which Landing prototype findings should become longer-lived product or design commitments can only be decided after that experiment is reviewed.
+- Whether site-guide chat offers value beyond conventional navigation remains a later prototype question.
+- The scope and Contract of the follow-up prototype milestone have not yet been initialized.
+
+### Carry-forward and Follow-up Milestone
+
+The recommended follow-up milestone is a product-surface prototype exploration phase using the four Task 03 briefs. It should begin with the [Landing orientation prototype](./task-03/landing.md), then use the [Lab](./task-03/lab.md) and [Me](./task-03/me.md) studies to validate its provisional assumptions, and finish with the [static site-guide study](./task-03/site-guide-chat.md).
+
+`docs/current-milestone.md` continues to point here until the project owner initializes and activates that follow-up milestone, as required by the repository workflow.
