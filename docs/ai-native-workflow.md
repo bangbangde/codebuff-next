@@ -13,7 +13,7 @@ The workflow should make work stable, reviewable, and easy to continue across hu
 | `AGENTS.md` | Context-loading and change-boundary instructions for agents |
 | `docs/project.md` | Stable product and technical direction |
 | `docs/ai-native-workflow.md` | Milestone lifecycle and collaboration process |
-| GitHub Milestone | Phase objective, scope, non-goals, constraints, acceptance criteria, consequential decision links, and closure |
+| GitHub Milestone | Phase objective, scope, non-goals, constraints, closure criteria, consequential decision links, and closure |
 | GitHub Issue or current task | Focused outcome, requirements, and acceptance criteria |
 | Pull request | Delivery record, evidence, review context, and milestone impact |
 
@@ -64,20 +64,26 @@ Use this compact structure in the Milestone description:
 
 ## Constraints
 
-## Acceptance criteria
+## Closure criteria
 
 ## Decisions
 
 ## Closure
 ```
 
-The first five sections define the phase boundary. `Decisions` links only consequential Issue or pull-request decisions that affect later work. `Closure` remains empty until owner-led closure.
+The first five sections define the phase boundary. Closure criteria describe when the phase can end; they do not restate the completion checks for each Issue. `Decisions` links only consequential Issue or pull-request decisions that affect later work. `Closure` remains empty until owner-led closure.
+
+### When to use a Milestone
+
+Create a Milestone when work represents an owner-approved product or architecture phase, is likely to need more than one implementation or review Issue, or requires decisions that affect multiple work items or later phases. Use a standalone Issue for maintenance, bugs, and one-off changes that do not need a separate phase boundary or owner-led closure.
 
 ### Progress and decisions
 
 GitHub's open and closed Issue counts provide routine progress. Do not reproduce task lists, implementation steps, commit lists, or activity logs in the Milestone description.
 
 Keep task-level discussion and evidence in the nearest Issue or pull request. When a decision affects the whole milestone or later phases, record it in an Issue labeled `decision` and link the result from `Decisions`.
+
+A Milestone Issue inherits the phase boundary by association. It must not copy the Milestone objective, scope, non-goals, constraints, or closure criteria. Repeat a phase decision only when translating it into task-specific behavior; for example, the Milestone may require multilingual text while an Issue defines the concrete languages, control, and verification.
 
 ### Scope changes
 
@@ -137,12 +143,15 @@ Use the `milestone-change` process above. An edited description without a linked
 
 A work item is ready when it describes a bounded outcome that can be reviewed and closed. Research, design exploration, technical spikes, features, maintenance, and bugs can all be Issues.
 
-A Milestone Issue should contain:
+A Milestone Issue should link to its Milestone and contain only the incremental information needed to execute and verify that work item:
 
-- the intended outcome and why it matters now;
-- only context not owned by required sources;
-- acceptance criteria and relevant exclusions; and
-- whether a phase-boundary revision is authorized.
+- a bounded task outcome;
+- task-specific requirements and exclusions not already owned by the Milestone;
+- observable Issue acceptance criteria;
+- relevant verification and evidence; and
+- whether a phase-boundary revision is explicitly authorized.
+
+Milestone closure criteria judge whether the phase achieved its purpose. Issue acceptance criteria judge whether one executable work item is complete. Do not use either section to duplicate the other.
 
 A pull request should link the work item and record what changed, what remained out of scope, relevant evidence, milestone impact, and unresolved follow-up. Normal delivery pull requests must not change the Milestone boundary.
 
