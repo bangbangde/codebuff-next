@@ -1,9 +1,7 @@
 # Current Milestone
 
-Current milestone:
+No milestone is currently active.
 
-`docs/milestones/001-ui-foundation-and-prototype-sandbox/README.md`
+The most recent milestone is the closed and superseded [Milestone 001: UI Foundation and Prototype Sandbox](./milestones/001-ui-foundation-and-prototype-sandbox/README.md). It is historical context, not an active Contract or delivery backlog.
 
-Agents should read the referenced milestone README before making product, UI, architecture, or workflow changes.
-
-Supporting files inside a milestone folder are optional context unless explicitly referenced by the milestone README.
+Before new milestone product, UI, or architecture implementation begins, draft its Contract, obtain project-owner approval, and update this file when that milestone becomes active.

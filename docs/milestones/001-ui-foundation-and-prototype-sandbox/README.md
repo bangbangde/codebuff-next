@@ -2,9 +2,10 @@
 
 ## Metadata
 
-- Status: Closed
+- Status: Closed — Superseded
 - Initialized: 2026-07-11
 - Closed: 2026-07-11
+- Superseded: 2026-07-12
 
 ## Milestone Contract
 
@@ -55,7 +56,7 @@ The project direction identifies Landing, Lab, Me, and a possible site-guide cha
 
 ### Current Status
 
-Closed by the project owner. The UI foundation, isolated prototype sandbox, conventions, and sequenced product-surface prototype backlog are complete, and the delivered evidence satisfies the Milestone Contract.
+Closed by the project owner on 2026-07-11. The delivered work satisfied its original Contract, but the foundation-first and sandbox-first direction was superseded after post-closure owner review on 2026-07-12.
 
 ### Completed
 
@@ -77,7 +78,7 @@ Closed by the project owner. The UI foundation, isolated prototype sandbox, conv
 
 ### Next
 
-- Initialize a follow-up milestone for product-surface prototype exploration, beginning with Landing, when its Contract is ready.
+- Do not execute the Task 03 prototype backlog. Draft a separate product-slice-first milestone centered on a real Landing Page V0, and activate it only after owner review of its Contract.
 
 ### Open Questions
 
@@ -126,3 +127,15 @@ The milestone also produced issue-ready briefs for Landing, Lab, Me, and site-gu
 The recommended follow-up milestone is a product-surface prototype exploration phase using the four Task 03 briefs. It should begin with the [Landing orientation prototype](./task-03/landing.md), then use the [Lab](./task-03/lab.md) and [Me](./task-03/me.md) studies to validate its provisional assumptions, and finish with the [static site-guide study](./task-03/site-guide-chat.md).
 
 `docs/current-milestone.md` continues to point here until the project owner initializes and activates that follow-up milestone, as required by the repository workflow.
+
+A post-closure review of the milestone goal, documentation cost, local-agent trigger, and collaboration loop is recorded in the [Milestone 001 retrospective](./retrospective.md). It is supporting context for planning the next milestone and does not revise this closed Contract.
+
+## Post-closure Disposition
+
+On 2026-07-12, the project owner decided to stop the foundation-first and sandbox-first direction. The milestone produced infrastructure and documentation without enough reviewable product learning, so its runtime sandbox, shared sandbox primitives, and Task 03 prototype backlog are no longer active delivery guidance.
+
+The milestone remains part of the project history because its original Contract was completed and its retrospective produced durable workflow lessons. The approved bright color direction, system-font and offline-build setup, basic global reset, and focus treatment may be used only as provisional input to later product work; they are not a committed design system.
+
+The next milestone should start from a real, reviewable product slice at `/`, then extract shared UI patterns only when that implementation demonstrates their value.
+
+`docs/current-milestone.md` now records that no milestone is active. A follow-up becomes active only after its Contract is drafted and approved by the project owner.

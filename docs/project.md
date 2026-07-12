@@ -10,7 +10,7 @@ The project should express a clear point of view:
 
 > In the AI era, developers need to move upward into architecture, product understanding, and system-level thinking, while continuing to maintain strong professional engineering judgment.
 
-The repository also serves as a practical experiment in AI-native software development.
+The repository also serves as a practical experiment in AI-native software development. The workflow should support product learning and delivery without becoming a product outcome of its own.
 
 ## Product Direction
 
