@@ -9,7 +9,7 @@ export default function Home() {
         <p className={styles.kicker}>Frontend engineering · AI era</p>
         <h1 id="landing-title">Think in systems. Build with judgment.</h1>
         <p lang="zh-CN">
-          记录前端工程、架构思考与 AI 协作中的真实问题，也保留仍在发生的实验。
+          记录前端工程、架构思考与 AI 协作中的真实问题，分享持续演进的实践与实验。
         </p>
       </section>
 
