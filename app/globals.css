@@ -11,7 +11,10 @@
   --muted-foreground: #706961;
   --accent: #b85d16;
   --accent-soft: #fff0cc;
+  --accent-bright: #ffd08b;
+  --accent-glow: rgb(184 93 22 / 0.18);
   --border: #ebe6df;
+  --border-strong: #cfc7bd;
 
   /* Typography */
   --typeface-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -72,7 +75,10 @@
     --muted-foreground: #bdb4aa;
     --accent: #ffad57;
     --accent-soft: #3c2917;
+    --accent-bright: #ffd08b;
+    --accent-glow: rgb(255 173 87 / 0.16);
     --border: #3c352e;
+    --border-strong: #5c5248;
     --shadow-subtle: 0 1.25rem 4rem rgb(0 0 0 / 0.24);
   }
 }
@@ -87,6 +93,7 @@ html {
   min-height: 100%;
   background: var(--background);
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -119,4 +126,8 @@ a {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }
