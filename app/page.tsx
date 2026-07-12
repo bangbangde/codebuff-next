@@ -1,29 +1,62 @@
+import Link from "next/link";
+import { labEntries } from "./content";
 import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <main className={styles.page}>
-      <section className={styles.panel} aria-labelledby="foundation-title">
-        <p className={styles.eyebrow}>Codebuff / UI foundation</p>
-        <h1 id="foundation-title" className={styles.title}>
-          A quiet base for the work ahead.
-        </h1>
-        <p className={styles.summary}>
-          The shared visual foundation is ready for prototype work. This neutral
-          placeholder intentionally represents no product surface.
+    <main>
+      <section className={styles.slogan} aria-labelledby="landing-title">
+        <p className={styles.kicker}>Frontend engineering · AI era</p>
+        <h1 id="landing-title">Think in systems. Build with judgment.</h1>
+        <p lang="zh-CN">
+          记录前端工程、架构思考与 AI 协作中的真实问题，分享持续演进的实践与实验。
         </p>
-
-        <dl className={styles.statusList}>
-          <div>
-            <dt>Foundation</dt>
-            <dd>Ready</dd>
-          </div>
-          <div>
-            <dt>Product prototypes</dt>
-            <dd>Not started</dd>
-          </div>
-        </dl>
       </section>
+
+      <div className={styles.content}>
+        <section className={styles.section} aria-labelledby="lab-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.index}>01 / Lab</p>
+              <h2 id="lab-title">Notes & experiments</h2>
+            </div>
+            <Link href="/lab" className={styles.sectionLink}>
+              View all <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
+
+          <div className={styles.entryList}>
+            {labEntries.map((entry) => (
+              <Link
+                href={`/lab#${entry.slug}`}
+                className={styles.entry}
+                key={entry.slug}
+              >
+                <span className={styles.entryMeta}>{entry.kind}</span>
+                <span className={styles.entryTitle}>{entry.title}</span>
+                <span className={styles.arrow} aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="me-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className={styles.index}>02 / Me</p>
+              <h2 id="me-title">The engineer behind the work</h2>
+            </div>
+            <Link href="/me" className={styles.sectionLink}>
+              About <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
+          <p className={styles.about} lang="zh-CN">
+            一名前端工程师，关注复杂系统如何被理解、设计与持续交付。
+          </p>
+        </section>
+      </div>
     </main>
   );
 }

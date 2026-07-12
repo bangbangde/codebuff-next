@@ -1,0 +1,107 @@
+.page {
+  min-height: 70svh;
+  padding-block: clamp(var(--space-16), 9vw, 8rem);
+}
+
+.back {
+  color: var(--muted-foreground);
+  font-family: var(--typeface-code);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.eyebrow {
+  margin: var(--space-12) 0 0;
+  color: var(--accent);
+  font-family: var(--typeface-code);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.title {
+  max-width: 12ch;
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-display);
+  font-weight: 520;
+  letter-spacing: -0.05em;
+  line-height: var(--leading-tight);
+}
+
+.intro {
+  max-width: 38rem;
+  margin: var(--space-6) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-lg);
+}
+
+.list {
+  margin-top: var(--space-16);
+  border-top: var(--border-width) solid var(--border);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.3fr) 1fr;
+  gap: var(--space-6);
+  padding-block: var(--space-8);
+  border-bottom: var(--border-width) solid var(--border);
+  scroll-margin-top: var(--space-8);
+}
+
+.kind {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--typeface-code);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.item h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  font-weight: 540;
+  letter-spacing: -0.03em;
+}
+
+.item p:last-child {
+  max-width: 40rem;
+  margin: var(--space-4) 0 0;
+  color: var(--muted-foreground);
+}
+
+.facts {
+  display: grid;
+  max-width: 40rem;
+  margin: var(--space-12) 0 0;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: var(--space-6);
+  padding-block: var(--space-4);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.facts dt,
+.facts dd {
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted-foreground);
+  font-family: var(--typeface-code);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+@media (max-width: 40rem) {
+  .item {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
