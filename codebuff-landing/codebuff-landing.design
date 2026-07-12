@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "Landing",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752378400000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "Codebuff Landing",
+    "designLibrary": {
+      "name": "极简",
+      "id": "dl_builtin_minimalist",
+      "version": null,
+      "scope": "built-in-global",
+      "path": "c:\\Users\\cheng\\.trae-cn\\design_libraries\\dl_builtin_minimalist",
+      "versionSource": "metadata.json"
+    }
+  }
+}
