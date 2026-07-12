@@ -96,4 +96,4 @@ Stable technical principles:
 * prefer static, local, or placeholder content until a milestone requires real data
 * introduce chat capability incrementally rather than over-engineering it upfront
 
-Phase-specific architecture, dependencies, and delivery boundaries belong in the relevant Milestone Contract rather than this document.
+Phase-specific architecture, dependencies, and delivery boundaries belong in the relevant owner-approved GitHub Milestone rather than this document.
