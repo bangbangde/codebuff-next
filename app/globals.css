@@ -4,18 +4,19 @@
   color-scheme: light;
 
   /* Color */
-  --background: #f3f4ef;
-  --surface: #fbfcf8;
-  --surface-muted: #e9ece5;
-  --foreground: #171b17;
-  --muted-foreground: #5f675f;
-  --accent: #2f684e;
-  --accent-soft: #dbe9de;
-  --border: #cdd3ca;
+  --background: #fdfcf9;
+  --surface: #ffffff;
+  --surface-muted: #fff8eb;
+  --foreground: #181512;
+  --muted-foreground: #706961;
+  --accent: #b85d16;
+  --accent-soft: #fff0cc;
+  --border: #ebe6df;
 
   /* Typography */
-  --font-body: var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
-  --font-code: var(--font-geist-mono), "SFMono-Regular", Consolas, monospace;
+  --typeface-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  --typeface-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -40,7 +41,7 @@
   --radius-md: 0.75rem;
   --radius-lg: 1.25rem;
   --border-width: 1px;
-  --shadow-subtle: 0 1.25rem 4rem rgb(24 31 25 / 0.08);
+  --shadow-subtle: 0 1.25rem 4rem rgb(48 37 24 / 0.07);
 
   /* Layout */
   --layout-max: 72rem;
@@ -57,21 +58,21 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-border: var(--border);
-  --font-sans: var(--font-body);
-  --font-mono: var(--font-code);
+  --font-sans: var(--typeface-body);
+  --font-mono: var(--typeface-code);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --background: #101310;
-    --surface: #171b17;
-    --surface-muted: #202620;
-    --foreground: #edf0ea;
-    --muted-foreground: #aab2a8;
-    --accent: #91c8a7;
-    --accent-soft: #243c2f;
-    --border: #343b34;
+    --background: #151310;
+    --surface: #1d1a17;
+    --surface-muted: #2b241b;
+    --foreground: #f7f3ed;
+    --muted-foreground: #bdb4aa;
+    --accent: #ffad57;
+    --accent-soft: #3c2917;
+    --border: #3c352e;
     --shadow-subtle: 0 1.25rem 4rem rgb(0 0 0 / 0.24);
   }
 }
@@ -93,7 +94,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-body);
+  font-family: var(--typeface-body);
   font-size: var(--text-base);
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
