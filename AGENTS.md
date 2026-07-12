@@ -21,5 +21,5 @@ Milestone supporting files are non-binding and should be read only when the acti
 ## Change Boundaries
 
 - Do not edit the Contract section of the active milestone unless the current task explicitly revises or reopens it.
-- Update the active milestone's Tracking section when normal work changes milestone progress, open questions, or milestone-local decisions.
+- Update the active milestone's Tracking section only when milestone status, acceptance-criteria state, open questions, milestone-local decisions, or consequential findings materially change.
 - Keep milestone scope, progress, and temporary decisions out of `docs/project.md`.

@@ -2,163 +2,171 @@
 
 ## Purpose
 
-This document is the source of truth for the AI-native development workflow used in this repository. It defines process, not product direction or phase scope.
+This document defines the AI-native development process used in this repository. Product direction belongs in `docs/project.md`; phase scope belongs in the active Milestone Contract.
 
-The workflow makes collaboration between the human project owner, GitHub Issues, pull requests, and AI coding agents stable, reviewable, and repeatable. Agents should not depend on hidden memory or long conversation history; the repository should carry the context needed to continue the project.
+The workflow should make work stable, reviewable, and easy to continue across human and AI sessions without allowing process or documentation to become the main product output.
 
-## Document Responsibilities
-
-Each source has one primary responsibility:
+## Source Responsibilities
 
 | Source | Responsibility |
 | --- | --- |
-| `AGENTS.md` | Concise context-loading and change-boundary instructions for agents |
-| `docs/project.md` | Stable, long-term product and technical direction |
-| `docs/ai-native-workflow.md` | Milestone lifecycle, collaboration roles, and documentation process |
+| `AGENTS.md` | Context-loading and change-boundary instructions for agents |
+| `docs/project.md` | Stable product and technical direction |
+| `docs/ai-native-workflow.md` | Milestone lifecycle and collaboration process |
 | `docs/current-milestone.md` | Pointer to the active milestone README |
-| Active Milestone Contract | Phase-level objective, scope, non-goals, constraints, and acceptance criteria |
-| Active Milestone Tracking | Current progress, open questions, and milestone-local decisions |
-| GitHub Issue or current task | Task-level requirements and acceptance criteria |
-| Pull request | Delivery record, review context, and declared impact on milestone state |
-| Supporting milestone files | Optional notes, references, reviews, and assets |
+| Milestone Contract | Phase objective, scope, non-goals, constraints, and acceptance criteria |
+| Milestone Tracking | Current status, open questions, and milestone-local decisions |
+| Work item | Focused outcome, requirements, and acceptance criteria |
+| Pull request | Delivery record, evidence, review context, and milestone impact |
+| Supporting files | Optional knowledge that remains useful after a work item closes |
 
-Supporting milestone files are non-binding unless the active milestone README or current task explicitly references them.
+A work item is normally a GitHub Issue when GitHub is available. A current task may be used for small, ad hoc, or offline work. Repository task files are a fallback and must not duplicate an Issue or conversation.
 
-When instructions appear to conflict, use the current task to determine the requested work, the active Milestone Contract to determine the allowed phase boundary, and `docs/project.md` to preserve long-term direction. Work that changes the phase boundary must explicitly revise or reopen the milestone; it must not silently override the Contract.
+Supporting files are non-binding unless the active milestone README or work item references them. When instructions conflict, use the work item for the deliverable, the Contract for the phase boundary, and `docs/project.md` for long-term direction. Changing the phase boundary requires an explicit revision or reopen.
 
-## Delivery Hierarchy
+## Delivery Model
 
 ```text
 Project direction
-  -> Milestone
-     -> GitHub Issues
-        -> Branches
-           -> Pull Requests
+  -> Milestone Contract
+     -> Work item
+        -> Change
+           -> Review, evidence, and decision
 ```
 
-A milestone is a phase boundary, not a single task. Multiple issues and pull requests may proceed in parallel when they fit within the active Milestone Contract.
+With GitHub, a work item normally maps to an Issue and a change to a branch and pull request. Review results feed back into milestone documents only when they change milestone-level truth.
+
+A milestone is a phase boundary, not a single task. Work items may proceed in parallel when they fit the same Contract and do not depend on unresolved owner decisions.
+
+## Product-slice-first UI Work
+
+Do not establish a UI foundation, design system, component catalog, or prototype infrastructure in isolation. Start with a concrete, reviewable product surface and create only the styles, components, and supporting structure that surface needs.
+
+Promote a pattern into shared UI only after current product work demonstrates repeated use or a meaningful shared semantic or behavioral need. Early UI milestones should optimize for product learning before infrastructure completeness.
+
+## Starting Local Agent Work
+
+Creating or labeling an Issue does not start a local AI agent. The default trigger is an explicit owner instruction such as `Implement Issue #12`; the agent then reads the Issue and required repository context. The owner should not copy the Issue body into the conversation.
+
+Polling or automatic execution is optional and outside the baseline workflow. Before it may modify the repository, it must define task selection, locking, isolation, failure recovery, permissions, and owner-decision boundaries.
 
 ## Milestone Workspace
 
-Each milestone is a folder. Its `README.md` is the required entry point; other files are optional.
-
-```text
-docs/milestones/001-example/
-  README.md
-  notes.md
-  references.md
-  review.md
-  assets/
-```
-
-The README contains:
+Each milestone is a folder whose `README.md` contains:
 
 1. Metadata
 2. Milestone Contract
 3. Milestone Tracking
 4. Closure Summary
 
-### Milestone Contract
+Other notes, reviews, references, or assets are optional.
 
-The Contract defines the agreed phase boundary. It should contain the objective, relevant context, scope, non-goals, constraints, and acceptance criteria.
+### Contract
 
-Once the milestone is active, the Contract is locked during normal work. Changes must follow the explicit Revise or Reopen process below.
+The Contract defines the agreed phase boundary. Once active, it is locked during normal work.
 
-### Milestone Tracking
+### Tracking
 
-Tracking records the current truth of the milestone. It may contain current status, completed and in-progress work, open questions, and milestone-local decisions.
+Tracking records current milestone truth, not an activity log. Update it only when one of these materially changes:
 
-Tracking may be updated during normal work. Keep it concise and current rather than turning it into an unstructured activity log.
+- milestone status;
+- the state of an acceptance criterion;
+- an open question;
+- a milestone-local decision; or
+- a finding that changes later milestone work.
+
+Routine steps, implementation details, and commit lists belong in Issues and pull requests. At closure, avoid preserving a second detailed history in Tracking.
 
 ### Closure Summary
 
-The Closure Summary is completed when the milestone closes. It records the outcome, selected and rejected directions when relevant, unresolved questions, carry-forward decisions, and the follow-up milestone.
+Closure records the outcome, selected and rejected directions when relevant, unresolved questions, carry-forward decisions, and proposed follow-up milestone.
 
-Closure is human-led. Agents may prepare evidence, proposals, and document updates, but the project owner makes final product, design, and scope decisions.
+Reference evidence instead of restating every work item. Evidence may include pull requests, automated checks, representative UI captures, interaction review, prototype findings, and owner decisions. Use a compact `Criterion | Evidence | Result | Follow-up` table when several criteria need mapping.
+
+Closure is human-led. Agents may prepare evidence and proposals; the project owner makes final product, design, scope, and closure decisions.
+
+## Proportional Workflow
+
+Use the lightest process appropriate to the risk:
+
+| Work type | Default path |
+| --- | --- |
+| Maintenance | Current task or Issue -> change -> verification |
+| Experiment | Issue -> reviewable implementation -> findings -> decision |
+| Product or architecture commitment | Issue -> pull request -> verification -> owner decision -> carry-forward |
+
+Small maintenance may run alongside a milestone when it does not change product scope. Other out-of-milestone product work requires an explicit revision or reopen.
 
 ## Milestone Lifecycle
 
 ### Initialize
 
-1. Review `docs/project.md`.
-2. Review the previous milestone's Closure Summary, if one exists.
-3. Identify unresolved questions and carry-forward decisions.
-4. Create the new milestone folder and README.
-5. Draft a stable Milestone Contract.
-6. Initialize Milestone Tracking.
-7. Update `docs/current-milestone.md` when the milestone becomes active.
-8. Create or update the milestone's GitHub Issues.
+1. Review `docs/project.md` and the previous Closure Summary, if any.
+2. Identify unresolved questions and carry-forward decisions.
+3. Create the milestone README and draft a stable Contract.
+4. Initialize concise Tracking.
+5. Activate the milestone through `docs/current-milestone.md`.
+6. Create only work items whose outcome and boundary are ready.
 
-Do not begin feature implementation before the Contract is stable enough to guide the work.
+Do not begin milestone feature work before the Contract can guide it.
 
 ### Execute
 
-- Use issues or current tasks for focused deliverables.
-- Keep work within the active Contract.
-- Allow parallel tasks when they share the same phase boundary.
-- Update Tracking when progress, open questions, or milestone-local decisions materially change.
-- Keep optional exploratory notes separate from binding requirements.
-
-Small maintenance work may run alongside a milestone when it does not change product scope. Other out-of-milestone work requires an explicit milestone revision or reopen task.
+- Keep focused work items within the Contract.
+- Prefer Issues when available; use the current task when an Issue adds no coordination value.
+- Keep exploratory material separate from binding requirements.
+- Update Tracking only at the material-change threshold above.
+- Keep evidence in the Issue, pull request, checks, or review artifact closest to the work.
 
 ### Revise or Reopen
 
-Revising the active Contract is an exceptional, explicit action. It requires all of the following:
-
-- the current task explicitly authorizes the revision or reopen;
-- the task states what is changing and why it cannot wait for a later milestone;
-- the resulting pull request explains the change and its consequences; and
-- Milestone Tracking records the decision.
+Changing the Contract requires a work item that explicitly authorizes the change, explains why it cannot wait, records the consequences in the pull request, and updates Tracking.
 
 ### Close
 
-1. Review completed issues, pull requests, prototypes, and implementation results.
-2. Resolve or record open questions.
-3. Complete the Closure Summary.
-4. Record carry-forward decisions and the proposed next milestone.
-5. Update `docs/current-milestone.md` only when the next milestone becomes active.
+1. Review completed work and evidence.
+2. For product or UI work, complete an agent-led live review in which the agent presents the running result, explains key code and tradeoffs, answers owner questions, and verifies agreed revisions.
+3. Obtain explicit owner acceptance, then resolve or record open questions.
+4. Complete the Closure Summary without duplicating delivery history.
+5. Record carry-forward decisions and change `docs/current-milestone.md` only when the next milestone becomes active.
 
 A milestone must not drift silently into the next phase.
 
-## Issue Guidance
+## Work Item and Pull Request Guidance
 
-Issues define task-level work and should avoid repeating the full project background. They should identify:
+A work item is ready when it describes a bounded outcome that can be reviewed and closed. Early-stage research, design exploration, technical spikes, features, maintenance, and bugs can all be Issues.
+
+A work item should contain:
 
 - the intended outcome and why it matters now;
-- any context beyond the required project and milestone documents;
-- acceptance criteria;
-- relevant exclusions or files that should not change; and
-- whether the task is authorized to revise the active Contract.
+- only context not owned by required repository documents;
+- acceptance criteria and relevant exclusions; and
+- whether Contract revision is authorized.
 
-## Pull Request Guidance
+A pull request should link the work item and record what changed, what remained out of scope, relevant evidence, milestone impact, and unresolved follow-up. Normal delivery pull requests must not change the Contract.
 
-A pull request should record:
+Create a supporting file only when its research, decision record, reference material, or review result should remain useful after the work item closes. Link to it rather than copying it.
 
-- the related issue;
-- what changed and what was intentionally left unchanged;
-- evidence for UI or behavior changes when applicable;
-- whether Milestone Tracking changed;
-- whether the active Contract changed and, if so, where that was authorized; and
-- follow-up work or unresolved questions.
+## Documentation Discipline
 
-Normal feature pull requests must not change the active Contract.
+- Do not document activity already preserved by Issues, pull requests, and Git.
+- Do not copy a work item into a milestone task directory.
+- Give each decision one authoritative home and link to it elsewhere.
+- Prefer evidence links over repeated acceptance-criteria narratives.
+- If deleting a proposed file after task closure would lose no durable knowledge, do not create it.
 
 ## Responsibilities
 
-### Human Project Owner
+The project owner defines direction, activates and closes milestones, approves scope changes, selects ready work, makes product and design decisions, and chooses what carries forward.
 
-The owner defines project direction, starts and closes milestones, approves scope changes, makes product and design decisions, and chooses which directions carry forward.
-
-### AI Agents
-
-Agents follow the repository instructions, implement focused work within the active Contract, keep changes reviewable, and explain tradeoffs.
-
-Agents may propose owner-level choices but must not silently make them. When existing context safely bounds a task, agents should prefer a conservative, reviewable implementation over unnecessary clarification.
+AI agents follow repository instructions, work within the Contract, keep changes reviewable, preserve proportionate evidence, and explain tradeoffs. They may propose owner-level choices but must not silently make them.
 
 ## Guiding Principles
 
-- Externalize project context instead of relying on conversational memory.
-- Give each decision one authoritative home and link to it instead of duplicating it.
-- Keep long-term direction, milestone scope, and task requirements at their respective levels.
-- Keep optional exploration separate from binding requirements and delivery records reviewable.
-- Let agents execute, propose, and summarize; let the owner decide direction, scope, and taste.
+- Externalize durable context instead of relying on conversational memory.
+- Keep project direction, milestone scope, and task requirements at their respective levels.
+- Start early UI work from reviewable product slices, then extract only proven patterns.
+- Keep exploration reversible and separate from production commitments.
+- Match process weight to the risk and learning value of the work.
+- Record decisions and evidence, not every action taken.
+- Let agents execute and propose; let the owner decide direction, scope, and taste.
