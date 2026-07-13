@@ -13,25 +13,25 @@ const sectionIndexClassName =
   `${editorialLabelBaseClassName} text-[0.8125rem] font-semibold text-muted-foreground`;
 
 const sectionClassName =
-  "border-b border-border py-[clamp(4rem,8vw,7rem)]";
+  "border-b [border-bottom-color:var(--border)] py-[clamp(4rem,8vw,7rem)]";
 
 const sectionHeadingClassName =
-  "flex items-end justify-between gap-8 [@media(max-width:40rem)]:items-start [@media(max-width:40rem)]:gap-4";
+  "flex [align-items:end] justify-between gap-8 [@media(max-width:40rem)]:[align-items:start] [@media(max-width:40rem)]:gap-4";
 
 const sectionTitleClassName =
   "mt-3 text-[clamp(1.75rem,4vw,3.25rem)] font-[520] leading-[1.1] tracking-[-0.035em]";
 
 const sectionLinkClassName =
-  "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color] duration-[140ms] ease-[ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:-mt-2 [@media(max-width:40rem)]:-mr-3";
+  "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color] duration-[140ms,140ms] ease-[ease,ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:-mt-2 [@media(max-width:40rem)]:-mr-3";
 
 const entryClassName =
-  "group grid grid-cols-[minmax(8rem,0.32fr)_minmax(0,1fr)_auto] items-center gap-6 border-b border-border py-6 no-underline transition-[padding,color,background-color] duration-[160ms] ease-[ease] hover:bg-surface-muted hover:px-3 hover:text-accent focus-visible:bg-surface-muted focus-visible:px-3 focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:grid-cols-[1fr_auto] [@media(max-width:40rem)]:gap-x-4 [@media(max-width:40rem)]:gap-y-2";
+  "group grid grid-cols-[minmax(8rem,0.32fr)_minmax(0,1fr)_auto] items-center gap-6 border-b [border-bottom-color:var(--border)] py-6 no-underline transition-[padding,color,background-color] duration-[160ms,160ms,160ms] ease-[ease,ease,ease] hover:bg-surface-muted hover:px-3 hover:text-accent focus-visible:bg-surface-muted focus-visible:px-3 focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:grid-cols-[1fr_auto] [@media(max-width:40rem)]:gap-x-4 [@media(max-width:40rem)]:gap-y-2";
 
 export default function Home() {
   return (
     <main id="main-content">
       <section
-        className="grid min-h-[min(58svh,40rem)] content-center border-b border-border py-[clamp(4.5rem,9vw,8rem)] [@media(max-width:40rem)]:min-h-0 [@media(max-width:40rem)]:py-[clamp(5rem,22vw,7rem)]"
+        className="grid min-h-[min(58svh,40rem)] content-center border-b [border-bottom-color:var(--border)] py-[clamp(4.5rem,9vw,8rem)] [@media(max-width:40rem)]:min-h-0 [@media(max-width:40rem)]:py-[clamp(5rem,22vw,7rem)]"
         aria-labelledby="landing-title"
       >
         <p className={`${editorialLabelClassName} text-accent`}>
@@ -68,7 +68,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="mt-12 border-t border-border">
+          <div className="mt-12 border-t [border-top-color:var(--border)]">
             {labEntries.map((entry) => (
               <Link
                 href={`/lab#${entry.slug}`}
@@ -108,19 +108,19 @@ export default function Home() {
               About <span aria-hidden="true">→</span>
             </Link>
           </div>
-          <div className="mt-8 grid grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] items-start gap-[clamp(2rem,6vw,6rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
+          <div className="mt-8 grid grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] [align-items:start] gap-[clamp(2rem,6vw,6rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
             <p
               className="m-0 max-w-xl text-lg leading-body text-muted-foreground"
               lang="zh-CN"
             >
               一名前端工程师，在 AI 时代探索前端之外的可能
             </p>
-            <dl className="m-0 grid border-t border-border">
-              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b border-border py-4">
+            <dl className="m-0 grid border-t [border-top-color:var(--border)]">
+              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b [border-bottom-color:var(--border)] py-4">
                 <dt className={mutedEditorialLabelClassName}>Focus</dt>
                 <dd>Frontend systems · Architecture · AI collaboration</dd>
               </div>
-              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b border-border py-4">
+              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b [border-bottom-color:var(--border)] py-4">
                 <dt className={mutedEditorialLabelClassName}>Now</dt>
                 <dd lang="zh-CN">寻找更清晰、更可靠的软件构建方式</dd>
               </div>
@@ -130,7 +130,7 @@ export default function Home() {
       </div>
 
       <section
-        className="grid min-h-[clamp(22rem,45svh,32rem)] place-content-center justify-items-center border-b border-border py-16 text-center [@media(max-width:40rem)]:min-h-[22rem]"
+        className="grid min-h-[clamp(22rem,45svh,32rem)] place-content-center justify-items-center border-b [border-bottom-color:var(--border)] py-16 text-center [@media(max-width:40rem)]:min-h-[22rem]"
         aria-labelledby="end-title"
       >
         <div
