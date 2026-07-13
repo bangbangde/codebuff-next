@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { BrandMark } from "./brand-mark";
+import { SiteFooter } from "./site-footer";
+import { SiteHeader } from "./site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,30 +15,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        <a className="skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <header className="site-header">
-          <div className="site-shell site-header__inner">
-            <Link className="brand" href="/" aria-label="Codebuff home">
-              <BrandMark />
-            </Link>
-            <nav aria-label="Primary navigation">
-              <Link href="/lab">Lab</Link>
-              <Link href="/me">Me</Link>
-            </nav>
-          </div>
-        </header>
-        <div className="site-shell">{children}</div>
-        <footer className="site-footer">
-          <div className="site-shell site-footer__inner">
-            <p>Codebuff</p>
-            <p>Thinking, building, learning.</p>
-            <p>© {new Date().getFullYear()}</p>
-          </div>
-        </footer>
+    <html
+      className="min-h-full bg-background scroll-pt-[5.5rem] [text-rendering:optimizeLegibility]"
+      lang="en"
+    >
+      <body className="min-h-full bg-background font-sans text-base leading-body text-foreground antialiased">
+        <SiteHeader />
+        <div className="mx-auto w-full max-w-[calc(var(--layout-max)_+_2*var(--layout-gutter))] px-[var(--layout-gutter)]">
+          {children}
+        </div>
+        <SiteFooter />
       </body>
     </html>
   );
