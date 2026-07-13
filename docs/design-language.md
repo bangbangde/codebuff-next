@@ -31,16 +31,16 @@ separate approved work item explicitly changes them.
 | --- | --- | --- |
 | Shared document chrome | `app/layout.tsx`, `app/site-header.tsx`, `app/site-footer.tsx` | Root composition, skip link, site shell, sticky header, primary navigation, and footer implemented with Tailwind utilities |
 | Brand mark | `app/brand-mark.tsx` | Decorative monoline SVG with Tailwind-owned presentation inside the accessible home link; foreground and warm-accent strokes inherit theme colors |
-| Global theme and document rules | `app/globals.css` | Runtime color theme, Tailwind theme mappings, transitional page-body tokens, global focus, selection, and form inheritance |
-| Landing | `app/page.tsx`, `app/page.module.css` | Reference editorial direction, Lab and Me discovery, interactive entry rows, fact summary, and page ending |
+| Global theme and document rules | `app/globals.css` | Runtime color theme, Tailwind theme mappings, transitional interior-page tokens, global focus, and selection |
+| Landing | `app/page.tsx` | Tailwind-first reference editorial direction, Lab and Me discovery, interactive entry rows, fact summary, and page ending |
 | Lab | `app/lab/page.tsx`, `app/content.ts`, `app/interior.module.css` | Editorial page header and numbered, anchorable article rows |
 | Me | `app/me/page.tsx`, `app/interior.module.css` | Split editorial introduction, fact summary, and three-part practice composition |
 | Stable product rules | `docs/project.md` | Editorial language, punctuation, visual direction, and page-ending guidance |
 
-No JSX currently uses Tailwind utility classes. Tailwind v4 is imported;
-semantic colors, font families, and the project-specific display typography are
-registered with `@theme inline`, while the accepted surfaces continue to
-consume CSS custom properties through global CSS and CSS Modules.
+Global chrome and Landing now use Tailwind utilities. Semantic colors, font
+families, and project-specific display typography are registered with `@theme
+inline`; Lab and Me remain the only surfaces consuming transitional layout
+aliases through a CSS Module.
 
 ## Global token inventory
 
@@ -93,25 +93,25 @@ until another surface demonstrates the same role.
 
 | Token | Value | Representative consumers | Finding |
 | --- | --- | --- | --- |
-| `--space-1` | `0.25rem` | Header-nav gap, Landing arrow movement | Stable scale step; equals Tailwind spacing step `1` |
-| `--space-2` | `0.5rem` | Skip link, header links, Landing links and mobile grids, Me detail offset | Stable scale step; equals Tailwind spacing step `2` |
-| `--space-3` | `0.75rem` | Skip link, section headings/links, entry hover inset, mobile item gap | Stable scale step; equals Tailwind spacing step `3` |
-| `--space-4` | `1rem` | Footer, fact rows, headings, descriptions, mobile layouts | Stable scale step; equals Tailwind spacing step `4` |
-| `--space-6` | `1.5rem` | Header, hero/title spacing, rows, grids, principle cards | Stable scale step; equals Tailwind spacing step `6` |
-| `--space-8` | `2rem` | Footer, section bodies, row padding, responsive stacks, end mark | Stable scale step; equals Tailwind spacing step `8` |
-| `--space-12` | `3rem` | Entry list, fact list, interior page padding, responsive principle grid | Stable scale step; equals Tailwind spacing step `12` |
-| `--space-16` | `4rem` | Major section padding, page headers, endcap, principle grid | Stable scale step; equals Tailwind spacing step `16` |
+| `--space-2` | `0.5rem` | Me detail offset | Transitional alias; equals Tailwind spacing step `2` |
+| `--space-3` | `0.75rem` | Lab mobile item gap | Transitional alias; equals Tailwind spacing step `3` |
+| `--space-4` | `1rem` | Interior headings, descriptions, fact rows, and mobile layouts | Transitional alias; equals Tailwind spacing step `4` |
+| `--space-6` | `1.5rem` | Interior introductions, rows, grids, and principle cards | Transitional alias; equals Tailwind spacing step `6` |
+| `--space-8` | `2rem` | Interior row padding, anchor offset, and responsive stacks | Transitional alias; equals Tailwind spacing step `8` |
+| `--space-12` | `3rem` | Interior page padding, fact list, and responsive principle grid | Transitional alias; equals Tailwind spacing step `12` |
+| `--space-16` | `4rem` | Interior page headers, practice section, and principle grid | Transitional alias; equals Tailwind spacing step `16` |
 
-Every spacing alias is consumed, but every value is already an exact multiple of
-Tailwind v4's installed `--spacing: 0.25rem` scale. They are transitional
-duplication, not a second project spacing system.
+Issue #19 retired `--space-1` after Landing moved its arrow motion to Tailwind's
+spacing step `1`. The remaining aliases are consumed only by `interior.module.css`;
+every value is already an exact multiple of Tailwind v4's installed `--spacing:
+0.25rem` scale and remains transitional duplication, not a second spacing system.
 
 ### Shape, border, and layout
 
 | Token | Value | Actual consumers | Finding |
 | --- | --- | --- | --- |
 | Tailwind `--radius-md` | `0.375rem` | Header navigation and Landing section links | Tailwind v4 default now owns the accepted control radius |
-| `--border-width` | `1px` | Page-body structural rules | Transitional page-body token; global chrome uses Tailwind's default border width |
+| `--border-width` | `1px` | Lab and Me structural rules | Transitional interior-page token; global chrome and Landing use Tailwind's default border width |
 | `--layout-max` | `72rem` | Root, header, and footer max-width utilities | Stable site-shell maximum consumed through Tailwind arbitrary-value utilities; equals the installed `6xl` width |
 | `--layout-reading` | `44rem` | Landing hero explanatory copy | Stable reading measure; keep semantic because it is not a default container step |
 | `--layout-gutter` | `clamp(1.25rem, 4vw, 3rem)` | Root, header, footer, and skip-link utilities | Stable fluid page gutter consumed by Tailwind arbitrary-value utilities |
@@ -197,10 +197,10 @@ Keep CSS variables as the runtime authority for semantic values that change with
 system theme (`background`, foreground roles, accents, and border) and for fluid
 layout values consumed through Tailwind arbitrary-value utilities or retained CSS
 Modules (`layout-gutter` and reading measure).
-Global CSS continues to own reset, selection, focus outline, and the runtime
-theme media query. Tailwind utilities colocated with `SiteHeader`, `SiteFooter`,
-`BrandMark`, and `layout.tsx` own body defaults, skip-link behavior, the site
-shell, and global chrome.
+Tailwind Preflight owns reset behavior. Global CSS continues to own selection,
+focus outline, and the runtime theme media query. Tailwind utilities colocated
+with `SiteHeader`, `SiteFooter`, `BrandMark`, `layout.tsx`, and `page.tsx` own
+body defaults, skip-link behavior, global chrome, and Landing presentation.
 
 ### Tailwind v4 `@theme`
 
@@ -232,11 +232,10 @@ are not justified as shared React components by the current implementation.
 
 ### Retained CSS Modules
 
-Keep Landing composition in `page.module.css` and Lab/Me composition in
-`interior.module.css` until their focused migration slices. During each slice,
-move ordinary layout, typography, responsive, and interaction rules into
-Tailwind utilities. Retain only the minimal surface-local CSS whose utility form
-would reduce clarity.
+Keep Lab/Me composition in `interior.module.css` until Issue #20. Landing no
+longer has a CSS Module: its fluid hierarchy, responsive transitions,
+interaction states, and end-mark geometry remain readable as colocated Tailwind
+utilities, so Issue #19 required no local-CSS exception.
 
 ## Recommended implementation sequence
 
@@ -245,8 +244,8 @@ would reduce clarity.
 2. **Issue #18: migrate global chrome.** Move the shell, skip link, header,
    navigation, footer, and BrandMark presentation into focused components with
    Tailwind utilities while preserving exact interaction and responsive output.
-3. **Issue #19: migrate Landing.** Move ordinary Landing styles into Tailwind,
-   retaining minimal local CSS only where its composition is clearer that way.
+3. **Issue #19: migrate Landing.** Landing now uses Tailwind utilities for its
+   full presentation, with no retained local-CSS exception.
 4. **Issue #20: migrate Lab and Me and finish shared semantics.** Complete the
    page migration, extract `FactList`, evaluate `SectionLabel`, and consolidate
    the regression evidence required for M003 review.
