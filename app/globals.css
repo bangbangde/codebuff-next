@@ -166,7 +166,7 @@ body {
 /* Compact monoline wordmark; the surrounding link remains the touch target. */
 .brand__mark {
   display: block;
-  width: 5.25rem;
+  width: 7.375rem;
   height: 1.625rem;
   overflow: visible;
   color: var(--foreground);
@@ -183,6 +183,10 @@ body {
 
 .brand__node {
   fill: currentColor;
+}
+
+.brand__accent-line {
+  stroke: var(--accent);
 }
 
 .brand__accent-node {

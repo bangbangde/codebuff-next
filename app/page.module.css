@@ -169,6 +169,75 @@
   text-transform: uppercase;
 }
 
+.endcap {
+  display: grid;
+  min-height: clamp(22rem, 45svh, 32rem);
+  place-content: center;
+  justify-items: center;
+  padding-block: var(--space-16);
+  border-bottom: var(--border-width) solid var(--border);
+  text-align: center;
+}
+
+.endMark {
+  position: relative;
+  width: 5rem;
+  height: 1rem;
+  margin-bottom: var(--space-8);
+}
+
+.endMark::before,
+.endMark::after {
+  position: absolute;
+  top: 50%;
+  width: 1.75rem;
+  height: var(--border-width);
+  background: var(--border);
+  content: "";
+}
+
+.endMark::before {
+  left: 0;
+}
+
+.endMark::after {
+  right: 0;
+}
+
+.endMark span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+.endLabel {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--typeface-code);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.endcap h2 {
+  margin: var(--space-4) 0 0;
+  font-size: clamp(2.25rem, 4.5vw, 4rem);
+  font-weight: 520;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.endNote {
+  margin: var(--space-6) 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+}
+
 @media (min-width: 64rem) {
   .slogan h1 {
     max-width: none;
@@ -211,6 +280,10 @@
   .aboutBody {
     grid-template-columns: 1fr;
     gap: var(--space-8);
+  }
+
+  .endcap {
+    min-height: 22rem;
   }
 }
 
