@@ -21,8 +21,9 @@ separate approved work item explicitly changes them.
   either convention.
 - [PR #12](https://github.com/bangbangde/codebuff-next/pull/12) is the accepted
   M002 implementation evidence.
-- Issue #14 and its M003 Milestone define the work boundary for this inventory.
-  No token, component, behavior, or product change is made here.
+- Issue #14 established this inventory. Issue #16 and its M003 Milestone define
+  the current token-normalization boundary; no component, behavior, or product
+  change is made here.
 
 ## Implementation map
 
@@ -104,7 +105,7 @@ Every spacing alias is consumed, but every value is already an exact multiple of
 Tailwind v4's installed `--spacing: 0.25rem` scale. They are transitional
 duplication, not a second project spacing system.
 
-### Shape, border, shadow, and layout
+### Shape, border, and layout
 
 | Token | Value | Actual consumers | Finding |
 | --- | --- | --- | --- |
