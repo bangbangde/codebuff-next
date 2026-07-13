@@ -5,7 +5,6 @@
 
   /* Color */
   --background: #fdfcf9;
-  --surface: #ffffff;
   --surface-muted: #fff8eb;
   --foreground: #181512;
   --muted-foreground: #706961;
@@ -17,14 +16,6 @@
   --typeface-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
   --typeface-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-display: clamp(2.25rem, 6vw, 4.75rem);
-  --leading-tight: 1.05;
-  --leading-body: 1.65;
-  --tracking-label: 0.08em;
 
   /* Spacing */
   --space-1: 0.25rem;
@@ -36,12 +27,8 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Shape and borders */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1.25rem;
+  /* Borders */
   --border-width: 1px;
-  --shadow-subtle: 0 1.25rem 4rem rgb(48 37 24 / 0.07);
 
   /* Layout */
   --layout-max: 72rem;
@@ -51,7 +38,6 @@
 
 @theme inline {
   --color-background: var(--background);
-  --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
@@ -60,20 +46,22 @@
   --color-border: var(--border);
   --font-sans: var(--typeface-body);
   --font-mono: var(--typeface-code);
+  --text-display: clamp(2.25rem, 6vw, 4.75rem);
+  --leading-display: 1.05;
+  --leading-body: 1.65;
+  --tracking-label: 0.08em;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
     --background: #151310;
-    --surface: #1d1a17;
     --surface-muted: #2b241b;
     --foreground: #f7f3ed;
     --muted-foreground: #bdb4aa;
     --accent: #ffad57;
     --accent-soft: #3c2917;
     --border: #3c352e;
-    --shadow-subtle: 0 1.25rem 4rem rgb(0 0 0 / 0.24);
   }
 }
 
@@ -205,7 +193,7 @@ body {
   align-items: center;
   justify-content: center;
   padding-inline: var(--space-2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--muted-foreground);
   font-family: var(--typeface-code);
   font-size: var(--text-sm);
