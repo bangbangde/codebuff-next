@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import styles from "../interior.module.css";
 
 export const metadata: Metadata = {
@@ -9,8 +8,7 @@ export const metadata: Metadata = {
 
 export default function MePage() {
   return (
-    <main className={styles.page}>
-      <Link href="/" className={styles.back}>← Home</Link>
+    <main className={styles.page} id="main-content">
       <p className={styles.eyebrow}>Me / Frontend engineer</p>
       <h1 className={styles.title}>Building beyond the interface.</h1>
       <p className={styles.intro} lang="zh-CN">
