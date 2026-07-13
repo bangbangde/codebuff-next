@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
-import styles from "../interior.module.css";
+import { FactList } from "../fact-list";
+import { SectionLabel } from "../section-label";
+
+const facts = [
+  {
+    term: "Focus",
+    description: "Frontend systems · Architecture · AI collaboration",
+  },
+  {
+    term: "Now",
+    description: "寻找更清晰、更可靠的软件构建方式",
+    descriptionLang: "zh-CN",
+  },
+] as const;
 
 const principles = [
   {
@@ -23,44 +36,66 @@ export const metadata: Metadata = {
 
 export default function MePage() {
   return (
-    <main className={styles.page} id="main-content">
-      <section className={styles.meHero} aria-labelledby="me-page-title">
-        <p className={styles.eyebrow}>Me / Frontend engineer</p>
-        <div className={styles.meLead}>
-          <h1 className={styles.title} id="me-page-title">
+    <main
+      className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]"
+      id="main-content"
+    >
+      <section
+        className="border-b [border-bottom-color:var(--border)] pb-[clamp(4rem,8vw,7rem)]"
+        aria-labelledby="me-page-title"
+      >
+        <SectionLabel>Me / Frontend engineer</SectionLabel>
+        <div className="mt-6 grid grid-cols-[minmax(0,0.9fr)_minmax(24rem,1fr)] [align-items:start] gap-[clamp(3rem,8vw,8rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
+          <h1
+            className="m-0 max-w-[12ch] text-display font-[520] leading-display tracking-[-0.05em]"
+            id="me-page-title"
+          >
             Building beyond the interface.
           </h1>
-          <div className={styles.meDetails}>
-            <p className={styles.intro} lang="zh-CN">
+          <div className="pt-2 [@media(max-width:40rem)]:pt-0">
+            <p
+              className="m-0 max-w-[38rem] text-lg leading-body text-muted-foreground"
+              lang="zh-CN"
+            >
               我是一名前端工程师，关注产品理解、系统设计与工程判断，也在持续实践 AI-native 的软件协作方式
             </p>
-            <dl className={styles.facts}>
-              <div>
-                <dt>Focus</dt>
-                <dd>Frontend systems · Architecture · AI collaboration</dd>
-              </div>
-              <div>
-                <dt>Now</dt>
-                <dd lang="zh-CN">寻找更清晰、更可靠的软件构建方式</dd>
-              </div>
-            </dl>
+            <FactList
+              className="mt-12"
+              facts={facts}
+              rowClassName="grid-cols-[8rem_1fr] gap-6 [@media(max-width:40rem)]:grid-cols-[5rem_minmax(0,1fr)] [@media(max-width:40rem)]:gap-4"
+            />
           </div>
         </div>
       </section>
 
-      <section className={styles.practice} aria-labelledby="practice-title">
-        <div className={styles.practiceHeading}>
-          <p className={styles.eyebrow}>Practice / Approach</p>
-          <h2 id="practice-title">How I approach the work</h2>
+      <section
+        className="border-b [border-bottom-color:var(--border)] py-[clamp(4rem,8vw,7rem)]"
+        aria-labelledby="practice-title"
+      >
+        <div className="grid grid-cols-[minmax(12rem,0.3fr)_minmax(0,1fr)] [align-items:start] gap-6 [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-4">
+          <SectionLabel>Practice / Approach</SectionLabel>
+          <h2
+            className="m-0 max-w-[16ch] text-[clamp(2rem,4vw,3.5rem)] font-[520] leading-[1.08] tracking-[-0.04em]"
+            id="practice-title"
+          >
+            How I approach the work
+          </h2>
         </div>
-        <div className={styles.principles}>
+        <div className="mt-16 grid grid-cols-3 gap-[clamp(1.5rem,4vw,3rem)] [@media(max-width:40rem)]:mt-12 [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
           {principles.map((principle, index) => (
-            <article className={styles.principle} key={principle.label}>
-              <p className={styles.principleIndex}>
+            <article
+              className="border-t [border-top-color:var(--border)] pt-6"
+              key={principle.label}
+            >
+              <p className="m-0 font-mono text-xs leading-body tracking-label text-accent">
                 {String(index + 1).padStart(2, "0")}
               </p>
-              <h3>{principle.label}</h3>
-              <p lang="zh-CN">{principle.description}</p>
+              <h3 className="mt-6 text-[clamp(1.25rem,2.2vw,1.75rem)] font-[540] tracking-[-0.025em]">
+                {principle.label}
+              </h3>
+              <p className="mt-4 text-muted-foreground" lang="zh-CN">
+                {principle.description}
+              </p>
             </article>
           ))}
         </div>

@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { labEntries } from "./content";
+import { FactList } from "./fact-list";
+
+const facts = [
+  {
+    term: "Focus",
+    description: "Frontend systems · Architecture · AI collaboration",
+  },
+  {
+    term: "Now",
+    description: "寻找更清晰、更可靠的软件构建方式",
+    descriptionLang: "zh-CN",
+  },
+] as const;
 
 const editorialLabelBaseClassName =
   "m-0 font-mono leading-body tracking-label uppercase";
@@ -115,16 +128,10 @@ export default function Home() {
             >
               一名前端工程师，在 AI 时代探索前端之外的可能
             </p>
-            <dl className="m-0 grid border-t [border-top-color:var(--border)]">
-              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b [border-bottom-color:var(--border)] py-4">
-                <dt className={mutedEditorialLabelClassName}>Focus</dt>
-                <dd>Frontend systems · Architecture · AI collaboration</dd>
-              </div>
-              <div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 border-b [border-bottom-color:var(--border)] py-4">
-                <dt className={mutedEditorialLabelClassName}>Now</dt>
-                <dd lang="zh-CN">寻找更清晰、更可靠的软件构建方式</dd>
-              </div>
-            </dl>
+            <FactList
+              facts={facts}
+              rowClassName="grid-cols-[5rem_minmax(0,1fr)] gap-4"
+            />
           </div>
         </section>
       </div>
