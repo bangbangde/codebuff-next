@@ -74,6 +74,12 @@ The primary audience is technical readers, especially frontend engineers, softwa
 
 The site should also be understandable to non-specialist visitors, but it does not need to optimize for broad marketing conversion.
 
+## Editorial Conventions
+
+English carries brand language, navigation, product-surface names, and concise positioning statements. Simplified Chinese carries explanatory content written for the primary audience.
+
+Short Simplified Chinese interface copy such as labels, summaries, status text, and supporting descriptions normally omits a terminal full stop. Continuous prose keeps normal punctuation, and punctuation that carries meaning, such as a question mark, remains intentional.
+
 ## Design Direction
 
 The design should prioritize clarity, readability, structure, and interaction quality.
@@ -83,6 +89,10 @@ Prefer clear information hierarchy, strong typography, calm spacing, precise lan
 Avoid excessive animation, decorative complexity, generic hero sections, exaggerated marketing copy, overly personal storytelling, and portfolio-template aesthetics.
 
 The visual direction should support technical credibility and thoughtful exploration.
+
+The accepted Landing direction is the visual reference for Lab and Me: editorial hierarchy, monoline branding, restrained warm accents, structural rules, and calm interaction. Each surface should retain its own content role instead of becoming a repeated Landing layout.
+
+Page endings should provide closure without needlessly repeating global branding or navigation. Repeat a global control only when it serves a distinct navigation need in that context.
 
 ## Technical Direction
 
