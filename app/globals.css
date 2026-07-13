@@ -17,18 +17,6 @@
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
   --typeface-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
-  /* Spacing */
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-
-  /* Borders */
-  --border-width: 1px;
-
   /* Layout */
   --layout-max: 72rem;
   --layout-reading: 44rem;
