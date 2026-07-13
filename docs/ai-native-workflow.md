@@ -49,6 +49,14 @@ New product, UI, or architecture implementation requires an owner-approved open 
 
 Small maintenance may proceed from a sufficiently bounded current task or standalone Issue when it does not change product scope. Polling or automatic execution remains outside the baseline workflow.
 
+## Status and Bounded Operations
+
+Before reporting project status or choosing the next work item, inspect the stable project and workflow documents, the local branch and worktree, the relevant Issue, and its open GitHub Milestone. Distinguish live GitHub state from local or remembered context.
+
+An exact owner instruction to change a named Issue, pull request, branch, or other GitHub object authorizes only that target. Do not infer adjacent cleanup, Milestone edits, or broader workflow changes from a bounded operation.
+
+Before dependency, setup, or tooling changes, inspect the repository's existing package and configuration wiring. Change or reinstall only after confirming a real gap.
+
 ## GitHub Milestone Model
 
 An owner-approved open GitHub Milestone is the only active phase Contract. Keep at most one product Milestone open at a time. A proposed phase is discussed in an unassigned Issue and becomes active only when the owner approves its boundary and the Milestone is created or opened.

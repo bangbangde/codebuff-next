@@ -86,6 +86,7 @@
 html {
   min-height: 100%;
   background: var(--background);
+  scroll-padding-top: 5.5rem;
   text-rendering: optimizeLegibility;
 }
 
@@ -106,8 +107,34 @@ body {
   padding-inline: var(--layout-gutter);
 }
 
+/* Keyboard users can reveal this control before the persistent header. */
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: var(--space-3);
+  left: var(--layout-gutter);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--foreground);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--typeface-code);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-6)));
+  transition: transform 140ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .site-header {
+  position: sticky;
+  z-index: 10;
+  top: 0;
   border-bottom: var(--border-width) solid var(--border);
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(14px);
 }
 
 .site-header__inner {
@@ -120,38 +147,75 @@ body {
 
 .brand {
   display: inline-flex;
+  min-height: 2.75rem;
   align-items: center;
-  gap: var(--space-3);
-  font-weight: 650;
-  letter-spacing: -0.02em;
   text-decoration: none;
 }
 
+.brand__mark,
+.site-header nav a {
+  transition: color 140ms ease, background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.brand:hover .brand__mark,
+.brand:focus-visible .brand__mark {
+  color: var(--accent);
+}
+
+/* Compact monoline wordmark; the surrounding link remains the touch target. */
 .brand__mark {
-  display: grid;
-  width: 2rem;
-  aspect-ratio: 1;
-  place-items: center;
-  border: var(--border-width) solid var(--foreground);
-  font-family: var(--typeface-code);
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
+  display: block;
+  width: 7.375rem;
+  height: 1.625rem;
+  overflow: visible;
+  color: var(--foreground);
+}
+
+.brand__line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.brand__node {
+  fill: currentColor;
+}
+
+.brand__accent-line {
+  stroke: var(--accent);
+}
+
+.brand__accent-node {
+  fill: var(--accent);
 }
 
 .site-header nav {
   display: flex;
-  gap: var(--space-6);
+  gap: var(--space-1);
 }
 
 .site-header nav a {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-sm);
   color: var(--muted-foreground);
   font-family: var(--typeface-code);
   font-size: var(--text-sm);
   text-decoration: none;
 }
 
-.site-header nav a:hover {
-  color: var(--foreground);
+.site-header nav a:hover,
+.site-header nav a:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .site-footer {
@@ -204,4 +268,12 @@ a {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link,
+  .brand__mark,
+  .site-header nav a {
+    transition: none;
+  }
 }

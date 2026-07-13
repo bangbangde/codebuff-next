@@ -4,12 +4,12 @@ import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <main>
+    <main id="main-content">
       <section className={styles.slogan} aria-labelledby="landing-title">
         <p className={styles.kicker}>Frontend engineering · AI era</p>
-        <h1 id="landing-title">Think in systems. Build with judgment.</h1>
+        <h1 id="landing-title">Beyond the frontend.</h1>
         <p lang="zh-CN">
-          记录前端工程、架构思考与 AI 协作中的真实问题，分享持续演进的实践与实验。
+          从前端出发，关注产品如何被理解、系统如何被设计，以及 AI 正在如何改变软件开发
         </p>
       </section>
 
@@ -21,7 +21,7 @@ export default function Home() {
               <h2 id="lab-title">Notes & experiments</h2>
             </div>
             <Link href="/lab" className={styles.sectionLink}>
-              View all <span aria-hidden="true">↗</span>
+              View all <span aria-hidden="true">→</span>
             </Link>
           </div>
 
@@ -49,14 +49,37 @@ export default function Home() {
               <h2 id="me-title">The engineer behind the work</h2>
             </div>
             <Link href="/me" className={styles.sectionLink}>
-              About <span aria-hidden="true">↗</span>
+              About <span aria-hidden="true">→</span>
             </Link>
           </div>
-          <p className={styles.about} lang="zh-CN">
-            一名前端工程师，关注复杂系统如何被理解、设计与持续交付。
-          </p>
+          <div className={styles.aboutBody}>
+            <p className={styles.about} lang="zh-CN">
+              一名前端工程师，在 AI 时代探索前端之外的可能
+            </p>
+            <dl className={styles.aboutFacts}>
+              <div>
+                <dt>Focus</dt>
+                <dd>Frontend systems · Architecture · AI collaboration</dd>
+              </div>
+              <div>
+                <dt>Now</dt>
+                <dd lang="zh-CN">寻找更清晰、更可靠的软件构建方式</dd>
+              </div>
+            </dl>
+          </div>
         </section>
       </div>
+
+      <section className={styles.endcap} aria-labelledby="end-title">
+        <div className={styles.endMark} aria-hidden="true">
+          <span />
+        </div>
+        <p className={styles.endLabel}>End / for now</p>
+        <h2 id="end-title">先到这里</h2>
+        <p className={styles.endNote} lang="zh-CN">
+          探索还在继续，下次更新见
+        </p>
+      </section>
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "./brand-mark";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,11 +17,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
         <header className="site-header">
           <div className="site-shell site-header__inner">
             <Link className="brand" href="/" aria-label="Codebuff home">
-              <span className="brand__mark" aria-hidden="true">CB</span>
-              <span>Codebuff</span>
+              <BrandMark />
             </Link>
             <nav aria-label="Primary navigation">
               <Link href="/lab">Lab</Link>
