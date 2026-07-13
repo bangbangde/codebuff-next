@@ -21,8 +21,9 @@ separate approved work item explicitly changes them.
   either convention.
 - [PR #12](https://github.com/bangbangde/codebuff-next/pull/12) is the accepted
   M002 implementation evidence.
-- Issue #14 and its M003 Milestone define the work boundary for this inventory.
-  No token, component, behavior, or product change is made here.
+- Issue #14 established this inventory. Issue #16 and its M003 Milestone define
+  the current token-normalization boundary; no component, behavior, or product
+  change is made here.
 
 ## Implementation map
 
@@ -35,23 +36,23 @@ separate approved work item explicitly changes them.
 | Me | `app/me/page.tsx`, `app/interior.module.css` | Split editorial introduction, fact summary, and three-part practice composition |
 | Stable product rules | `docs/project.md` | Editorial language, punctuation, visual direction, and page-ending guidance |
 
-No JSX currently uses Tailwind utility classes. Tailwind v4 is imported and the
-semantic colors and font families are registered with `@theme inline`, while
-the accepted surfaces continue to consume CSS custom properties through global
-CSS and CSS Modules.
+No JSX currently uses Tailwind utility classes. Tailwind v4 is imported;
+semantic colors, font families, and the project-specific display typography are
+registered with `@theme inline`, while the accepted surfaces continue to
+consume CSS custom properties through global CSS and CSS Modules.
 
 ## Global token inventory
 
-All current project-defined tokens originate in `app/globals.css`. “Tailwind
-alias only” means the value is registered by `@theme inline`, but no current
-rendered element uses the corresponding utility class.
+Global token ownership remains in `app/globals.css`: runtime theme values live
+in `:root`, project-specific Tailwind theme values live in `@theme inline`, and
+framework scale values come from Tailwind's imported defaults. “Tailwind alias
+only” means no current rendered element uses the corresponding utility class.
 
 ### Color
 
 | Token | Light / dark value | Actual consumers | Finding |
 | --- | --- | --- | --- |
 | `--background` | `#fdfcf9` / `#151310` | `html`, `body`, skip link, translucent site header, `--color-background` | Stable semantic theme token |
-| `--surface` | `#ffffff` / `#1d1a17` | `--color-surface` only | Unused by the accepted surfaces; do not preserve without a concrete consumer |
 | `--surface-muted` | `#fff8eb` / `#2b241b` | Landing entry hover/focus, `--color-surface-muted` | Stable interactive surface token |
 | `--foreground` | `#181512` / `#f7f3ed` | Body text, skip link, BrandMark, selection text, `--color-foreground` | Stable semantic theme token |
 | `--muted-foreground` | `#706961` / `#bdb4aa` | Header links, footer, supporting copy, labels, facts, entry metadata, `--color-muted-foreground` | Stable secondary-text token used on all surfaces |
@@ -59,9 +60,9 @@ rendered element uses the corresponding utility class.
 | `--accent-soft` | `#fff0cc` / `#3c2917` | Header and Landing-link hover/focus backgrounds, selection background, `--color-accent-soft` | Stable low-emphasis interaction token |
 | `--border` | `#ebe6df` / `#3c352e` | Header, sections, rows, fact lists, end mark, `--color-border` | Stable structural-rule token used on all surfaces |
 
-Dark mode changes only these semantic color values and the unused shadow value.
-Components do not contain theme-specific color literals, which is a boundary to
-preserve.
+Dark mode changes only these semantic color values. Components do not contain
+theme-specific color literals, which is a boundary to preserve. The unused
+`surface` role was retired by the Issue #16 normalization.
 
 ### Typography
 
@@ -69,20 +70,18 @@ preserve.
 | --- | --- | --- | --- |
 | `--typeface-body` | System sans stack with Simplified Chinese fallbacks | `body`, `--font-sans` | Stable shared font family |
 | `--typeface-code` | System monospace stack | Header links, footer, skip link, editorial labels, fact terms, `--font-mono` | Stable metadata/label font family |
-| `--text-xs` | `0.75rem` | Footer, editorial metadata, fact terms, end label | Stable shared size; identical to Tailwind v4 `text-xs` |
-| `--text-sm` | `0.875rem` | Skip link, header links, Landing section links | Stable control size; identical to Tailwind v4 `text-sm` |
-| `--text-base` | `1rem` | Body and Landing end note | Stable body size; identical to Tailwind v4 `text-base` |
-| `--text-lg` | `1.125rem` | Landing supporting copy and title arrow, interior introductions | Stable lead size; identical to Tailwind v4 `text-lg` |
-| `--text-display` | `clamp(2.25rem, 6vw, 4.75rem)` | Lab and Me `h1` | Stable interior display size; custom Tailwind mapping is warranted |
-| `--leading-tight` | `1.05` | Lab and Me `h1` | Stable display leading, but its name unintentionally overrides Tailwind's different built-in `leading-tight` value |
-| `--leading-body` | `1.65` | `body` | Stable reading leading |
-| `--tracking-label` | `0.08em` | Kicker, indexes, metadata, fact terms, interior eyebrows, end label | Stable editorial-label tracking used on all surfaces |
+| Tailwind `--text-xs` | `0.75rem` | Footer, editorial metadata, fact terms, end label | Tailwind v4 default is the shared size authority |
+| Tailwind `--text-sm` | `0.875rem` | Skip link, header links, Landing section links | Tailwind v4 default is the shared control-size authority |
+| Tailwind `--text-base` | `1rem` | Body and Landing end note | Tailwind v4 default is the body-size authority |
+| Tailwind `--text-lg` | `1.125rem` | Landing supporting copy and title arrow, interior introductions | Tailwind v4 default is the lead-size authority |
+| `--text-display` | `clamp(2.25rem, 6vw, 4.75rem)` | Lab and Me `h1` | Intentional project value registered in `@theme inline` |
+| `--leading-display` | `1.05` | Lab and Me `h1` | Intentional project value registered without overriding Tailwind's `leading-tight` |
+| `--leading-body` | `1.65` | `body` | Intentional project reading leading registered in `@theme inline` |
+| `--tracking-label` | `0.08em` | Kicker, indexes, metadata, fact terms, interior eyebrows, end label | Intentional editorial-label tracking registered in `@theme inline` |
 
-The local `--text-xs`, `--text-sm`, `--text-base`, and `--text-lg` names overlap
-Tailwind namespaces and happen to match Tailwind's installed defaults. The local
-`--leading-tight` does not match the Tailwind default. Follow-up work must make
-those overlaps intentional rather than leave `:root` declarations to alter
-utility behavior implicitly.
+Issue #16 removed the duplicate local text declarations and renamed the custom
+display leading. Tailwind's installed text scale and `leading-tight` now retain
+their framework meanings; project-specific roles are explicit theme entries.
 
 The large Landing hero, section headings, item headings, principle headings,
 and endcap heading use distinct fluid sizes, weights, tracking, and leading.
@@ -106,15 +105,12 @@ Every spacing alias is consumed, but every value is already an exact multiple of
 Tailwind v4's installed `--spacing: 0.25rem` scale. They are transitional
 duplication, not a second project spacing system.
 
-### Shape, border, shadow, and layout
+### Shape, border, and layout
 
 | Token | Value | Actual consumers | Finding |
 | --- | --- | --- | --- |
-| `--radius-sm` | `0.375rem` | Header navigation and Landing section links | Stable control radius, but the name overrides Tailwind's `radius-sm`; the value equals installed `radius-md` |
-| `--radius-md` | `0.75rem` | None | Incidental unused declaration; remove in a token-normalization slice |
-| `--radius-lg` | `1.25rem` | None | Incidental unused declaration; remove in a token-normalization slice |
+| Tailwind `--radius-md` | `0.375rem` | Header navigation and Landing section links | Tailwind v4 default now owns the accepted control radius |
 | `--border-width` | `1px` | All structural rules and skip-link border | Stable structural rule; also equals Tailwind's default border width |
-| `--shadow-subtle` | Light and dark shadow values | None | Incidental unused declaration, including its dark override; remove rather than map |
 | `--layout-max` | `72rem` | `.site-shell` | Stable site-shell maximum; equals Tailwind's installed `6xl` container width |
 | `--layout-reading` | `44rem` | Landing hero explanatory copy | Stable reading measure; keep semantic because it is not a default container step |
 | `--layout-gutter` | `clamp(1.25rem, 4vw, 3rem)` | Site shell and skip-link position | Stable fluid page gutter |
@@ -188,10 +184,11 @@ duplication, not a second project spacing system.
 - Landing and interior reading widths (`36rem`, `38rem`, `40rem`, and `44rem`)
   are context-specific measures, not evidence for several global container
   tokens.
-- Unused `surface`, medium/large radius, and shadow declarations are speculative
-  inventory. Their presence is not evidence for cards, panels, or elevation.
+- The unused `surface`, project radius, and shadow declarations were retired in
+  Issue #16. Their former presence is not evidence for cards, panels, or
+  elevation.
 
-## Proposed ownership split
+## Current token ownership and proposed component split
 
 ### CSS variables
 
@@ -203,17 +200,17 @@ skip-link behavior, theme media query, site shell, and global chrome.
 
 ### Tailwind v4 `@theme`
 
-Make Tailwind registration explicit instead of relying on `:root` names that
+Tailwind registration is explicit rather than relying on `:root` names that
 overlap framework namespaces:
 
-| Accepted role | Proposed Tailwind ownership | Rationale |
+| Accepted role | Current Tailwind ownership | Rationale |
 | --- | --- | --- |
-| Semantic colors | Retain current inline `--color-background`, `surface-muted`, `foreground`, `muted-foreground`, `accent`, `accent-soft`, and `border`; omit `surface` until used | Produces utilities while preserving runtime light/dark variables |
-| Font families | Retain `--font-sans` and `--font-mono` inline mappings | Shared across global CSS and future utilities |
-| `xs`, `sm`, `base`, `lg` text | Use the installed Tailwind values; remove duplicate project declarations after consumers migrate | Current values are exact matches |
-| Interior display text | Register the accepted fluid value as a custom `--text-display` theme value | Creates an intentional `text-display` utility and remains consumable from CSS Modules |
-| Display/body leading | Register project-specific names such as `--leading-display` and `--leading-body` | Avoids silently redefining Tailwind's built-in `leading-tight` semantics |
-| Editorial tracking | Register `--tracking-label` | Demonstrated on all three surfaces |
+| Semantic colors | Inline `--color-background`, `surface-muted`, `foreground`, `muted-foreground`, `accent`, `accent-soft`, and `border`; `surface` remains omitted until used | Produces utilities while preserving runtime light/dark variables |
+| Font families | Inline `--font-sans` and `--font-mono` mappings | Shared across global CSS and future utilities |
+| `xs`, `sm`, `base`, `lg` text | Installed Tailwind values | Accepted values are exact matches |
+| Interior display text | Custom `--text-display` theme value | Creates an intentional `text-display` utility and remains consumable from CSS Modules |
+| Display/body leading | Custom `--leading-display` and `--leading-body` values | Preserves Tailwind's built-in `leading-tight` semantics |
+| Editorial tracking | Custom `--tracking-label` value | Demonstrated on all three surfaces |
 | Spacing | Use Tailwind's installed `0.25rem` base scale; retire `--space-*` aliases incrementally as each consumer moves | Every current spacing alias exactly matches that scale |
 | Control radius | Use the installed `--radius-md` value (`0.375rem`) | Matches accepted output without overriding Tailwind's `radius-sm` name |
 | Site and reading widths | Register semantic container names only if a utility consumer is introduced; otherwise keep layout variables | Avoids theme entries with no utility consumer |
@@ -238,7 +235,7 @@ should enter at focused JSX boundaries, not replace these files wholesale.
 
 ## Recommended implementation sequence
 
-1. **First slice: normalize token ownership and Tailwind mappings.** Remove the
+1. **Current slice (Issue #16): normalize token ownership and Tailwind mappings.** Remove the
    four unused tokens (`surface`, `radius-md`, `radius-lg`, and `shadow-subtle`),
    resolve the `text`, `leading`, and radius namespace collisions, register the
    accepted custom type/tracking roles in `@theme`, and migrate only the directly
@@ -255,9 +252,8 @@ should enter at focused JSX boundaries, not replace these files wholesale.
    real BrandMark/header change. Keep global chrome in `layout.tsx` until its
    behavior warrants component files.
 
-Only the first slice is ready to turn into an implementation Issue. Per Issue
-#14, creation of that Issue and any later Issues is deferred until owner review
-of this inventory.
+Issue #16 implements the first slice. Creation of later implementation Issues
+remains deferred until owner review of this change.
 
 ## Regression evidence required for follow-up work
 
@@ -271,4 +267,3 @@ of this inventory.
 - Reduced-motion mode removes all transitions without removing state feedback.
 - The bilingual content, `lang="zh-CN"` annotations, short-copy punctuation,
   metadata, navigation, and information architecture remain unchanged.
-
