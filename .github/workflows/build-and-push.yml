@@ -1,15 +1,52 @@
-name: Build and Push
+name: CI and Release
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/codebuff-next
 
 jobs:
-  build-and-push:
+  verify:
+    if: github.ref_type != 'tag'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -18,6 +55,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG"
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -35,7 +81,8 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=sha
+            type=raw,value=${{ github.ref_name }}
+            type=sha,prefix=sha-
             type=raw,value=latest
 
       - name: Build and push
@@ -51,13 +98,13 @@ jobs:
       - name: Notify deployment
         env:
           TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tags }}
+          IMAGE_TAG: ${{ github.ref_name }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "INFRA_DISPATCH_TOKEN not set, skipping deployment notification"
-            exit 0
+            echo "INFRA_DISPATCH_TOKEN is required for a release"
+            exit 1
           fi
-          curl -s -X POST \
+          curl --fail-with-body --silent --show-error -X POST \
             -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -66,7 +113,7 @@ jobs:
               "event_type": "app-update",
               "client_payload": {
                 "service": "codebuff-next",
-                "image_tag": "'"$(echo "$IMAGE_TAG" | head -n1)"'",
+                "image_tag": "'"$IMAGE_TAG"'",
                 "commit_sha": "'"${{ github.sha }}"'"
               }
             }'
