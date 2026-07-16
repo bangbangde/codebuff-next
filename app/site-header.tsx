@@ -20,7 +20,7 @@ export function SiteHeader() {
             href="/"
             aria-label="Codebuff home"
           >
-            <BrandMark className="transition-[color,background-color,border-color] duration-[140ms] ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none" />
+            <BrandMark className="transition-opacity duration-[140ms] ease-[ease] group-hover:opacity-75 group-focus-visible:opacity-75 motion-reduce:transition-none" />
           </Link>
           <nav className="flex gap-1" aria-label="Primary navigation">
             <Link className={navigationLinkClassName} href="/lab">
