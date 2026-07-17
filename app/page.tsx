@@ -32,7 +32,13 @@ const articleLinkClassName =
   "group no-underline transition-colors duration-150 ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none";
 
 const closingLinkClassName =
-  "group grid min-h-60 content-between gap-12 p-[clamp(2rem,4vw,3.25rem)] no-underline transition-[color,background-color] duration-150 ease-[ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:min-h-44 [@media(max-width:40rem)]:gap-8 [@media(max-width:40rem)]:px-0 [@media(max-width:40rem)]:py-7";
+  "group relative isolate grid min-h-60 content-between gap-12 p-[clamp(2rem,4vw,3.25rem)] no-underline transition-colors duration-150 ease-[ease] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:opacity-0 before:transition-opacity before:duration-150 before:ease-[ease] hover:text-accent hover:before:opacity-100 focus-visible:text-accent focus-visible:before:opacity-100 motion-reduce:transition-none before:motion-reduce:transition-none [@media(max-width:40rem)]:min-h-44 [@media(max-width:40rem)]:gap-8 [@media(max-width:40rem)]:px-0 [@media(max-width:40rem)]:py-7";
+
+const closingLeftBackgroundClassName =
+  "before:bg-[linear-gradient(to_right,transparent_0,var(--accent-soft)_var(--layout-gutter))] [@media(max-width:40rem)]:before:bg-[linear-gradient(to_right,transparent_0,var(--accent-soft)_var(--layout-gutter),var(--accent-soft)_calc(100%_-_var(--layout-gutter)),transparent_100%)]";
+
+const closingRightBackgroundClassName =
+  "before:bg-[linear-gradient(to_left,transparent_0,var(--accent-soft)_var(--layout-gutter))] [@media(max-width:40rem)]:before:bg-[linear-gradient(to_right,transparent_0,var(--accent-soft)_var(--layout-gutter),var(--accent-soft)_calc(100%_-_var(--layout-gutter)),transparent_100%)]";
 
 function NoteCover({
   caption,
@@ -109,7 +115,7 @@ export default function Home() {
   return (
     <main id="main-content">
       <section
-        className="grid min-h-0 content-center bg-[radial-gradient(circle_at_14%_9%,rgba(184,93,22,0.045),transparent_28rem)] pt-[clamp(3rem,4.5vw,4rem)] pb-[clamp(2.75rem,4vw,3.5rem)] [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-4"
+        className="grid min-h-0 content-center bg-[linear-gradient(to_right,var(--background)_0,transparent_var(--layout-gutter),transparent_calc(100%_-_var(--layout-gutter)),var(--background)_100%),radial-gradient(circle_at_14%_9%,rgba(184,93,22,0.045),transparent_28rem)] pt-[clamp(3rem,4.5vw,4rem)] pb-[clamp(2.75rem,4vw,3.5rem)] [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-4"
         aria-labelledby="landing-title"
       >
         <h1
@@ -221,7 +227,10 @@ export default function Home() {
           className="mt-[clamp(2.75rem,6vw,4.5rem)] grid grid-cols-2 border-y border-border [@media(max-width:40rem)]:mt-10 [@media(max-width:40rem)]:grid-cols-1"
           aria-label="继续探索"
         >
-          <Link className={closingLinkClassName} href="/notes">
+          <Link
+            className={`${closingLinkClassName} ${closingLeftBackgroundClassName}`}
+            href="/notes"
+          >
             <span>
               <span className="block font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent">
                 01
@@ -240,7 +249,7 @@ export default function Home() {
             </span>
           </Link>
           <Link
-            className={`${closingLinkClassName} border-l border-border [@media(max-width:40rem)]:border-t [@media(max-width:40rem)]:border-l-0`}
+            className={`${closingLinkClassName} ${closingRightBackgroundClassName} border-l border-border [@media(max-width:40rem)]:border-t [@media(max-width:40rem)]:border-l-0`}
             href="/me"
           >
             <span>
