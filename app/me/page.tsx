@@ -30,8 +30,8 @@ const principles = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Me · Codebuff",
-  description: "A concise introduction to the engineer behind Codebuff.",
+  title: "Me",
+  description: "A concise introduction to CQ and the work behind CQ’s Lab.",
 };
 
 export default function MePage() {
@@ -49,6 +49,7 @@ export default function MePage() {
           <h1
             className="m-0 max-w-[12ch] text-display font-[520] leading-display tracking-[-0.05em]"
             id="me-page-title"
+            lang="en"
           >
             Building beyond the interface.
           </h1>
@@ -59,11 +60,13 @@ export default function MePage() {
             >
               我是一名前端工程师，关注产品理解、系统设计与工程判断，也在持续实践 AI-native 的软件协作方式
             </p>
-            <FactList
-              className="mt-12"
-              facts={facts}
-              rowClassName="grid-cols-[8rem_1fr] gap-6 [@media(max-width:40rem)]:grid-cols-[5rem_minmax(0,1fr)] [@media(max-width:40rem)]:gap-4"
-            />
+            <div lang="en">
+              <FactList
+                className="mt-12"
+                facts={facts}
+                rowClassName="grid-cols-[8rem_1fr] gap-6 [@media(max-width:40rem)]:grid-cols-[5rem_minmax(0,1fr)] [@media(max-width:40rem)]:gap-4"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -77,6 +80,7 @@ export default function MePage() {
           <h2
             className="m-0 max-w-[16ch] text-[clamp(2rem,4vw,3.5rem)] font-[520] leading-[1.08] tracking-[-0.04em]"
             id="practice-title"
+            lang="en"
           >
             How I approach the work
           </h2>
@@ -90,7 +94,10 @@ export default function MePage() {
               <p className="m-0 font-mono text-xs leading-body tracking-label text-accent">
                 {String(index + 1).padStart(2, "0")}
               </p>
-              <h3 className="mt-6 text-[clamp(1.25rem,2.2vw,1.75rem)] font-[540] tracking-[-0.025em]">
+              <h3
+                className="mt-6 text-[clamp(1.25rem,2.2vw,1.75rem)] font-[540] tracking-[-0.025em]"
+                lang="en"
+              >
                 {principle.label}
               </h3>
               <p className="mt-4 text-muted-foreground" lang="zh-CN">

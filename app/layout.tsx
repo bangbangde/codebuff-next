@@ -4,9 +4,12 @@ import { SiteHeader } from "./site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Codebuff",
+  title: {
+    default: "CQ’s Lab",
+    template: "%s · CQ’s Lab",
+  },
   description:
-    "Technical exploration, engineering notes, and practical experiments for the AI era.",
+    "CQ’s personal technical lab for notes, experiments, and work in progress.",
 };
 
 export default function RootLayout({
@@ -17,7 +20,7 @@ export default function RootLayout({
   return (
     <html
       className="min-h-full bg-background scroll-pt-[5.5rem] [text-rendering:optimizeLegibility]"
-      lang="en"
+      lang="zh-CN"
     >
       <body className="min-h-full bg-background font-sans text-base leading-body text-foreground antialiased">
         <SiteHeader />
