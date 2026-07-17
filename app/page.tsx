@@ -142,7 +142,7 @@ export default function Home() {
         </p>
       </section>
 
-      <section className="border-t border-border" aria-label="Selected notes">
+      <section className="border-t border-border" aria-label="精选 Notes">
         <article>
           <Link
             className={`${articleLinkClassName} grid grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)] items-center gap-[clamp(2.5rem,6vw,6rem)] py-[clamp(2.75rem,5vw,4rem)] [@media(max-width:52rem)]:grid-cols-1 [@media(max-width:52rem)]:gap-10 [@media(max-width:40rem)]:gap-6 [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-11`}
@@ -155,7 +155,8 @@ export default function Home() {
             />
             <div className="max-w-[29rem] [@media(max-width:52rem)]:max-w-[38rem]">
               <p className={articleMetaClassName}>
-                {selectedNotes[0].kind} · {selectedNotes[0].readTime}
+                {selectedNotes[0].kind} ·{" "}
+                <span lang="en">{selectedNotes[0].readTime}</span>
               </p>
               <h2 className="mt-5 mb-0 text-[clamp(2rem,4.2vw,3.7rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(2rem,9vw,2.55rem)]">
                 {selectedNotes[0].title}
@@ -163,7 +164,7 @@ export default function Home() {
               <p className={articleSummaryClassName}>
                 {selectedNotes[0].summary}
               </p>
-              <span className={articleCtaClassName}>
+              <span className={articleCtaClassName} lang="en">
                 Read note
                 <span className="transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
                   →
@@ -184,13 +185,13 @@ export default function Home() {
               >
                 <div className="max-w-[38rem]">
                   <p className={articleMetaClassName}>
-                    {entry.kind} · {entry.readTime}
+                    {entry.kind} · <span lang="en">{entry.readTime}</span>
                   </p>
                   <h2 className="mt-5 mb-0 max-w-[18ch] text-[clamp(1.9rem,3.4vw,3rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(1.85rem,8vw,2.35rem)]">
                     {entry.title}
                   </h2>
                   <p className={articleSummaryClassName}>{entry.summary}</p>
-                  <span className={articleCtaClassName}>
+                  <span className={articleCtaClassName} lang="en">
                     Read note
                     <span className="transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
                       →

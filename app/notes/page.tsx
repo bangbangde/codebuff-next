@@ -21,6 +21,7 @@ export default function NotesPage() {
         <h1
           className="mt-4 max-w-[12ch] text-display font-[520] leading-display tracking-[-0.05em]"
           id="notes-page-title"
+          lang="en"
         >
           Notes from the workbench.
         </h1>
@@ -31,7 +32,7 @@ export default function NotesPage() {
           这里收集工程笔记、界面研究与仍在形成中的技术实验
         </p>
       </section>
-      <section aria-label="Selected Notes entries">
+      <section aria-label="精选 Notes 条目">
         {noteEntries.map((entry, index) => (
           <article
             className="grid scroll-mt-8 grid-cols-[minmax(8rem,0.3fr)_1fr] gap-6 border-b [border-bottom-color:var(--border)] py-[clamp(2rem,4vw,3rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-3"
