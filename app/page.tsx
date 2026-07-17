@@ -1,161 +1,265 @@
 import Link from "next/link";
 import { noteEntries } from "./content";
-import { FactList } from "./fact-list";
 
-const facts = [
+const selectedNotes = [
   {
-    term: "Focus",
-    description: "Frontend systems · Architecture · AI collaboration",
+    ...noteEntries[0],
+    readTime: "8 min read",
+    coverCaption: "Systems / Interface / Judgment",
   },
   {
-    term: "Now",
-    description: "寻找更清晰、更可靠的软件构建方式",
-    descriptionLang: "zh-CN",
+    ...noteEntries[1],
+    readTime: "6 min read",
+    coverCaption: "Reversible / Compare / Learn",
+  },
+  {
+    ...noteEntries[2],
+    readTime: "5 min read",
+    coverCaption: "Hierarchy / Space / Restraint",
   },
 ] as const;
 
-const editorialLabelBaseClassName =
-  "m-0 font-mono leading-body tracking-label uppercase";
+const articleMetaClassName =
+  "m-0 font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent uppercase";
 
-const editorialLabelClassName = `${editorialLabelBaseClassName} text-xs`;
+const articleSummaryClassName =
+  "mt-6 max-w-[38rem] text-[1.04rem] leading-[1.78] text-muted-foreground [@media(max-width:40rem)]:mt-4 [@media(max-width:40rem)]:text-[0.98rem] [@media(max-width:40rem)]:leading-[1.62]";
 
-const mutedEditorialLabelClassName =
-  `${editorialLabelClassName} text-muted-foreground`;
+const articleCtaClassName =
+  "mt-9 inline-flex items-center gap-3 border-b border-[color-mix(in_srgb,var(--accent)_42%,transparent)] pb-[0.3rem] font-mono text-[0.78rem] leading-body text-accent [@media(max-width:40rem)]:mt-5";
 
-const sectionIndexClassName =
-  `${editorialLabelBaseClassName} text-[0.8125rem] font-semibold text-muted-foreground`;
+const articleLinkClassName =
+  "group no-underline transition-colors duration-150 ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none";
 
-const sectionClassName =
-  "border-b [border-bottom-color:var(--border)] py-[clamp(4rem,8vw,7rem)]";
+const closingLinkClassName =
+  "group grid min-h-60 content-between gap-12 p-[clamp(2rem,4vw,3.25rem)] no-underline transition-[color,background-color] duration-150 ease-[ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:min-h-44 [@media(max-width:40rem)]:gap-8 [@media(max-width:40rem)]:px-0 [@media(max-width:40rem)]:py-7";
 
-const sectionHeadingClassName =
-  "flex [align-items:end] justify-between gap-8 [@media(max-width:40rem)]:[align-items:start] [@media(max-width:40rem)]:gap-4";
+function NoteCover({
+  caption,
+  index,
+  lead = false,
+}: {
+  caption: string;
+  index: number;
+  lead?: boolean;
+}) {
+  const backgroundClassName = [
+    "bg-[#f1e7d7] dark:bg-[#30271d]",
+    "bg-[#f6d9bd] dark:bg-[#3a281c]",
+    "bg-[#e9ece8] dark:bg-[#252a26]",
+  ][index];
 
-const sectionTitleClassName =
-  "mt-3 text-[clamp(1.75rem,4vw,3.25rem)] font-[520] leading-[1.1] tracking-[-0.035em]";
+  return (
+    <div
+      className={`relative isolate overflow-hidden border border-border ${backgroundClassName} ${
+        lead
+          ? "aspect-[1.28] [@media(max-width:40rem)]:aspect-[1.75]"
+          : "aspect-[1.65]"
+      }`}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/15 to-transparent dark:from-white/5 dark:via-transparent" />
+      <p className="absolute top-[6%] left-[5%] z-[2] m-0 font-mono text-[0.6875rem] leading-body tracking-[0.08em] text-muted-foreground uppercase">
+        {caption}
+      </p>
 
-const sectionLinkClassName =
-  "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color] duration-[140ms,140ms] ease-[ease,ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:-mt-2 [@media(max-width:40rem)]:-mr-3";
+      {index === 0 ? (
+        <>
+          <div className="absolute inset-[10%_9%] border border-foreground/20">
+            <span className="absolute inset-y-0 left-[32%] w-px bg-foreground/10" />
+            <span className="absolute inset-x-0 top-[68%] h-px bg-foreground/10" />
+          </div>
+          <div className="absolute top-1/2 left-1/2 aspect-square w-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent">
+            <span className="absolute inset-[15%] rounded-full border border-accent/50" />
+            <span className="absolute inset-[31%] rounded-full border border-accent bg-accent" />
+          </div>
+          <span className="absolute top-[23%] right-[24%] size-4 rounded-full bg-foreground" />
+          <span className="absolute right-[14%] bottom-[16%] size-[0.55rem] rounded-full bg-[#ea8a2e]" />
+        </>
+      ) : null}
 
-const entryClassName =
-  "group grid grid-cols-[minmax(8rem,0.32fr)_minmax(0,1fr)_auto] items-center gap-6 border-b [border-bottom-color:var(--border)] py-6 no-underline transition-[padding,color,background-color] duration-[160ms,160ms,160ms] ease-[ease,ease,ease] hover:bg-surface-muted hover:px-3 hover:text-accent focus-visible:bg-surface-muted focus-visible:px-3 focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:grid-cols-[1fr_auto] [@media(max-width:40rem)]:gap-x-4 [@media(max-width:40rem)]:gap-y-2";
+      {index === 1 ? (
+        <>
+          <span className="absolute top-[31%] left-[16%] h-px w-[62%] origin-left rotate-[18deg] bg-foreground" />
+          <span className="absolute top-[66%] left-[22%] h-px w-[52%] origin-left -rotate-[14deg] bg-foreground" />
+          <span className="absolute top-[24%] left-[14%] size-3 rounded-full border-2 border-foreground bg-background" />
+          <span className="absolute top-[44%] right-[18%] size-3 rounded-full border-2 border-accent bg-accent" />
+          <span className="absolute right-[24%] bottom-[19%] size-3 rounded-full border-2 border-foreground bg-background" />
+          <span className="absolute bottom-[25%] left-[20%] size-3 rounded-full border-2 border-foreground bg-foreground" />
+        </>
+      ) : null}
+
+      {index === 2 ? (
+        <>
+          <div className="absolute inset-[13%_10%] border border-foreground/20 bg-background/50" />
+          <span className="absolute top-[23%] left-[17%] h-[3px] w-[28%] bg-foreground" />
+          <span className="absolute top-[31%] left-[17%] h-0.5 w-[17%] bg-muted-foreground" />
+          <span className="absolute right-[17%] bottom-[22%] aspect-square w-[25%] rounded-full border border-accent" />
+        </>
+      ) : null}
+
+      <p className="absolute right-[5%] bottom-[4%] m-0 font-mono text-[clamp(2.5rem,6vw,5.5rem)] leading-none font-medium tracking-[-0.08em] text-accent/50">
+        {String(index + 1).padStart(2, "0")}
+      </p>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
     <main id="main-content">
       <section
-        className="grid min-h-[min(58svh,40rem)] content-center border-b [border-bottom-color:var(--border)] py-[clamp(4.5rem,9vw,8rem)] [@media(max-width:40rem)]:min-h-0 [@media(max-width:40rem)]:py-[clamp(5rem,22vw,7rem)]"
+        className="grid min-h-0 content-center bg-[radial-gradient(circle_at_14%_9%,rgba(184,93,22,0.045),transparent_28rem)] pt-[clamp(3rem,4.5vw,4rem)] pb-[clamp(2.75rem,4vw,3.5rem)] [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-4"
         aria-labelledby="landing-title"
       >
-        <p className={`${editorialLabelClassName} text-accent`}>
-          Frontend engineering · AI era
-        </p>
         <h1
-          className="mt-6 max-w-[13ch] text-[clamp(3rem,9vw,7.75rem)] font-[520] leading-[0.96] tracking-[-0.065em] text-balance lg:max-w-none lg:text-[clamp(4.5rem,6.2vw,6.75rem)] lg:whitespace-nowrap [@media(max-width:40rem)]:text-[clamp(3rem,13.5vw,4.5rem)] [@media(max-width:40rem)]:leading-[0.98] [@media(max-width:40rem)]:tracking-[-0.055em]"
+          className="m-0 max-w-none text-[clamp(2.9rem,4.5vw,4.5rem)] leading-[0.98] font-[540] tracking-[-0.057em] text-balance [@media(max-width:40rem)]:max-w-[12ch] [@media(max-width:40rem)]:text-[clamp(2.65rem,11.8vw,3.35rem)] [@media(max-width:40rem)]:tracking-[-0.052em]"
           id="landing-title"
         >
-          Beyond the frontend.
+          <span className="inline-block">嗨，这里是</span>{" "}
+          <span
+            className="ml-[0.16em] inline-block text-accent [@media(max-width:40rem)]:ml-[0.12em]"
+            lang="en"
+          >
+            CQ’s Lab
+          </span>
         </h1>
         <p
-          className="mt-8 max-w-[var(--layout-reading)] text-lg leading-body text-muted-foreground"
-          lang="zh-CN"
+          className="mt-[0.65rem] mb-0 text-[0.94rem] leading-normal tracking-[0.012em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.55rem] [@media(max-width:40rem)]:text-[0.82rem]"
+          lang="en"
         >
-          从前端出发，关注产品如何被理解、系统如何被设计，以及 AI
-          正在如何改变软件开发
+          Thinking. Building. Learning.
+        </p>
+        <p
+          className="mt-3 mb-0 flex items-center gap-3 font-mono text-[0.8125rem] leading-body tracking-[0.015em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.6rem] [@media(max-width:40rem)]:text-xs"
+          lang="en"
+        >
+          <span
+            className="size-2 shrink-0 rounded-full bg-accent shadow-[0_0_0_0.34rem_var(--accent-soft)]"
+            aria-hidden="true"
+          />
+          Now — Getting the site ready.
         </p>
       </section>
 
-      <div className="grid">
-        <section className={sectionClassName} aria-labelledby="notes-title">
-          <div className={sectionHeadingClassName}>
-            <div>
-              <p className={sectionIndexClassName}>
-                01 / Notes
+      <section className="border-t border-border" aria-label="Selected notes">
+        <article>
+          <Link
+            className={`${articleLinkClassName} grid grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)] items-center gap-[clamp(2.5rem,6vw,6rem)] py-[clamp(2.75rem,5vw,4rem)] [@media(max-width:52rem)]:grid-cols-1 [@media(max-width:52rem)]:gap-10 [@media(max-width:40rem)]:gap-6 [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-11`}
+            href={`/notes#${selectedNotes[0].slug}`}
+          >
+            <NoteCover
+              caption={selectedNotes[0].coverCaption}
+              index={0}
+              lead
+            />
+            <div className="max-w-[29rem] [@media(max-width:52rem)]:max-w-[38rem]">
+              <p className={articleMetaClassName}>
+                {selectedNotes[0].kind} · {selectedNotes[0].readTime}
               </p>
-              <h2 className={sectionTitleClassName} id="notes-title">
-                Notes & experiments
+              <h2 className="mt-5 mb-0 text-[clamp(2rem,4.2vw,3.7rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(2rem,9vw,2.55rem)]">
+                {selectedNotes[0].title}
               </h2>
-            </div>
-            <Link href="/notes" className={sectionLinkClassName}>
-              View all <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-
-          <div className="mt-12 border-t [border-top-color:var(--border)]">
-            {noteEntries.map((entry) => (
-              <Link
-                href={`/notes#${entry.slug}`}
-                className={entryClassName}
-                key={entry.slug}
-              >
-                <span
-                  className={`${mutedEditorialLabelClassName} [@media(max-width:40rem)]:col-span-full`}
-                >
-                  {entry.kind}
-                </span>
-                <span className="text-[clamp(1.05rem,2.2vw,1.4rem)] font-[540] leading-body">
-                  {entry.title}
-                </span>
-                <span
-                  className="text-lg leading-body transition-[transform] duration-[160ms] ease-[ease] group-hover:[transform:translateX(var(--spacing))] group-focus-visible:[transform:translateX(var(--spacing))] motion-reduce:transition-none"
-                  aria-hidden="true"
-                >
+              <p className={articleSummaryClassName}>
+                {selectedNotes[0].summary}
+              </p>
+              <span className={articleCtaClassName}>
+                Read note
+                <span className="transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
                   →
                 </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className={sectionClassName} aria-labelledby="me-title">
-          <div className={sectionHeadingClassName}>
-            <div>
-              <p className={sectionIndexClassName}>
-                02 / Me
-              </p>
-              <h2 className={sectionTitleClassName} id="me-title">
-                The engineer behind the work
-              </h2>
+              </span>
             </div>
-            <Link href="/me" className={sectionLinkClassName}>
-              About <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-          <div className="mt-8 grid grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] [align-items:start] gap-[clamp(2rem,6vw,6rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
-            <p
-              className="m-0 max-w-xl text-lg leading-body text-muted-foreground"
-              lang="zh-CN"
-            >
-              一名前端工程师，在 AI 时代探索前端之外的可能
-            </p>
-            <FactList
-              facts={facts}
-              rowClassName="grid-cols-[5rem_minmax(0,1fr)] gap-4"
-            />
-          </div>
-        </section>
-      </div>
+          </Link>
+        </article>
+
+        {selectedNotes.slice(1).map((entry, offset) => {
+          const index = offset + 1;
+
+          return (
+            <article className="border-t border-border" key={entry.slug}>
+              <Link
+                className={`${articleLinkClassName} grid grid-cols-[minmax(0,1fr)_minmax(17rem,25rem)] items-center gap-[clamp(2rem,7vw,7rem)] py-[clamp(3.5rem,7vw,6rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8 [@media(max-width:40rem)]:py-[3.25rem_4rem]`}
+                href={`/notes#${entry.slug}`}
+              >
+                <div className="max-w-[38rem]">
+                  <p className={articleMetaClassName}>
+                    {entry.kind} · {entry.readTime}
+                  </p>
+                  <h2 className="mt-5 mb-0 max-w-[18ch] text-[clamp(1.9rem,3.4vw,3rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(1.85rem,8vw,2.35rem)]">
+                    {entry.title}
+                  </h2>
+                  <p className={articleSummaryClassName}>{entry.summary}</p>
+                  <span className={articleCtaClassName}>
+                    Read note
+                    <span className="transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
+                      →
+                    </span>
+                  </span>
+                </div>
+                <div className="[@media(max-width:40rem)]:order-first">
+                  <NoteCover caption={entry.coverCaption} index={index} />
+                </div>
+              </Link>
+            </article>
+          );
+        })}
+      </section>
 
       <section
-        className="grid min-h-[clamp(22rem,45svh,32rem)] place-content-center justify-items-center border-b [border-bottom-color:var(--border)] py-16 text-center [@media(max-width:40rem)]:min-h-[22rem]"
-        aria-labelledby="end-title"
+        className="border-t border-border bg-surface-muted py-[clamp(4.5rem,9vw,7.5rem)_clamp(3rem,6vw,5rem)] [box-shadow:0_0_0_100vmax_var(--surface-muted)] [clip-path:inset(0_-100vmax)] [@media(max-width:40rem)]:py-[4rem_2.75rem]"
+        aria-labelledby="closing-title"
       >
-        <div
-          className="relative mb-8 h-4 w-20 before:absolute before:top-1/2 before:left-0 before:h-px before:w-7 before:bg-border before:content-[''] after:absolute after:top-1/2 after:right-0 after:h-px after:w-7 after:bg-border after:content-['']"
-          aria-hidden="true"
-        >
-          <span className="absolute top-1/2 left-1/2 size-2 rounded-full bg-accent [transform:translate(-50%,-50%)]" />
-        </div>
-        <p className={mutedEditorialLabelClassName}>End / for now</p>
         <h2
-          className="mt-4 text-[clamp(2.25rem,4.5vw,4rem)] font-[520] leading-[1.05] tracking-[-0.045em]"
-          id="end-title"
+          className="m-0 text-[clamp(2.4rem,5vw,4.75rem)] leading-[1.05] font-[540] tracking-[-0.052em] [@media(max-width:40rem)]:text-[clamp(2.5rem,12vw,3.4rem)]"
+          id="closing-title"
         >
-          先到这里
+          先看到这里
         </h2>
-        <p className="mt-6 text-base leading-body text-muted-foreground" lang="zh-CN">
-          探索还在继续，下次更新见
-        </p>
+        <nav
+          className="mt-[clamp(2.75rem,6vw,4.5rem)] grid grid-cols-2 border-y border-border [@media(max-width:40rem)]:mt-10 [@media(max-width:40rem)]:grid-cols-1"
+          aria-label="继续探索"
+        >
+          <Link className={closingLinkClassName} href="/notes">
+            <span>
+              <span className="block font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent">
+                01
+              </span>
+              <span className="mt-[0.85rem] block text-[clamp(2.25rem,4vw,3.65rem)] leading-none font-[560] tracking-[-0.047em] [@media(max-width:40rem)]:text-[2.4rem]">
+                Notes
+              </span>
+            </span>
+            <span className="flex items-end justify-between gap-8">
+              <span className="text-base leading-[1.6] text-muted-foreground">
+                更多文章、札记与实验
+              </span>
+              <span className="shrink-0 font-mono text-[1.35rem] leading-none text-accent transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
+                →
+              </span>
+            </span>
+          </Link>
+          <Link
+            className={`${closingLinkClassName} border-l border-border [@media(max-width:40rem)]:border-t [@media(max-width:40rem)]:border-l-0`}
+            href="/me"
+          >
+            <span>
+              <span className="block font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent">
+                02
+              </span>
+              <span className="mt-[0.85rem] block text-[clamp(2.25rem,4vw,3.65rem)] leading-none font-[560] tracking-[-0.047em] [@media(max-width:40rem)]:text-[2.4rem]">
+                Me
+              </span>
+            </span>
+            <span className="flex items-end justify-between gap-8">
+              <span className="text-base leading-[1.6] text-muted-foreground">
+                关于 CQ 和正在做的事
+              </span>
+              <span className="shrink-0 font-mono text-[1.35rem] leading-none text-accent transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
+                →
+              </span>
+            </span>
+          </Link>
+        </nav>
       </section>
     </main>
   );
