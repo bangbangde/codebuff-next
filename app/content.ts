@@ -1,4 +1,4 @@
-export const labEntries = [
+export const noteEntries = [
   {
     slug: "ai-native-interface-work",
     kind: "工程札记",

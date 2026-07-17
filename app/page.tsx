@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { labEntries } from "./content";
+import { noteEntries } from "./content";
 import { FactList } from "./fact-list";
 
 const facts = [
@@ -66,25 +66,25 @@ export default function Home() {
       </section>
 
       <div className="grid">
-        <section className={sectionClassName} aria-labelledby="lab-title">
+        <section className={sectionClassName} aria-labelledby="notes-title">
           <div className={sectionHeadingClassName}>
             <div>
               <p className={sectionIndexClassName}>
-                01 / Lab
+                01 / Notes
               </p>
-              <h2 className={sectionTitleClassName} id="lab-title">
+              <h2 className={sectionTitleClassName} id="notes-title">
                 Notes & experiments
               </h2>
             </div>
-            <Link href="/lab" className={sectionLinkClassName}>
+            <Link href="/notes" className={sectionLinkClassName}>
               View all <span aria-hidden="true">→</span>
             </Link>
           </div>
 
           <div className="mt-12 border-t [border-top-color:var(--border)]">
-            {labEntries.map((entry) => (
+            {noteEntries.map((entry) => (
               <Link
-                href={`/lab#${entry.slug}`}
+                href={`/notes#${entry.slug}`}
                 className={entryClassName}
                 key={entry.slug}
               >
