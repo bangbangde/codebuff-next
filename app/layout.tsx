@@ -24,9 +24,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background font-sans text-base leading-body text-foreground antialiased">
         <SiteHeader />
-        <div className="mx-auto w-full max-w-[calc(var(--layout-max)_+_2*var(--layout-gutter))] px-[var(--layout-gutter)]">
-          {children}
-        </div>
+        {children}
         <SiteFooter />
       </body>
     </html>
