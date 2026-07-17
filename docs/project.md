@@ -1,109 +1,53 @@
 # Project
 
-## Overview
+## Purpose
 
-This project is a technical website for a frontend engineer in the AI era.
+`CQ’s Lab` is CQ’s personal technical lab for notes, experiments, and work in progress around frontend engineering, software, product thinking, and AI-assisted development.
 
-It is not a traditional personal homepage, portfolio, or blog. It is intended to become a long-term place for technical expression, interactive exploration, and developer-facing communication.
+It should feel personal without becoming a portfolio or self-promotional brand site. Its value comes primarily from the work, ideas, and engineering judgment it makes visible. The main audience is technical readers, especially frontend engineers and software developers.
 
-The project should express a clear point of view:
+## Product Shape
 
-> In the AI era, developers need to move upward into architecture, product understanding, and system-level thinking, while continuing to maintain strong professional engineering judgment.
+- **Landing** provides a compact introduction, current context, and a small selection of work.
+- **Notes** is the main space for technical and editorial output. It is not required to behave like a chronological blog.
+- **Me** gives concise context about CQ without dominating the site.
 
-The repository also serves as a practical experiment in AI-native software development. The workflow should support product learning and delivery without becoming a product outcome of its own.
+Specific content, features, and delivery scope belong in the relevant GitHub Issue and owner-approved Milestone rather than this document.
 
-## Product Direction
+## Experience Direction
 
-The site should feel:
+### Character
 
-* technical
-* calm
-* credible
-* structured
-* thoughtful
-* forward-looking
+The site should feel technical, human, calm, credible, thoughtful, and in progress. It should use content and interaction to reveal its point of view instead of explaining itself through large claims or marketing language.
 
-It should avoid feeling like:
+### Visual language
 
-* a generic SaaS landing page
-* a flashy personal portfolio
-* a marketing-heavy personal brand site
-* a template-style developer blog
+- Use an editorial hierarchy with strong typography, clear structure, and restrained warm accents.
+- Prefer warm off-white surfaces, deep neutral text, fine structural rules, and a small amount of orange for emphasis.
+- Keep introductory areas compact so real content appears early in the first viewport.
+- Favor text-forward layouts and purposeful imagery over decorative illustration.
+- Let spacing feel calm but not empty; information density should remain useful on desktop and narrow screens.
+- Give page endings a deliberate sense of closure and offer a next step only when it has a clear navigation purpose.
+- Treat the accepted Landing direction as the visual reference for Notes and Me without copying its layout mechanically.
 
-The project should be less about personal display and more about technical expression, exploration, and communication.
+Avoid generic SaaS sections, portfolio templates, uniform card grids, exaggerated hero copy, decorative complexity, and interaction that exists mainly to demonstrate itself. Animation should be subtle, purposeful, and safe for reduced-motion preferences.
 
-## Long-term Product Surfaces
+### Copy
 
-### Landing
+Use natural, concise language. English carries the `CQ’s Lab` brand, product-surface names, and short positioning phrases; Simplified Chinese carries most explanation. Intentional Chinese-English mixing is welcome when it reads naturally.
 
-The landing page is the main entry point of the site.
+Avoid over-explaining metaphors, internal brand language, and copy that sounds more important than the underlying content.
 
-It should introduce the project direction, clarify what the site contains, and help visitors understand how to explore it.
+## Engineering Preferences
 
-A chat-based interaction may become part of the landing experience. If introduced, it should be treated primarily as a site guide rather than a general-purpose technical assistant.
+- Use the existing Next.js App Router, TypeScript, and Tailwind setup; read the repository’s version-specific Next.js documentation before changing framework code.
+- Prefer semantic HTML and accessible native behavior. Keyboard navigation, visible focus, meaningful landmarks, and reduced motion are baseline requirements.
+- Prefer Server Components, static rendering, and local data by default. Add client-side state or services only when the interaction requires them.
+- Keep dependencies and architecture minimal. Inspect existing wiring before adding packages, providers, or parallel styling systems.
+- Build page-specific UI first. Extract shared components or abstractions only after repeated use or a clear shared semantic need appears.
+- Reuse established color, typography, spacing, and layout tokens rather than introducing isolated values without reason.
+- Design responsively from the start and verify both desktop and a 375px-wide viewport without horizontal overflow.
+- For meaningful UI changes, run lint and build checks and perform browser review of the affected routes.
+- Prefer static, local, or honest placeholder content until an approved work item requires real data or backend capability.
 
-The chat should help visitors discover site content, understand project context, and navigate technical material. It should not be a decorative gimmick.
-
-### Lab
-
-The Lab is the main space for technical output.
-
-It is not a conventional blog by default. The word “Lab” reflects the intended shape of this area: it can contain both “papers” and “experiments”.
-
-The Lab may include:
-
-* teaching-style technical articles
-* engineering notes
-* architecture explanations
-* technical solution writeups
-* frontend experiments
-* interactive demos
-* AI-native development reflections
-
-### Me
-
-The Me area should provide enough context about the developer behind the site, but it should not dominate the product.
-
-It may include concise professional background, technical interests, selected links, current focus, and ways to understand the author’s engineering perspective.
-
-The tone should be restrained and useful, not overly personal or promotional.
-
-## Audience
-
-The primary audience is technical readers, especially frontend engineers, software developers, and people interested in AI-assisted software development, architecture thinking, and practical engineering work.
-
-The site should also be understandable to non-specialist visitors, but it does not need to optimize for broad marketing conversion.
-
-## Editorial Conventions
-
-English carries brand language, navigation, product-surface names, and concise positioning statements. Simplified Chinese carries explanatory content written for the primary audience.
-
-Short Simplified Chinese interface copy such as labels, summaries, status text, and supporting descriptions normally omits a terminal full stop. Continuous prose keeps normal punctuation, and punctuation that carries meaning, such as a question mark, remains intentional.
-
-## Design Direction
-
-The design should prioritize clarity, readability, structure, and interaction quality.
-
-Prefer clear information hierarchy, strong typography, calm spacing, precise language, restrained visual detail, and purposeful interaction.
-
-Avoid excessive animation, decorative complexity, generic hero sections, exaggerated marketing copy, overly personal storytelling, and portfolio-template aesthetics.
-
-The visual direction should support technical credibility and thoughtful exploration.
-
-The accepted Landing direction is the visual reference for Lab and Me: editorial hierarchy, monoline branding, restrained warm accents, structural rules, and calm interaction. Each surface should retain its own content role instead of becoming a repeated Landing layout.
-
-Page endings should provide closure without needlessly repeating global branding or navigation. Repeat a global control only when it serves a distinct navigation need in that context.
-
-## Technical Direction
-
-Stable technical principles:
-
-* use Next.js App Router
-* use TypeScript
-* keep the implementation simple and maintainable
-* avoid unnecessary dependencies
-* avoid premature architecture decisions
-* prefer static, local, or placeholder content until a milestone requires real data
-* introduce chat capability incrementally rather than over-engineering it upfront
-
-Phase-specific architecture, dependencies, and delivery boundaries belong in the relevant owner-approved GitHub Milestone rather than this document.
+Phase-specific architecture, dependencies, and delivery boundaries belong in the relevant owner-approved GitHub Milestone.
