@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="48 48 416 416" role="img" aria-labelledby="title desc">
+  <title id="title">CQ'S LAB mark</title>
+  <desc id="desc">An asymmetric rounded loop with a parallel orange band at the lower right.</desc>
+  <defs>
+    <clipPath id="accent-band" clipPathUnits="userSpaceOnUse">
+      <path d="M301 234 245 290 429 474 485 418Z"/>
+    </clipPath>
+  </defs>
+  <path fill="#111111" fill-rule="evenodd" d="M146 68C92 72 62 110 66 166L80 354C84 416 126 446 188 440L360 424C420 418 448 378 440 318L424 154C418 96 380 68 322 68ZM204 170C170 174 150 198 154 232L162 302C166 336 190 354 224 350L304 342C338 338 356 314 352 280L344 212C340 180 316 164 284 166Z"/>
+  <path fill="#F05A28" fill-rule="evenodd" clip-path="url(#accent-band)" d="M146 68C92 72 62 110 66 166L80 354C84 416 126 446 188 440L360 424C420 418 448 378 440 318L424 154C418 96 380 68 322 68ZM204 170C170 174 150 198 154 232L162 302C166 336 190 354 224 350L304 342C338 338 356 314 352 280L344 212C340 180 316 164 284 166Z"/>
+</svg>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const navigationLinkClassName =
@@ -19,10 +20,19 @@ export function SiteHeader() {
       >
         <div className="mx-auto flex min-h-18 w-full max-w-[calc(var(--layout-max)_+_2*var(--layout-gutter))] items-center justify-between gap-6 px-[var(--layout-gutter)]">
           <Link
-            className="inline-flex min-h-11 items-center font-sans text-[1.0625rem] leading-none font-semibold tracking-[-0.035em] text-foreground no-underline transition-colors duration-[140ms] ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
+            className="inline-flex min-h-11 items-center gap-2 font-sans text-[1.0625rem] leading-none font-semibold tracking-[-0.035em] text-foreground no-underline transition-colors duration-[140ms] ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
             href="/"
             aria-label="CQ’s Lab home"
           >
+            <Image
+              className="block size-9 shrink-0"
+              src="/brand/mark.svg"
+              alt=""
+              width={36}
+              height={36}
+              unoptimized
+              aria-hidden="true"
+            />
             CQ’s Lab
           </Link>
           <nav className="flex gap-1" aria-label="Primary navigation">
