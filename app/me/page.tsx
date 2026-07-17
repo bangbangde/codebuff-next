@@ -30,8 +30,8 @@ const principles = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Me · Codebuff",
-  description: "A concise introduction to the engineer behind Codebuff.",
+  title: "Me",
+  description: "A concise introduction to CQ and the work behind CQ’s Lab.",
 };
 
 export default function MePage() {

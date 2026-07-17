@@ -3,7 +3,7 @@ import { labEntries } from "../content";
 import { SectionLabel } from "../section-label";
 
 export const metadata: Metadata = {
-  title: "Lab · Codebuff",
+  title: "Lab",
   description: "Engineering notes and frontend experiments.",
 };
 
