@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { ContentContainer } from "../content-container";
-import { noteEntries } from "../content";
-import { SectionLabel } from "../section-label";
+import { ContentContainer } from "../_components/content-container";
+import { SectionLabel } from "../_components/section-label";
+import { noteEntries } from "../_content/note-entries";
 
 export const metadata: Metadata = {
   title: "Notes",
@@ -16,7 +16,7 @@ export default function NotesPage() {
     >
       <ContentContainer>
         <section
-          className="border-b [border-bottom-color:var(--border)] pb-[clamp(4rem,8vw,7rem)]"
+          className="border-b border-border pb-[clamp(4rem,8vw,7rem)]"
           aria-labelledby="notes-page-title"
         >
           <SectionLabel>Notes / Selected work</SectionLabel>
@@ -37,7 +37,7 @@ export default function NotesPage() {
         <section aria-label="精选 Notes 条目">
           {noteEntries.map((entry, index) => (
             <article
-              className="grid scroll-mt-8 grid-cols-[minmax(8rem,0.3fr)_1fr] gap-6 border-b [border-bottom-color:var(--border)] py-[clamp(2rem,4vw,3rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-3"
+              className="grid scroll-mt-8 grid-cols-[minmax(8rem,0.3fr)_1fr] gap-6 border-b border-border py-[clamp(2rem,4vw,3rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-3"
               id={entry.slug}
               key={entry.slug}
             >

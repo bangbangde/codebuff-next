@@ -8,22 +8,14 @@ type Fact = {
 
 type FactListProps = {
   facts: readonly Fact[];
-  className?: string;
-  rowClassName: string;
 };
 
-export function FactList({
-  facts,
-  className = "",
-  rowClassName,
-}: FactListProps) {
+export function FactList({ facts }: FactListProps) {
   return (
-    <dl
-      className={`m-0 grid border-t [border-top-color:var(--border)] ${className}`}
-    >
+    <dl className="mt-12 mr-0 mb-0 ml-0 grid border-t border-border">
       {facts.map((fact) => (
         <div
-          className={`grid border-b [border-bottom-color:var(--border)] py-4 ${rowClassName}`}
+          className="grid grid-cols-[8rem_1fr] gap-6 border-b border-border py-4 [@media(max-width:40rem)]:grid-cols-[5rem_minmax(0,1fr)] [@media(max-width:40rem)]:gap-4"
           key={fact.term}
         >
           <dt className="m-0 font-mono text-xs leading-body tracking-label text-muted-foreground uppercase">

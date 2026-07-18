@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { noteEntries } from "./content";
-import { ContentContainer } from "./content-container";
+import { ContentContainer } from "./_components/content-container";
+import { noteEntries } from "./_content/note-entries";
+import { ClosingLink } from "./_landing/closing-link";
+import { NoteCover } from "./_landing/note-cover";
 
 const selectedNotes = [
   {
@@ -31,89 +33,6 @@ const articleCtaClassName =
 
 const articleLinkClassName =
   "group no-underline transition-colors duration-150 ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none";
-
-const closingLinkClassName =
-  "group no-underline transition-[color,background-color] duration-150 ease-[ease] hover:bg-accent-soft hover:text-accent focus-visible:bg-accent-soft focus-visible:text-accent motion-reduce:transition-none";
-
-const closingLinkContentClassName =
-  "grid min-h-60 w-full content-between gap-12 py-[clamp(2rem,4vw,3.25rem)] [@media(max-width:52rem)]:min-h-44 [@media(max-width:52rem)]:max-w-none [@media(max-width:52rem)]:gap-8 [@media(max-width:52rem)]:px-[var(--layout-gutter)] [@media(max-width:52rem)]:py-7";
-
-const closingLeftContentClassName =
-  "ml-auto max-w-[calc(var(--layout-max)/2_+_var(--layout-gutter))] pr-[clamp(2rem,4vw,3.25rem)] pl-[var(--layout-gutter)]";
-
-const closingRightContentClassName =
-  "mr-auto max-w-[calc(var(--layout-max)/2_+_var(--layout-gutter))] pr-[var(--layout-gutter)] pl-[clamp(2rem,4vw,3.25rem)]";
-
-function NoteCover({
-  caption,
-  index,
-  lead = false,
-}: {
-  caption: string;
-  index: number;
-  lead?: boolean;
-}) {
-  const backgroundClassName = [
-    "bg-[#f1e7d7] dark:bg-[#30271d]",
-    "bg-[#f6d9bd] dark:bg-[#3a281c]",
-    "bg-[#e9ece8] dark:bg-[#252a26]",
-  ][index];
-
-  return (
-    <div
-      className={`relative isolate overflow-hidden border border-border ${backgroundClassName} ${
-        lead
-          ? "aspect-[1.28] [@media(max-width:40rem)]:aspect-[1.75]"
-          : "aspect-[1.65]"
-      }`}
-      aria-hidden="true"
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/15 to-transparent dark:from-white/5 dark:via-transparent" />
-      <p className="absolute top-[6%] left-[5%] z-[2] m-0 font-mono text-[0.6875rem] leading-body tracking-[0.08em] text-muted-foreground uppercase">
-        {caption}
-      </p>
-
-      {index === 0 ? (
-        <>
-          <div className="absolute inset-[10%_9%] border border-foreground/20">
-            <span className="absolute inset-y-0 left-[32%] w-px bg-foreground/10" />
-            <span className="absolute inset-x-0 top-[68%] h-px bg-foreground/10" />
-          </div>
-          <div className="absolute top-1/2 left-1/2 aspect-square w-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent">
-            <span className="absolute inset-[15%] rounded-full border border-accent/50" />
-            <span className="absolute inset-[31%] rounded-full border border-accent bg-accent" />
-          </div>
-          <span className="absolute top-[23%] right-[24%] size-4 rounded-full bg-foreground" />
-          <span className="absolute right-[14%] bottom-[16%] size-[0.55rem] rounded-full bg-[#ea8a2e]" />
-        </>
-      ) : null}
-
-      {index === 1 ? (
-        <>
-          <span className="absolute top-[31%] left-[16%] h-px w-[62%] origin-left rotate-[18deg] bg-foreground" />
-          <span className="absolute top-[66%] left-[22%] h-px w-[52%] origin-left -rotate-[14deg] bg-foreground" />
-          <span className="absolute top-[24%] left-[14%] size-3 rounded-full border-2 border-foreground bg-background" />
-          <span className="absolute top-[44%] right-[18%] size-3 rounded-full border-2 border-accent bg-accent" />
-          <span className="absolute right-[24%] bottom-[19%] size-3 rounded-full border-2 border-foreground bg-background" />
-          <span className="absolute bottom-[25%] left-[20%] size-3 rounded-full border-2 border-foreground bg-foreground" />
-        </>
-      ) : null}
-
-      {index === 2 ? (
-        <>
-          <div className="absolute inset-[13%_10%] border border-foreground/20 bg-background/50" />
-          <span className="absolute top-[23%] left-[17%] h-[3px] w-[28%] bg-foreground" />
-          <span className="absolute top-[31%] left-[17%] h-0.5 w-[17%] bg-muted-foreground" />
-          <span className="absolute right-[17%] bottom-[22%] aspect-square w-[25%] rounded-full border border-accent" />
-        </>
-      ) : null}
-
-      <p className="absolute right-[5%] bottom-[4%] m-0 font-mono text-[clamp(2.5rem,6vw,5.5rem)] leading-none font-medium tracking-[-0.08em] text-accent/50">
-        {String(index + 1).padStart(2, "0")}
-      </p>
-    </div>
-  );
-}
 
 export default function Home() {
   return (
@@ -239,53 +158,20 @@ export default function Home() {
           className="mt-[clamp(2.75rem,6vw,4.5rem)] grid grid-cols-2 border-y border-border [@media(max-width:52rem)]:grid-cols-1 [@media(max-width:40rem)]:mt-10"
           aria-label="继续探索"
         >
-          <Link className={closingLinkClassName} href="/notes">
-            <span
-              className={`${closingLinkContentClassName} ${closingLeftContentClassName}`}
-            >
-              <span>
-                <span className="block font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent">
-                  01
-                </span>
-                <span className="mt-[0.85rem] block text-[clamp(2.25rem,4vw,3.65rem)] leading-none font-[560] tracking-[-0.047em] [@media(max-width:40rem)]:text-[2.4rem]">
-                  Notes
-                </span>
-              </span>
-              <span className="flex items-end justify-between gap-8">
-                <span className="text-base leading-[1.6] text-muted-foreground">
-                  更多文章、札记与实验
-                </span>
-                <span className="shrink-0 font-mono text-[1.35rem] leading-none text-accent transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
-                  →
-                </span>
-              </span>
-            </span>
-          </Link>
-          <Link
-            className={`${closingLinkClassName} border-l border-border [@media(max-width:52rem)]:border-t [@media(max-width:52rem)]:border-l-0`}
+          <ClosingLink
+            description="更多文章、札记与实验"
+            href="/notes"
+            index="01"
+            side="left"
+            title="Notes"
+          />
+          <ClosingLink
+            description="关于 CQ 和正在做的事"
             href="/me"
-          >
-            <span
-              className={`${closingLinkContentClassName} ${closingRightContentClassName}`}
-            >
-              <span>
-                <span className="block font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent">
-                  02
-                </span>
-                <span className="mt-[0.85rem] block text-[clamp(2.25rem,4vw,3.65rem)] leading-none font-[560] tracking-[-0.047em] [@media(max-width:40rem)]:text-[2.4rem]">
-                  Me
-                </span>
-              </span>
-              <span className="flex items-end justify-between gap-8">
-                <span className="text-base leading-[1.6] text-muted-foreground">
-                  关于 CQ 和正在做的事
-                </span>
-                <span className="shrink-0 font-mono text-[1.35rem] leading-none text-accent transition-transform duration-150 ease-[ease] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none" aria-hidden="true">
-                  →
-                </span>
-              </span>
-            </span>
-          </Link>
+            index="02"
+            side="right"
+            title="Me"
+          />
         </nav>
       </section>
     </main>
