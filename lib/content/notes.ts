@@ -9,6 +9,7 @@ import {
 } from "./note-schema";
 
 const notesDirectory = path.join(process.cwd(), "content", "notes");
+const noteBodyMarker = "{/* note-body */}";
 
 type NoteModule = {
   default?: unknown;
@@ -53,9 +54,15 @@ const getNoteSlugs = cache(async () => {
   return slugs;
 });
 
-function estimateReadingMinutes(source: string) {
-  const metadataEnd = source.indexOf("\n});");
-  const body = metadataEnd === -1 ? source : source.slice(metadataEnd + 4);
+function estimateReadingMinutes(source: string, slug: string) {
+  const bodyStart = source.indexOf(noteBodyMarker);
+  if (bodyStart === -1) {
+    throw new Error(
+      `Note "${slug}" must include ${noteBodyMarker} before its article body.`,
+    );
+  }
+
+  const body = source.slice(bodyStart + noteBodyMarker.length);
   const prose = body
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]+`/g, " ")
@@ -103,7 +110,7 @@ const loadNote = cache(async (slug: string): Promise<Note | null> => {
   return Object.freeze({
     ...metadata,
     Content: noteModule.default as ComponentType,
-    readingMinutes: estimateReadingMinutes(source),
+    readingMinutes: estimateReadingMinutes(source, slug),
   });
 });
 
