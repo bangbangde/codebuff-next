@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { formatNoteDate, getAllNotes } from "@/lib/content/notes";
 import { ContentContainer } from "../_components/content-container";
 import { SectionLabel } from "../_components/section-label";
-import { noteEntries } from "../_content/note-entries";
 
 export const metadata: Metadata = {
   title: "Notes",
   description: "Engineering notes and frontend experiments.",
 };
 
-export default function NotesPage() {
+export default async function NotesPage() {
+  const notes = await getAllNotes();
+
   return (
     <main
       className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]"
@@ -35,7 +38,7 @@ export default function NotesPage() {
           </p>
         </section>
         <section aria-label="精选 Notes 条目">
-          {noteEntries.map((entry, index) => (
+          {notes.map((entry, index) => (
             <article
               className="grid scroll-mt-8 grid-cols-[minmax(8rem,0.3fr)_1fr] gap-6 border-b border-border py-[clamp(2rem,4vw,3rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-3"
               id={entry.slug}
@@ -46,13 +49,24 @@ export default function NotesPage() {
               </p>
               <div>
                 <h2 className="m-0 text-[clamp(1.25rem,3vw,2rem)] font-[540] tracking-[-0.03em]">
-                  {entry.title}
+                  <Link
+                    className="transition-colors duration-150 hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
+                    href={`/notes/${entry.slug}`}
+                  >
+                    {entry.title}
+                  </Link>
                 </h2>
                 <p
                   className="mt-4 max-w-[40rem] text-muted-foreground"
-                  lang="zh-CN"
+                  lang={entry.language}
                 >
                   {entry.summary}
+                </p>
+                <p className="mt-5 font-mono text-xs leading-body tracking-[0.035em] text-muted-foreground">
+                  <time dateTime={entry.publishedAt}>
+                    {formatNoteDate(entry.publishedAt, entry.language)}
+                  </time>{" "}
+                  · <span lang="en">{entry.readingMinutes} min read</span>
                 </p>
               </div>
             </article>

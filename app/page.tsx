@@ -1,26 +1,8 @@
 import Link from "next/link";
+import { getAllNotes } from "@/lib/content/notes";
 import { ContentContainer } from "./_components/content-container";
-import { noteEntries } from "./_content/note-entries";
 import { ClosingLink } from "./_landing/closing-link";
 import { NoteCover } from "./_landing/note-cover";
-
-const selectedNotes = [
-  {
-    ...noteEntries[0],
-    readTime: "8 min read",
-    coverCaption: "Systems / Interface / Judgment",
-  },
-  {
-    ...noteEntries[1],
-    readTime: "6 min read",
-    coverCaption: "Reversible / Compare / Learn",
-  },
-  {
-    ...noteEntries[2],
-    readTime: "5 min read",
-    coverCaption: "Hierarchy / Space / Restraint",
-  },
-] as const;
 
 const articleMetaClassName =
   "m-0 font-mono text-[0.72rem] leading-body tracking-[0.075em] text-accent uppercase";
@@ -34,7 +16,9 @@ const articleCtaClassName =
 const articleLinkClassName =
   "group no-underline transition-colors duration-150 ease-[ease] hover:text-accent focus-visible:text-accent motion-reduce:transition-none";
 
-export default function Home() {
+export default async function Home() {
+  const selectedNotes = (await getAllNotes()).slice(0, 3);
+
   return (
     <main id="main-content">
       <section
@@ -80,17 +64,19 @@ export default function Home() {
           <article>
             <Link
               className={`${articleLinkClassName} grid grid-cols-[minmax(0,1.25fr)_minmax(19rem,0.75fr)] items-center gap-[clamp(2.5rem,6vw,6rem)] py-[clamp(2.75rem,5vw,4rem)] [@media(max-width:52rem)]:grid-cols-1 [@media(max-width:52rem)]:gap-10 [@media(max-width:40rem)]:gap-6 [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-11`}
-              href={`/notes#${selectedNotes[0].slug}`}
+              href={`/notes/${selectedNotes[0].slug}`}
             >
               <NoteCover
-                caption={selectedNotes[0].coverCaption}
+                caption={selectedNotes[0].kind}
                 index={0}
                 lead
               />
               <div className="max-w-[29rem] [@media(max-width:52rem)]:max-w-[38rem]">
                 <p className={articleMetaClassName}>
                   {selectedNotes[0].kind} ·{" "}
-                  <span lang="en">{selectedNotes[0].readTime}</span>
+                  <span lang="en">
+                    {selectedNotes[0].readingMinutes} min read
+                  </span>
                 </p>
                 <h2 className="mt-5 mb-0 text-[clamp(2rem,4.2vw,3.7rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(2rem,9vw,2.55rem)]">
                   {selectedNotes[0].title}
@@ -115,11 +101,12 @@ export default function Home() {
               <article className="border-t border-border" key={entry.slug}>
                 <Link
                   className={`${articleLinkClassName} grid grid-cols-[minmax(0,1fr)_minmax(17rem,25rem)] items-center gap-[clamp(2rem,7vw,7rem)] py-[clamp(3.5rem,7vw,6rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8 [@media(max-width:40rem)]:py-[3.25rem_4rem]`}
-                  href={`/notes#${entry.slug}`}
+                  href={`/notes/${entry.slug}`}
                 >
                   <div className="max-w-[38rem]">
                     <p className={articleMetaClassName}>
-                      {entry.kind} · <span lang="en">{entry.readTime}</span>
+                      {entry.kind} ·{" "}
+                      <span lang="en">{entry.readingMinutes} min read</span>
                     </p>
                     <h2 className="mt-5 mb-0 max-w-[18ch] text-[clamp(1.9rem,3.4vw,3rem)] leading-[1.08] font-[560] tracking-[-0.047em] text-balance transition-colors duration-150 ease-[ease] group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none [@media(max-width:40rem)]:text-[clamp(1.85rem,8vw,2.35rem)]">
                       {entry.title}
@@ -133,7 +120,7 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="[@media(max-width:40rem)]:order-first">
-                    <NoteCover caption={entry.coverCaption} index={index} />
+                    <NoteCover caption={entry.kind} index={index} />
                   </div>
                 </Link>
               </article>
