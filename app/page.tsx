@@ -55,19 +55,21 @@ export default function Home() {
             </span>
           </h1>
           <p
-            className="mt-[0.65rem] mb-0 text-[0.94rem] leading-normal tracking-[0.012em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.55rem] [@media(max-width:40rem)]:text-[0.82rem]"
-            lang="en"
+            className="mt-4 mb-0 text-[0.94rem] leading-normal tracking-[0.012em] text-muted-foreground [@media(max-width:40rem)]:mt-3 [@media(max-width:40rem)]:text-[0.82rem]"
           >
-            Thinking. Building. Learning.
+            前端开发 / 电子 DIY / 航模
           </p>
           <p
             className="mt-3 mb-0 flex items-center gap-3 font-mono text-[0.8125rem] leading-body tracking-[0.015em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.6rem] [@media(max-width:40rem)]:text-xs"
             lang="en"
           >
             <span
-              className="size-2 shrink-0 rounded-full bg-accent shadow-[0_0_0_0.34rem_var(--accent-soft)]"
+              className="relative flex size-2 shrink-0"
               aria-hidden="true"
-            />
+            >
+              <span className="absolute -inset-1 animate-ping rounded-full border border-accent opacity-70 [animation-duration:1.8s] [animation-timing-function:cubic-bezier(0,0,0.2,1)] motion-reduce:animate-none motion-reduce:opacity-0" />
+              <span className="relative size-2 rounded-full bg-accent shadow-[0_0_0_0.25rem_var(--accent-soft)]" />
+            </span>
             Now — Getting the site ready.
           </p>
         </ContentContainer>
