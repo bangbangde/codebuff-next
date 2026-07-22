@@ -20,6 +20,18 @@ jobs:
   verify:
     if: github.ref_type != 'tag'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
+        env:
+          POSTGRES_PASSWORD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -39,11 +51,57 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check generated database artifacts
+        run: |
+          pnpm auth:schema
+          pnpm db:generate
+          git diff --exit-code -- lib/db/schema.ts drizzle
+          test -z "$(git status --porcelain --untracked-files=all -- lib/db/schema.ts drizzle)"
+
       - name: Lint
         run: pnpm lint
 
       - name: Build
         run: pnpm build
+
+      - name: Verify PostgreSQL migrations and role boundaries
+        env:
+          PG_ADMIN_HOST: 127.0.0.1
+          PG_ADMIN_PORT: 5432
+          PG_ADMIN_USER: postgres
+          PG_ADMIN_PWD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: pnpm db:verify
+
+      - name: Build verification image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker build --tag codebuff-next:verify .
+
+      - name: Verify application image without database credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          container_id="$(docker run --detach --publish 3000:3000 codebuff-next:verify)"
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null; then
+              curl --fail --silent --show-error http://127.0.0.1:3000/me >/dev/null
+              curl --fail --silent --show-error http://127.0.0.1:3000/notes >/dev/null
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs "$container_id"
+          exit 1
+
+      - name: Verify migration entrypoint in image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          PG_ADMIN_HOST: 127.0.0.1
+          PG_ADMIN_PORT: 5432
+          PG_ADMIN_USER: postgres
+          PG_ADMIN_PWD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: pnpm db:verify -- --image codebuff-next:verify
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
