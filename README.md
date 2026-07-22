@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# codebuff-next
 
-## Getting Started
-
-First, run the development server:
+CQ's Lab 的 Next.js 应用。项目使用 `pnpm`，本地启动方式：
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install --frozen-lockfile
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## PostgreSQL 基础
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+数据库层使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。Better Auth 只负责生成当前认证模型；`lib/auth/schema-config.ts` 是生成器输入，不是可挂载的认证处理器。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+应用和迁移器在真正访问数据库时才读取配置，因此 `pnpm build` 不需要数据库连通性或数据库凭据。
 
-## Learn More
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PG_USER` | 无 | 必填；由基础设施按迁移/运行阶段分别注入 |
+| `PG_PWD` | 无 | 必填；由基础设施按迁移/运行阶段分别注入 |
+| `PG_HOST` | `postgres` | 非生产环境可覆盖 |
+| `PG_PORT` | `5432` | 非生产环境可覆盖 |
+| `PG_DB` | `codebuff_next` | 非生产环境可覆盖 |
+| `PG_POOL_MAX` | `5` | 应用连接池上限；迁移器固定覆盖为 1 |
 
-To learn more about Next.js, take a look at the following resources:
+数据库日志不得输出密码或完整连接串。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Schema 与迁移
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+认证 schema 和 SQL 都是版本化、可审查的仓库产物：
 
-## Deploy on Vercel
+```bash
+pnpm auth:schema
+pnpm db:generate
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+提交变更前需同时审查 `lib/db/schema.ts`、`drizzle/*.sql` 和 `drizzle/meta/`。生产环境禁止使用 `drizzle-kit push`；所有结构变化都必须先生成并提交 SQL，再由迁移器执行。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+本地构建并执行迁移：
+
+```powershell
+pnpm build:migrate
+$env:PG_HOST = "127.0.0.1"
+$env:PG_USER = "migration-role"
+$env:PG_PWD = "migration-password"
+pnpm db:migrate
+```
+
+最终应用镜像包含相同入口：
+
+```bash
+node migrate/index.js
+```
+
+迁移器只执行尚未记录的迁移。没有待执行迁移时正常退出，失败时以非零状态退出；它不会在镜像构建、应用启动或请求处理中自动运行。基础设施应在发布应用前，以同一镜像和迁移角色执行该入口。
+
+### 权限边界
+
+- 迁移角色拥有应用数据库对象，可执行 DDL。
+- 运行角色只获得 `public` schema 的使用权限，以及当前/未来业务表的 `SELECT`、`INSERT`、`UPDATE`、`DELETE` 权限；不得执行 DDL，也不得读取 Drizzle 迁移日志。
+- CI 使用与基础设施相同摘要的 PostgreSQL 18.4 镜像，验证空库迁移、重复执行无变化、全部认证表 DML、运行角色 DDL 拒绝，以及最终应用镜像内的迁移入口。
+
+## 当前认证边界
+
+当前 schema 覆盖用户、账号密码凭据、会话、验证、TOTP/恢复码、Passkey 和数据库限流，但 Issue #47 不提供认证 API、登录 UI 或首个用户初始化。
+
+M006 要求 Passkey 用户验证（UV）为 `required`。固定的 `@better-auth/passkey@1.6.23` 可生成所需表，并可在注册选项中声明该偏好，但尚未在认证验证阶段强制 UV。因此后续认证路由在解决并测试这一差距前，不得直接挂载当前生成配置。
+
+## 常用校验
+
+```bash
+pnpm lint
+pnpm build
+git diff --check
+```

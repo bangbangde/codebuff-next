@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".build/migrate",
+    "rootDir": ".",
+    "target": "ES2022"
+  },
+  "include": ["migrate/**/*.ts", "lib/db/config.ts"],
+  "exclude": ["node_modules"]
+}
