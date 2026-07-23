@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build && pnpm build:migrate",
     "build:migrate": "node scripts/build-migration.mjs",
+    "auth:bootstrap": "node scripts/bootstrap-auth-user.mjs",
     "auth:schema": "auth generate --config ./lib/auth/schema-config.ts --output ./lib/db/schema.ts --adapter drizzle --dialect postgresql --yes",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "pnpm build:migrate && node .build/migrate/migrate/index.js",

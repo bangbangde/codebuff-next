@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { createServer } from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import pg from "pg";
@@ -32,6 +34,7 @@ const migrationRole = `cb_migration_${suffix}`;
 const runtimeRole = `cb_runtime_${suffix}`;
 const migrationPassword = randomBytes(24).toString("base64url");
 const runtimePassword = randomBytes(24).toString("base64url");
+const additionalSecrets = new Set();
 const expectedTables = [
   "account",
   "passkey",
@@ -56,7 +59,12 @@ function clientConfig(database, user, password) {
 function redactSecrets(value) {
   let message = value instanceof Error ? value.message : String(value);
 
-  for (const secret of [adminPassword, migrationPassword, runtimePassword]) {
+  for (const secret of [
+    adminPassword,
+    migrationPassword,
+    runtimePassword,
+    ...additionalSecrets,
+  ]) {
     if (secret) {
       message = message.replaceAll(secret, "[redacted]");
     }
@@ -65,7 +73,7 @@ function redactSecrets(value) {
   return message;
 }
 
-function runMigration(user, password) {
+function runMigration(user, password, { stdio = "inherit" } = {}) {
   const childEnvironment = {
     ...process.env,
     PG_HOST: adminHost,
@@ -104,7 +112,7 @@ function runMigration(user, password) {
   const result = spawnSync(command, args, {
     cwd: projectRoot,
     env: childEnvironment,
-    stdio: "inherit",
+    stdio,
   });
 
   if (result.error) {
@@ -112,6 +120,412 @@ function runMigration(user, password) {
   }
 
   return result.status ?? 1;
+}
+
+async function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+
+      if (!address || typeof address === "string") {
+        server.close();
+        reject(new Error("Unable to allocate a local verification port"));
+        return;
+      }
+
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(address.port);
+      });
+    });
+  });
+}
+
+function startApplication(environment, port) {
+  const nextCli = path.join(
+    projectRoot,
+    "node_modules",
+    "next",
+    "dist",
+    "bin",
+    "next",
+  );
+  const child = spawn(
+    process.execPath,
+    [nextCli, "start", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: projectRoot,
+      env: {
+        ...environment,
+        NODE_ENV: "production",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  let output = "";
+  let startupError;
+
+  child.stdout.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+  child.stderr.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+  child.once("error", (error) => {
+    startupError = error;
+  });
+
+  return {
+    child,
+    getOutput: () => output,
+    getStartupError: () => startupError,
+  };
+}
+
+async function stopApplication(application) {
+  if (application.child.exitCode !== null) {
+    return;
+  }
+
+  application.child.kill();
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (application.child.exitCode !== null) {
+      return;
+    }
+
+    await delay(100);
+  }
+
+  application.child.kill("SIGKILL");
+}
+
+async function waitForApplication(application, url) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const startupError = application.getStartupError();
+
+    if (startupError) {
+      throw startupError;
+    }
+
+    if (application.child.exitCode !== null) {
+      throw new Error(
+        `Application exited during startup: ${application.getOutput()}`,
+      );
+    }
+
+    try {
+      const response = await fetch(url);
+
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // The server may still be binding its port.
+    }
+
+    await delay(250);
+  }
+
+  throw new Error(
+    `Application did not become ready: ${application.getOutput()}`,
+  );
+}
+
+function responseCookieHeader(response) {
+  const setCookies =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : [response.headers.get("set-cookie")].filter(Boolean);
+
+  return {
+    cookie: setCookies.map((value) => value.split(";", 1)[0]).join("; "),
+    setCookies,
+  };
+}
+
+function assertOutputDoesNotContainSecrets(output, secrets) {
+  for (const secret of secrets) {
+    if (secret) {
+      assert.equal(output.includes(secret), false);
+    }
+  }
+}
+
+function runAccountBootstrap(environment, secrets) {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(projectRoot, "scripts", "bootstrap-auth-user.mjs")],
+    {
+      cwd: projectRoot,
+      env: environment,
+      encoding: "utf8",
+    },
+  );
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+
+  assertOutputDoesNotContainSecrets(output, secrets);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Authentication bootstrap failed: ${output}`);
+  }
+
+  assert.match(output, /Authentication account created\./);
+}
+
+async function verifyRuntimeAuthentication(
+  runtimeClient,
+  runtimeEnvironment,
+) {
+  const authSecret = randomBytes(32).toString("base64url");
+  const versionedSecret = `1:${authSecret}`;
+  const accountPassword = `Ci-${randomBytes(24).toString("base64url")}`;
+  const accountEmail = `auth-${suffix}@example.invalid`;
+  const accountName = "CI Auth User";
+
+  for (const secret of [authSecret, versionedSecret, accountPassword]) {
+    additionalSecrets.add(secret);
+  }
+
+  runAccountBootstrap(
+    {
+      ...runtimeEnvironment,
+      AUTH_BOOTSTRAP_NAME: accountName,
+      AUTH_BOOTSTRAP_EMAIL: accountEmail,
+      AUTH_BOOTSTRAP_PASSWORD: accountPassword,
+    },
+    [
+      authSecret,
+      versionedSecret,
+      accountPassword,
+      runtimeEnvironment.PG_PWD,
+    ],
+  );
+
+  const accountRows = await runtimeClient.query(
+    `SELECT "user".email, account.password
+     FROM "user"
+     JOIN account ON account.user_id = "user".id
+     WHERE "user".email = $1`,
+    [accountEmail],
+  );
+  assert.equal(accountRows.rowCount, 1);
+  assert.notEqual(accountRows.rows[0].password, accountPassword);
+
+  const port = await getAvailablePort();
+  const baseURL = `http://127.0.0.1:${port}`;
+  const applicationEnvironment = {
+    ...runtimeEnvironment,
+    BETTER_AUTH_URL: baseURL,
+    BETTER_AUTH_SECRETS: versionedSecret,
+  };
+  const application = startApplication(applicationEnvironment, port);
+  let sessionToken;
+
+  try {
+    await waitForApplication(application, `${baseURL}/`);
+
+    const unauthenticatedAccount = await fetch(`${baseURL}/account`, {
+      redirect: "manual",
+    });
+    assert.ok([303, 307, 308].includes(unauthenticatedAccount.status));
+    assert.equal(
+      new URL(unauthenticatedAccount.headers.get("location"), baseURL)
+        .pathname,
+      "/sign-in",
+    );
+
+    const signUpResponse = await fetch(`${baseURL}/api/auth/sign-up/email`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: baseURL,
+      },
+      body: JSON.stringify({
+        name: "Public sign-up must stay disabled",
+        email: `public-${suffix}@example.invalid`,
+        password: accountPassword,
+      }),
+    });
+    const signUpBody = await signUpResponse.json();
+    assert.equal(signUpResponse.status, 400);
+    assert.equal(signUpBody.code, "EMAIL_PASSWORD_SIGN_UP_DISABLED");
+
+    const wrongPasswordResponse = await fetch(
+      `${baseURL}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: baseURL,
+        },
+        body: JSON.stringify({
+          email: accountEmail,
+          password: `${accountPassword}-wrong`,
+        }),
+      },
+    );
+    const wrongPasswordBody = await wrongPasswordResponse.json();
+
+    const unknownEmailResponse = await fetch(
+      `${baseURL}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: baseURL,
+        },
+        body: JSON.stringify({
+          email: `unknown-${suffix}@example.invalid`,
+          password: accountPassword,
+        }),
+      },
+    );
+    const unknownEmailBody = await unknownEmailResponse.json();
+
+    assert.equal(wrongPasswordResponse.status, unknownEmailResponse.status);
+    assert.equal(wrongPasswordBody.code, unknownEmailBody.code);
+    assert.equal(wrongPasswordBody.message, unknownEmailBody.message);
+
+    const signInResponse = await fetch(`${baseURL}/api/auth/sign-in/email`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: baseURL,
+      },
+      body: JSON.stringify({
+        email: accountEmail,
+        password: accountPassword,
+      }),
+    });
+    const signInBody = await signInResponse.json();
+    assert.equal(signInResponse.status, 200);
+    assert.equal(signInBody.user.email, accountEmail);
+
+    sessionToken = signInBody.token;
+    additionalSecrets.add(sessionToken);
+
+    const { cookie, setCookies } = responseCookieHeader(signInResponse);
+    assert.ok(cookie);
+    assert.match(setCookies.join("\n"), /HttpOnly/i);
+    assert.match(setCookies.join("\n"), /SameSite=Lax/i);
+    assert.match(setCookies.join("\n"), /Path=\//i);
+
+    const authenticatedSessionResponse = await fetch(
+      `${baseURL}/api/auth/get-session`,
+      {
+        headers: {
+          cookie,
+        },
+      },
+    );
+    const authenticatedSession = await authenticatedSessionResponse.json();
+    assert.equal(authenticatedSessionResponse.status, 200);
+    assert.equal(authenticatedSession.user.email, accountEmail);
+
+    const authenticatedAccount = await fetch(`${baseURL}/account`, {
+      headers: {
+        cookie,
+      },
+      redirect: "manual",
+    });
+    const authenticatedAccountBody = await authenticatedAccount.text();
+    assert.equal(authenticatedAccount.status, 200);
+    assert.match(authenticatedAccountBody, /CI Auth User/);
+    assert.match(authenticatedAccountBody, new RegExp(accountEmail));
+
+    const activeSessions = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "session"',
+    );
+    assert.equal(activeSessions.rows[0].count, 1);
+
+    const rateLimitEntries = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "rate_limit"',
+    );
+    assert.ok(rateLimitEntries.rows[0].count > 0);
+
+    const signOutResponse = await fetch(`${baseURL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        origin: baseURL,
+      },
+      body: "{}",
+    });
+    assert.equal(signOutResponse.status, 200);
+
+    const revokedSessionResponse = await fetch(
+      `${baseURL}/api/auth/get-session`,
+      {
+        headers: {
+          cookie,
+        },
+      },
+    );
+    assert.equal(await revokedSessionResponse.json(), null);
+
+    const remainingSessions = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "session"',
+    );
+    assert.equal(remainingSessions.rows[0].count, 0);
+  } finally {
+    await stopApplication(application);
+    assertOutputDoesNotContainSecrets(application.getOutput(), [
+      authSecret,
+      versionedSecret,
+      accountPassword,
+      runtimeEnvironment.PG_PWD,
+      sessionToken,
+    ]);
+  }
+
+  const unavailablePort = await getAvailablePort();
+  const unavailableBaseURL = `http://127.0.0.1:${unavailablePort}`;
+  const unavailableDatabaseApplication = startApplication(
+    {
+      ...applicationEnvironment,
+      BETTER_AUTH_URL: unavailableBaseURL,
+      PG_HOST: "127.0.0.1",
+      PG_PORT: "1",
+    },
+    unavailablePort,
+  );
+
+  try {
+    await waitForApplication(
+      unavailableDatabaseApplication,
+      `${unavailableBaseURL}/`,
+    );
+
+    for (const pathname of ["/", "/notes", "/me", "/sign-in"]) {
+      const response = await fetch(`${unavailableBaseURL}${pathname}`);
+      assert.equal(response.status, 200);
+    }
+  } finally {
+    await stopApplication(unavailableDatabaseApplication);
+    assertOutputDoesNotContainSecrets(
+      unavailableDatabaseApplication.getOutput(),
+      [
+        authSecret,
+        versionedSecret,
+        accountPassword,
+        runtimeEnvironment.PG_PWD,
+        sessionToken,
+      ],
+    );
+  }
 }
 
 async function schemaFingerprint(client) {
@@ -327,6 +741,19 @@ try {
 
   try {
     await verifyRuntimeDml(runtimeClient);
+
+    if (!imageName) {
+      await verifyRuntimeAuthentication(runtimeClient, {
+        ...process.env,
+        PG_HOST: adminHost,
+        PG_PORT: String(adminPort),
+        PG_DB: databaseName,
+        PG_USER: runtimeRole,
+        PG_PWD: runtimePassword,
+        PG_POOL_MAX: "3",
+      });
+    }
+
     await expectInsufficientPrivilege(
       runtimeClient,
       "CREATE TABLE runtime_must_not_create_tables (id integer)",
@@ -339,7 +766,10 @@ try {
       runtimeClient,
       "SELECT * FROM drizzle.__drizzle_migrations",
     );
-    assert.notEqual(runMigration(runtimeRole, runtimePassword), 0);
+    assert.notEqual(
+      runMigration(runtimeRole, runtimePassword, { stdio: "ignore" }),
+      0,
+    );
   } finally {
     await runtimeClient.end();
   }

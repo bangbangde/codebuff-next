@@ -28,6 +28,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=production-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.build/migrate/migrate ./migrate
 COPY --from=builder --chown=nextjs:nodejs /app/.build/migrate/lib ./lib
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/bootstrap-auth-user.mjs ./scripts/bootstrap-auth-user.mjs
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
