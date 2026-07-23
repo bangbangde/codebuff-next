@@ -42,6 +42,9 @@ export function SiteHeader() {
             <Link className={navigationLinkClassName} href="/me">
               Me
             </Link>
+            <Link className={navigationLinkClassName} href="/account">
+              Account
+            </Link>
           </nav>
         </div>
       </header>

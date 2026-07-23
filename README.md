@@ -72,3 +72,25 @@ pnpm lint
 pnpm build
 git diff --check
 ```
+
+## 认证运行时
+
+认证 API 只会在 `/api/auth/*` 请求和受保护的 `/account` 页面访问时初始化。公开的 Landing、Notes、Me 和 `/sign-in` 不读取数据库或认证密钥。
+
+运行时除 PostgreSQL 变量外还需要：
+
+| 环境变量 | 说明 |
+| --- | --- |
+| `BETTER_AUTH_URL` | 站点的公开 origin；生产环境必须使用 HTTPS，本机开发允许 `http://localhost` 或 `http://127.0.0.1` |
+| `BETTER_AUTH_SECRETS` | 版本化密钥列表，例如 `2:<current-secret>,1:<previous-secret>`；每个密钥至少 32 个字符，首项用于新数据 |
+
+公开注册始终关闭。首次账户由运维人员在应用镜像中通过一次性命令创建；姓名、邮箱和密码只从当前进程环境读取，命令不会输出这些值：
+
+```bash
+AUTH_BOOTSTRAP_NAME="CQ" \
+AUTH_BOOTSTRAP_EMAIL="owner@example.com" \
+AUTH_BOOTSTRAP_PASSWORD="<15-to-128-character-password>" \
+node scripts/bootstrap-auth-user.mjs
+```
+
+该命令使用运行时 PostgreSQL 角色，密码通过 Better Auth 的默认 scrypt 实现散列。邮箱已存在时命令会失败，不会覆盖既有账户。

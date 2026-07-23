@@ -64,7 +64,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify PostgreSQL migrations and role boundaries
+      - name: Verify PostgreSQL migrations, auth flows, and role boundaries
         env:
           PG_ADMIN_HOST: 127.0.0.1
           PG_ADMIN_PORT: 5432
