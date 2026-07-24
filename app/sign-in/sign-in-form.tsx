@@ -82,7 +82,14 @@ export function SignInForm() {
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
-    const code = String(formData.get("backup-code") ?? "").trim();
+    const rawCode = String(formData.get("backup-code") ?? "");
+    const cleaned = rawCode.replace(/\s+/g, "");
+    const hasHyphen = cleaned.includes("-");
+    const alnumOnly = cleaned.replace(/[^A-Za-z0-9]/g, "");
+    const code =
+      !hasHyphen && alnumOnly.length === 10
+        ? `${alnumOnly.slice(0, 5)}-${alnumOnly.slice(5)}`
+        : cleaned;
 
     try {
       const result = await authClient.twoFactor.verifyBackupCode({ code });
@@ -189,7 +196,7 @@ export function SignInForm() {
             className={inputClassName}
             id="backup-code"
             name="backup-code"
-            placeholder="xxxxxxxxxx"
+            placeholder="xxxxx-xxxxx"
             required
             spellCheck={false}
             type="text"
