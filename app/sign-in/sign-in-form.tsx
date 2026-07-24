@@ -8,12 +8,15 @@ import { authClient } from "@/lib/auth/client";
 const inputClassName =
   "mt-2 min-h-12 w-full rounded-md border border-border bg-background px-4 py-3 text-base text-foreground shadow-[0_1px_0_color-mix(in_srgb,var(--foreground)_4%,transparent)] transition-[border-color,box-shadow] duration-150 ease-[ease] placeholder:text-muted-foreground/70 hover:border-[color-mix(in_srgb,var(--foreground)_24%,var(--border))] focus:border-accent focus:outline-none focus-visible:shadow-[0_0_0_3px_var(--accent-soft)] motion-reduce:transition-none";
 
+type Step = "credentials" | "totp";
+
 export function SignInForm() {
   const router = useRouter();
+  const [step, setStep] = useState<Step>("credentials");
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleCredentialsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPending(true);
     setMessage("");
@@ -23,10 +26,13 @@ export function SignInForm() {
     const password = String(formData.get("password") ?? "");
 
     try {
-      const result = await authClient.signIn.email({
-        email,
-        password,
-      });
+      const result = await authClient.signIn.email({ email, password });
+      const data = result.data as Record<string, unknown> | null;
+
+      if (data && "twoFactorRedirect" in data) {
+        setStep("totp");
+        return;
+      }
 
       if (result.error) {
         setMessage("邮箱或密码不正确，请重试。");
@@ -42,8 +48,89 @@ export function SignInForm() {
     }
   }
 
+  async function handleTotpSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsPending(true);
+    setMessage("");
+
+    const formData = new FormData(event.currentTarget);
+    const code = String(formData.get("code") ?? "").trim();
+
+    try {
+      const result = await authClient.twoFactor.verifyTotp({ code });
+
+      if (result.error) {
+        setMessage("验证码不正确，请重试。");
+        return;
+      }
+
+      router.replace("/account");
+      router.refresh();
+    } catch {
+      setMessage("暂时无法验证，请稍后重试。");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  if (step === "totp") {
+    return (
+      <form className="mt-10" onSubmit={handleTotpSubmit}>
+        <div>
+          <label
+            className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
+            htmlFor="code"
+            lang="en"
+          >
+            Authentication code
+          </label>
+          <input
+            autoComplete="one-time-code"
+            className={inputClassName}
+            id="code"
+            inputMode="numeric"
+            maxLength={6}
+            name="code"
+            pattern="[0-9]{6}"
+            placeholder="000000"
+            required
+            spellCheck={false}
+            type="text"
+          />
+        </div>
+
+        <p
+          aria-live="polite"
+          className="mt-5 min-h-[1.65em] text-sm text-accent"
+          role="status"
+        >
+          {message}
+        </p>
+
+        <button
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          disabled={isPending}
+          type="submit"
+        >
+          {isPending ? "Verifying…" : "Verify"}
+        </button>
+
+        <button
+          className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground transition-[color,border-color] duration-150 ease-[ease] hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent motion-reduce:transition-none"
+          onClick={() => {
+            setStep("credentials");
+            setMessage("");
+          }}
+          type="button"
+        >
+          Back to sign in
+        </button>
+      </form>
+    );
+  }
+
   return (
-    <form className="mt-10" onSubmit={handleSubmit}>
+    <form className="mt-10" onSubmit={handleCredentialsSubmit}>
       <div>
         <label
           className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
