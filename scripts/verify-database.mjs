@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import path from "node:path";
 import process from "node:process";
@@ -284,6 +284,127 @@ function runAccountBootstrap(environment, secrets) {
   assert.match(output, /Authentication account created\./);
 }
 
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function base32Decode(input) {
+  const cleaned = input.toUpperCase().replace(/=+$/, "");
+  const bytes = [];
+  let buffer = 0;
+  let bitsLeft = 0;
+
+  for (const char of cleaned) {
+    const value = BASE32_ALPHABET.indexOf(char);
+
+    if (value === -1) {
+      throw new Error(`Invalid base32 character: ${char}`);
+    }
+
+    buffer = (buffer << 5) | value;
+    bitsLeft += 5;
+
+    if (bitsLeft >= 8) {
+      bitsLeft -= 8;
+      bytes.push((buffer >> bitsLeft) & 0xff);
+    }
+  }
+
+  return Buffer.from(bytes);
+}
+
+function generateTotp(secretBuffer, { period = 30, digits = 6 } = {}) {
+  const counter = Math.floor(Date.now() / 1000 / period);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigUInt64BE(BigInt(counter));
+
+  const hmac = createHmac("sha1", secretBuffer).update(counterBuffer).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const binary =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+
+  return String(binary % 10 ** digits).padStart(digits, "0");
+}
+
+function extractTotpSecret(totpURI) {
+  const url = new URL(totpURI);
+  const secret = url.searchParams.get("secret");
+
+  if (!secret) {
+    throw new Error("TOTP URI is missing the secret parameter");
+  }
+
+  return base32Decode(secret);
+}
+
+function createCookieJar() {
+  const cookies = new Map();
+
+  return {
+    update(response) {
+      const { setCookies } = responseCookieHeader(response);
+
+      for (const setCookie of setCookies) {
+        const [pair, ...attributes] = setCookie.split(";");
+        const separatorIndex = pair.indexOf("=");
+
+        if (separatorIndex <= 0) {
+          continue;
+        }
+
+        const name = pair.slice(0, separatorIndex).trim();
+        const value = pair.slice(separatorIndex + 1).trim();
+        const isExpired = attributes.some((attribute) => {
+          const trimmed = attribute.trim().toLowerCase();
+          return trimmed === "max-age=0" || trimmed.startsWith("max-age=0");
+        });
+
+        if (isExpired) {
+          cookies.delete(name);
+        } else if (value) {
+          cookies.set(name, value);
+        }
+      }
+    },
+    getHeader() {
+      return Array.from(cookies.entries())
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; ");
+    },
+  };
+}
+
+async function verifyTotpWithRetry(
+  baseURL,
+  cookie,
+  totpSecret,
+  { allowRetry = true } = {},
+) {
+  const verify = async () => {
+    const code = generateTotp(totpSecret);
+
+    return fetch(`${baseURL}/api/auth/two-factor/verify-totp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        origin: baseURL,
+      },
+      body: JSON.stringify({ code }),
+    });
+  };
+
+  let response = await verify();
+
+  if (response.status !== 200 && allowRetry) {
+    await delay(2000);
+    response = await verify();
+  }
+
+  return response;
+}
+
 async function verifyRuntimeAuthentication(
   runtimeClient,
   runtimeEnvironment,
@@ -480,6 +601,195 @@ async function verifyRuntimeAuthentication(
       'SELECT count(*)::integer AS count FROM "session"',
     );
     assert.equal(remainingSessions.rows[0].count, 0);
+
+    // === TOTP two-factor authentication flow ===
+    const totpCookieJar = createCookieJar();
+
+    const totpSignInResponse = await fetch(`${baseURL}/api/auth/sign-in/email`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: baseURL,
+      },
+      body: JSON.stringify({
+        email: accountEmail,
+        password: accountPassword,
+      }),
+    });
+    const totpSignInBody = await totpSignInResponse.json();
+    assert.equal(totpSignInResponse.status, 200);
+    assert.equal(totpSignInBody.user.email, accountEmail);
+    totpCookieJar.update(totpSignInResponse);
+    additionalSecrets.add(totpSignInBody.token);
+
+    const enableResponse = await fetch(`${baseURL}/api/auth/two-factor/enable`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: totpCookieJar.getHeader(),
+        origin: baseURL,
+      },
+      body: JSON.stringify({ password: accountPassword }),
+    });
+    assert.equal(enableResponse.status, 200);
+    const enableData = await enableResponse.json();
+    assert.ok(enableData.totpURI);
+    assert.ok(
+      Array.isArray(enableData.backupCodes) &&
+        enableData.backupCodes.length > 0,
+    );
+    totpCookieJar.update(enableResponse);
+    for (const backupCode of enableData.backupCodes) {
+      additionalSecrets.add(backupCode);
+    }
+
+    const totpSecret = extractTotpSecret(enableData.totpURI);
+
+    const verifySetupResponse = await verifyTotpWithRetry(
+      baseURL,
+      totpCookieJar.getHeader(),
+      totpSecret,
+    );
+    const verifySetupBody = await verifySetupResponse.json();
+    assert.equal(verifySetupResponse.status, 200);
+    assert.equal(verifySetupBody.user.email, accountEmail);
+    totpCookieJar.update(verifySetupResponse);
+
+    const userAfterEnable = await runtimeClient.query(
+      'SELECT two_factor_enabled FROM "user" WHERE email = $1',
+      [accountEmail],
+    );
+    assert.equal(userAfterEnable.rows[0].two_factor_enabled, true);
+
+    const twoFactorRecord = await runtimeClient.query(
+      `SELECT verified
+       FROM "two_factor"
+       WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`,
+      [accountEmail],
+    );
+    assert.equal(twoFactorRecord.rows[0].verified, true);
+
+    const totpSignOutResponse = await fetch(`${baseURL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: totpCookieJar.getHeader(),
+        origin: baseURL,
+      },
+      body: "{}",
+    });
+    assert.equal(totpSignOutResponse.status, 200);
+    totpCookieJar.update(totpSignOutResponse);
+
+    const challengeSignInResponse = await fetch(
+      `${baseURL}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: baseURL,
+        },
+        body: JSON.stringify({
+          email: accountEmail,
+          password: accountPassword,
+        }),
+      },
+    );
+    const challengeSignInBody = await challengeSignInResponse.json();
+    assert.equal(challengeSignInResponse.status, 200);
+    assert.equal(challengeSignInBody.twoFactorRedirect, true);
+    assert.ok(challengeSignInBody.twoFactorMethods?.includes("totp"));
+    totpCookieJar.update(challengeSignInResponse);
+
+    // The credential session must have been revoked; only the 2FA cookie
+    // issued by the sign-in hook remains.
+    const pendingSessions = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "session"',
+    );
+    assert.equal(pendingSessions.rows[0].count, 0);
+
+    const challengeCode = generateTotp(totpSecret);
+
+    // An invalid TOTP code must be rejected with a generic error that does
+    // not reveal whether TOTP is enrolled for the account. The 2FA cookie
+    // stays valid so the user can retry.
+    const invalidCode = challengeCode === "000000" ? "999999" : "000000";
+    const invalidCodeResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-totp`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: invalidCode }),
+      },
+    );
+    const invalidCodeBody = await invalidCodeResponse.json();
+    assert.equal(invalidCodeResponse.status, 401);
+    assert.equal(invalidCodeBody.code, "INVALID_CODE");
+    assert.ok(!invalidCodeBody.user);
+    assert.ok(!invalidCodeBody.token);
+
+    const verifyChallengeResponse = await verifyTotpWithRetry(
+      baseURL,
+      totpCookieJar.getHeader(),
+      totpSecret,
+    );
+    const verifyChallengeBody = await verifyChallengeResponse.json();
+    assert.equal(verifyChallengeResponse.status, 200);
+    assert.equal(verifyChallengeBody.user.email, accountEmail);
+    assert.equal(verifyChallengeBody.user.twoFactorEnabled, true);
+    totpCookieJar.update(verifyChallengeResponse);
+    additionalSecrets.add(verifyChallengeBody.token);
+
+    const activeChallengeSessions = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "session"',
+    );
+    assert.equal(activeChallengeSessions.rows[0].count, 1);
+
+    const disableResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/disable`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ password: accountPassword }),
+      },
+    );
+    assert.equal(disableResponse.status, 200);
+    totpCookieJar.update(disableResponse);
+
+    const userAfterDisable = await runtimeClient.query(
+      'SELECT two_factor_enabled FROM "user" WHERE email = $1',
+      [accountEmail],
+    );
+    assert.equal(userAfterDisable.rows[0].two_factor_enabled, false);
+
+    const remainingTwoFactorRecords = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "two_factor"',
+    );
+    assert.equal(remainingTwoFactorRecords.rows[0].count, 0);
+
+    const finalSignOutResponse = await fetch(`${baseURL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: totpCookieJar.getHeader(),
+        origin: baseURL,
+      },
+      body: "{}",
+    });
+    assert.equal(finalSignOutResponse.status, 200);
+
+    const finalSessions = await runtimeClient.query(
+      'SELECT count(*)::integer AS count FROM "session"',
+    );
+    assert.equal(finalSessions.rows[0].count, 0);
   } finally {
     await stopApplication(application);
     assertOutputDoesNotContainSecrets(application.getOutput(), [
@@ -488,6 +798,7 @@ async function verifyRuntimeAuthentication(
       accountPassword,
       runtimeEnvironment.PG_PWD,
       sessionToken,
+      ...additionalSecrets,
     ]);
   }
 
@@ -523,6 +834,7 @@ async function verifyRuntimeAuthentication(
         accountPassword,
         runtimeEnvironment.PG_PWD,
         sessionToken,
+        ...additionalSecrets,
       ],
     );
   }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
+import { twoFactor } from "better-auth/plugins";
 
 import { getDatabase } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
@@ -119,6 +120,18 @@ function createRuntimeAuth() {
         },
       },
     },
+    plugins: [
+      twoFactor({
+        issuer: "CQ's Lab",
+        skipVerificationOnEnable: false,
+        allowPasswordless: false,
+        accountLockout: {
+          enabled: true,
+          maxFailedAttempts: 10,
+          durationSeconds: 15 * 60,
+        },
+      }),
+    ],
     trustedOrigins: [baseURL.origin],
     advanced: {
       useSecureCookies: baseURL.protocol === "https:",
