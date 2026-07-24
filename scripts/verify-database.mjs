@@ -749,6 +749,193 @@ async function verifyRuntimeAuthentication(
     );
     assert.equal(activeChallengeSessions.rows[0].count, 1);
 
+    // === Backup code recovery flow ===
+    const backupSignOutResponse = await fetch(`${baseURL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: totpCookieJar.getHeader(),
+        origin: baseURL,
+      },
+      body: "{}",
+    });
+    assert.equal(backupSignOutResponse.status, 200);
+    totpCookieJar.update(backupSignOutResponse);
+
+    const backupChallengeResponse = await fetch(
+      `${baseURL}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: baseURL,
+        },
+        body: JSON.stringify({
+          email: accountEmail,
+          password: accountPassword,
+        }),
+      },
+    );
+    const backupChallengeBody = await backupChallengeResponse.json();
+    assert.equal(backupChallengeResponse.status, 200);
+    assert.equal(backupChallengeBody.twoFactorRedirect, true);
+    totpCookieJar.update(backupChallengeResponse);
+
+    const backupCode = enableData.backupCodes[0];
+
+    const invalidBackupResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: "invalid-code-xx" }),
+      },
+    );
+    const invalidBackupBody = await invalidBackupResponse.json();
+    assert.equal(invalidBackupResponse.status, 401);
+    assert.equal(invalidBackupBody.code, "INVALID_BACKUP_CODE");
+    assert.ok(!invalidBackupBody.user);
+    assert.ok(!invalidBackupBody.token);
+
+    const verifyBackupResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: backupCode }),
+      },
+    );
+    const verifyBackupBody = await verifyBackupResponse.json();
+    assert.equal(verifyBackupResponse.status, 200);
+    assert.equal(verifyBackupBody.user.email, accountEmail);
+    assert.equal(verifyBackupBody.user.twoFactorEnabled, true);
+    totpCookieJar.update(verifyBackupResponse);
+    additionalSecrets.add(verifyBackupBody.token);
+
+    const backupSignOut2Response = await fetch(`${baseURL}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: totpCookieJar.getHeader(),
+        origin: baseURL,
+      },
+      body: "{}",
+    });
+    assert.equal(backupSignOut2Response.status, 200);
+    totpCookieJar.update(backupSignOut2Response);
+
+    const backupChallenge2Response = await fetch(
+      `${baseURL}/api/auth/sign-in/email`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: baseURL,
+        },
+        body: JSON.stringify({
+          email: accountEmail,
+          password: accountPassword,
+        }),
+      },
+    );
+    assert.equal(backupChallenge2Response.status, 200);
+    totpCookieJar.update(backupChallenge2Response);
+
+    const consumedBackupResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: backupCode }),
+      },
+    );
+    const consumedBackupBody = await consumedBackupResponse.json();
+    assert.equal(consumedBackupResponse.status, 401);
+    assert.equal(consumedBackupBody.code, "INVALID_BACKUP_CODE");
+
+    const regenerateResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/generate-backup-codes`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ password: `${accountPassword}-wrong` }),
+      },
+    );
+    assert.equal(regenerateResponse.status, 401);
+
+    const regenerateSuccessResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/generate-backup-codes`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ password: accountPassword }),
+      },
+    );
+    const regenerateData = await regenerateSuccessResponse.json();
+    assert.equal(regenerateSuccessResponse.status, 200);
+    assert.equal(regenerateData.status, true);
+    assert.ok(
+      Array.isArray(regenerateData.backupCodes) &&
+        regenerateData.backupCodes.length > 0,
+    );
+    for (const code of regenerateData.backupCodes) {
+      additionalSecrets.add(code);
+    }
+
+    const oldBackupAfterRegenerate = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: enableData.backupCodes[1] }),
+      },
+    );
+    assert.equal(oldBackupAfterRegenerate.status, 401);
+
+    const newBackupVerifyResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: regenerateData.backupCodes[0] }),
+      },
+    );
+    const newBackupVerifyBody = await newBackupVerifyResponse.json();
+    assert.equal(newBackupVerifyResponse.status, 200);
+    assert.equal(newBackupVerifyBody.user.email, accountEmail);
+    totpCookieJar.update(newBackupVerifyResponse);
+    additionalSecrets.add(newBackupVerifyBody.token);
+
+    // === End backup code flow ===
+
     const disableResponse = await fetch(
       `${baseURL}/api/auth/two-factor/disable`,
       {

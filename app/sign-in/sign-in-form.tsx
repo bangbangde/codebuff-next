@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth/client";
 const inputClassName =
   "mt-2 min-h-12 w-full rounded-md border border-border bg-background px-4 py-3 text-base text-foreground shadow-[0_1px_0_color-mix(in_srgb,var(--foreground)_4%,transparent)] transition-[border-color,box-shadow] duration-150 ease-[ease] placeholder:text-muted-foreground/70 hover:border-[color-mix(in_srgb,var(--foreground)_24%,var(--border))] focus:border-accent focus:outline-none focus-visible:shadow-[0_0_0_3px_var(--accent-soft)] motion-reduce:transition-none";
 
-type Step = "credentials" | "totp";
+type Step = "credentials" | "totp" | "backup";
 
 export function SignInForm() {
   const router = useRouter();
@@ -76,6 +76,49 @@ export function SignInForm() {
     }
   }
 
+  async function handleBackupSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsPending(true);
+    setMessage("");
+
+    const formData = new FormData(event.currentTarget);
+    const rawCode = String(formData.get("backup-code") ?? "");
+    const matches = rawCode.match(/[A-Za-z0-9]{5}-?[A-Za-z0-9]{5}/g);
+    const extracted = matches && matches.length > 0
+      ? (() => {
+          const alnum = matches[0].replace(/-/g, "");
+          return `${alnum.slice(0, 5)}-${alnum.slice(5)}`;
+        })()
+      : rawCode.trim();
+
+    try {
+      let result = await authClient.twoFactor.verifyBackupCode({
+        code: extracted,
+      });
+
+      if (result.error) {
+        const upper = extracted.toUpperCase();
+        if (upper !== extracted) {
+          result = await authClient.twoFactor.verifyBackupCode({
+            code: upper,
+          });
+        }
+      }
+
+      if (result.error) {
+        setMessage("恢复码不正确，请重试。");
+        return;
+      }
+
+      router.replace("/account");
+      router.refresh();
+    } catch {
+      setMessage("暂时无法验证，请稍后重试。");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
   if (step === "totp") {
     return (
       <form className="mt-10" onSubmit={handleTotpSubmit}>
@@ -125,6 +168,80 @@ export function SignInForm() {
         >
           {isPending ? "Verifying…" : "Verify"}
         </button>
+
+        <div className="mt-6 text-center">
+          <button
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline focus-visible:outline-none"
+            onClick={() => {
+              setStep("backup");
+              setMessage("");
+            }}
+            type="button"
+          >
+            使用恢复码
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  if (step === "backup") {
+    return (
+      <form className="mt-10" onSubmit={handleBackupSubmit}>
+        <div className="rounded-md border border-border bg-surface-muted p-4">
+          <p className="m-0 text-sm leading-body text-foreground">
+            输入你的恢复码以完成登录。每个恢复码只能使用一次。
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <label
+            className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
+            htmlFor="backup-code"
+            lang="en"
+          >
+            Recovery code
+          </label>
+          <input
+            autoComplete="off"
+            className={inputClassName}
+            id="backup-code"
+            name="backup-code"
+            placeholder="xxxxx-xxxxx"
+            required
+            spellCheck={false}
+            type="text"
+          />
+        </div>
+
+        <p
+          aria-live="polite"
+          className="mt-5 min-h-[1.65em] text-sm text-accent"
+          role="status"
+        >
+          {message}
+        </p>
+
+        <button
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          disabled={isPending}
+          type="submit"
+        >
+          {isPending ? "Verifying…" : "Verify recovery code"}
+        </button>
+
+        <div className="mt-6 text-center">
+          <button
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline focus-visible:outline-none"
+            onClick={() => {
+              setStep("totp");
+              setMessage("");
+            }}
+            type="button"
+          >
+            返回验证码
+          </button>
+        </div>
       </form>
     );
   }
