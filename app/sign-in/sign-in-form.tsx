@@ -83,16 +83,27 @@ export function SignInForm() {
 
     const formData = new FormData(event.currentTarget);
     const rawCode = String(formData.get("backup-code") ?? "");
-    const cleaned = rawCode.replace(/\s+/g, "");
-    const hasHyphen = cleaned.includes("-");
-    const alnumOnly = cleaned.replace(/[^A-Za-z0-9]/g, "");
-    const code =
-      !hasHyphen && alnumOnly.length === 10
-        ? `${alnumOnly.slice(0, 5)}-${alnumOnly.slice(5)}`
-        : cleaned;
+    const matches = rawCode.match(/[A-Za-z0-9]{5}-?[A-Za-z0-9]{5}/g);
+    const extracted = matches && matches.length > 0
+      ? (() => {
+          const alnum = matches[0].replace(/-/g, "");
+          return `${alnum.slice(0, 5)}-${alnum.slice(5)}`;
+        })()
+      : rawCode.trim();
 
     try {
-      const result = await authClient.twoFactor.verifyBackupCode({ code });
+      let result = await authClient.twoFactor.verifyBackupCode({
+        code: extracted,
+      });
+
+      if (result.error) {
+        const upper = extracted.toUpperCase();
+        if (upper !== extracted) {
+          result = await authClient.twoFactor.verifyBackupCode({
+            code: upper,
+          });
+        }
+      }
 
       if (result.error) {
         setMessage("恢复码不正确，请重试。");
