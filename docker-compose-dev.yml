@@ -12,55 +12,25 @@ services:
     ports:
       - "${PG_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
+      - postgres_data:/var/lib/postgresql
 
   garage:
     image: dxflrs/garage:v1.0.1
     container_name: codebuff-local-garage
     restart: unless-stopped
-    command: ["server"]
     ports:
       - "127.0.0.1:${GARAGE_S3_PORT:-3900}:3900"
       - "127.0.0.1:${GARAGE_RPC_PORT:-3901}:3901"
       - "127.0.0.1:${GARAGE_WEB_PORT:-3902}:3902"
     volumes:
       - garage_data:/var/lib/garage
-      - ./garage.toml:/etc/garage.toml:ro
+      - garage_config:/etc/garage
     environment:
-      GARAGE_CONFIG_FILE: /etc/garage.toml
-
-  garage-init:
-    image: dxflrs/garage:v1.0.1
-    container_name: codebuff-local-garage-init
+      GARAGE_CONFIG_FILE: /etc/garage/garage.toml
+    entrypoint: ["/garage", "server"]
     depends_on:
-      - garage
-    volumes:
-      - ./garage.toml:/etc/garage.toml:ro
-    environment:
-      GARAGE_CONFIG_FILE: /etc/garage.toml
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        for i in $(seq 1 30); do
-          if garage node id >/dev/null 2>&1; then
-            break
-          fi
-          sleep 1
-        done
-        NODE_ID=$$(garage node id)
-        if ! garage layout show 2>/dev/null | grep -q "$$NODE_ID"; then
-          garage layout assign "$$NODE_ID" -z zone1 -c 1G -t 1G
-          garage layout apply --version 1
-        fi
-        garage key info local-dev-key >/dev/null 2>&1 || garage key create local-dev-key
-        garage bucket info codebuff-local >/dev/null 2>&1 || garage bucket create codebuff-local
-        garage bucket allow codebuff-local --read --write --key local-dev-key || true
+      init:
+        condition: service_healthy
 
   app:
     image: node:22-alpine
@@ -85,16 +55,47 @@ services:
       PG_DB: ${PG_DB:-codebuff_next}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS:-dev-local-secret-that-must-be-at-least-32-characters-long-for-better-auth}
-    depends_on:
-      postgres:
-        condition: service_healthy
     profiles:
       - app
     tty: true
     stdin_open: true
     restart: no
 
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: codebuff-local-init
+    working_dir: /app
+    volumes:
+      - garage_config:/etc/garage
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${PG_USER:-codebuff}
+      POSTGRES_PASSWORD: ${PG_PWD:-codebuff}
+      POSTGRES_DB: ${PG_DB:-codebuff_next}
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: ${PG_USER:-codebuff}
+      PG_PWD: ${PG_PWD:-codebuff}
+      PG_DB: ${PG_DB:-codebuff_next}
+      AUTH_BOOTSTRAP_NAME: ${AUTH_BOOTSTRAP_NAME:-Codebuff Admin}
+      AUTH_BOOTSTRAP_EMAIL: ${AUTH_BOOTSTRAP_EMAIL:-admin@codebuff.local}
+      AUTH_BOOTSTRAP_PASSWORD: ${AUTH_BOOTSTRAP_PASSWORD:-Local-Dev-Bootstrap-Password}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRETS:-dev-local-secret-that-must-be-at-least-32-characters-long-for-better-auth}
+      BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS:-dev-local-secret-that-must-be-at-least-32-characters-long-for-better-auth}
+    healthcheck:
+      test: ["CMD", "cat", "/etc/garage/garage.toml"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   garage_data:
+  garage_config:
   node_modules:

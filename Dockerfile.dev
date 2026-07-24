@@ -1,0 +1,183 @@
+# syntax=docker/dockerfile:1
+
+# 本地开发环境初始化镜像
+# 用于在容器内执行 PostgreSQL 迁移、Garage 配置生成与集群布局初始化等任务
+# 将源码、依赖与初始化脚本一并打包进镜像，避免挂载宿主机目录带来的跨平台兼容问题
+# （如 CRLF、权限、符号链接等），也无需依赖宿主机上的 scripts/init.sh
+
+FROM node:22-alpine
+
+# 安装运行时系统依赖:
+# - postgresql-client: 提供 pg_isready 用于等待 PostgreSQL 就绪
+# - docker-cli: 用于通过 docker exec 操作 Garage 容器
+RUN apk add --no-cache postgresql-client docker-cli
+
+WORKDIR /app
+
+# 先复制依赖描述文件以利用 Docker 层缓存
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+
+# 复制项目源码并预编译迁移脚本
+COPY . .
+RUN pnpm build:migrate
+
+# 将初始化脚本内联写入镜像（不再依赖宿主机 scripts/init.sh）
+COPY <<'INIT_SCRIPT' /usr/local/bin/init.sh
+#!/bin/sh
+
+# ==============================================================================
+# 脚本用途: 执行 Codebuff 本地开发环境的初始化工作
+# 依赖条件:
+#   1. 需要挂载 garage_config volume 到 /etc/garage (用于写入 garage.toml)
+#   2. 需要挂载 Docker socket 到 /var/run/docker.sock (用于通过 docker exec 操作 Garage)
+# 主要功能:
+#   1. 生成 Garage 对象存储配置文件 (garage.toml)
+#   2. 等待 PostgreSQL 就绪后执行数据库迁移与初始用户引导
+#   3. 等待 Garage 服务启动后执行集群布局初始化
+# ==============================================================================
+
+# 启用严格模式: 遇到错误立即退出，未定义变量引用时报错
+set -e
+
+# ==============================================================================
+# 环境变量配置
+# ==============================================================================
+
+# PostgreSQL 连接配置 (可通过环境变量覆盖)
+POSTGRES_HOST="${POSTGRES_HOST:-postgres}"      # PostgreSQL 主机名
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"          # PostgreSQL 端口
+POSTGRES_USER="${POSTGRES_USER:-codebuff}"      # PostgreSQL 用户名
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-codebuff}"  # PostgreSQL 密码
+POSTGRES_DB="${POSTGRES_DB:-codebuff_next}"     # PostgreSQL 数据库名
+
+# Garage 容器名称 (需与 docker-compose.yml 中定义的一致)
+GARAGE_CONTAINER="codebuff-local-garage"
+
+# ==============================================================================
+# 阶段一: 生成 Garage 配置文件
+# ==============================================================================
+
+echo "=== Phase 1: Generating Garage configuration ==="
+
+# 将 garage.toml 配置写入到 /etc/garage 目录
+cat > /etc/garage/garage.toml << 'EOF'
+# Garage 对象存储配置文件
+# 参考文档: https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/
+
+# 元数据存储目录
+metadata_dir = "/var/lib/garage/meta"
+
+# 数据存储目录
+data_dir = "/var/lib/garage/data"
+
+# 数据库引擎选择 (lmdb 或 sled)
+db_engine = "lmdb"
+
+# 副本因子 (单节点测试环境使用 1)
+replication_factor = 1
+
+# RPC 通信密钥 (用于节点间安全通信，生产环境应使用随机生成的密钥)
+rpc_secret = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+# RPC 绑定地址 (节点间通信端口)
+rpc_bind_addr = "[::]:3901"
+
+# RPC 公开地址 (其他节点用来连接此节点的地址)
+rpc_public_addr = "garage:3901"
+
+# S3 API 配置
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+# S3 Web 配置 (静态网站托管)
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+EOF
+
+echo "Garage configuration generated successfully"
+
+# 等待一段时间确保 garage 服务检测到配置文件
+sleep 2
+
+# ==============================================================================
+# 阶段二: 初始化 PostgreSQL (等待就绪、执行迁移、创建初始用户)
+# ==============================================================================
+
+echo "=== Phase 2: Initializing PostgreSQL ==="
+
+# 等待 PostgreSQL 服务就绪
+echo "Waiting for PostgreSQL to be ready..."
+POSTGRES_READY=false
+for i in $(seq 1 60); do
+  if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" >/dev/null 2>&1; then
+    echo "PostgreSQL is ready"
+    POSTGRES_READY=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "$POSTGRES_READY" = "true" ]; then
+  # 执行数据库迁移 (迁移脚本已在镜像构建阶段由 pnpm build:migrate 编译完成)
+  echo "Applying database migrations..."
+  if node .build/migrate/migrate/index.js; then
+    echo "Database migrations applied successfully"
+  else
+    echo "WARNING: Database migration failed, continuing..."
+  fi
+
+  # 创建初始认证用户 (若用户已存在则跳过)
+  echo "Bootstrapping authentication user..."
+  if node scripts/bootstrap-auth-user.mjs; then
+    echo "Authentication user created successfully"
+  else
+    echo "WARNING: Authentication user bootstrap skipped (may already exist)"
+  fi
+else
+  echo "WARNING: PostgreSQL did not become ready in time, skipping database initialization"
+fi
+
+# ==============================================================================
+# 阶段三: 初始化 Garage 集群 (单节点开发环境)
+# ==============================================================================
+
+echo "=== Phase 3: Initializing Garage cluster ==="
+
+# 等待 Garage 就绪
+echo "Waiting for Garage service..."
+for i in $(seq 1 60); do
+  docker exec "$GARAGE_CONTAINER" /garage -c /etc/garage/garage.toml node id >/dev/null 2>&1 && break
+  sleep 1
+done
+
+# 获取节点 ID，若未在布局中则分配并应用 (单节点固定使用 version 1)
+NODE_ID=$(docker exec "$GARAGE_CONTAINER" /garage -c /etc/garage/garage.toml node id 2>/dev/null | grep -o '[0-9a-f]\{64\}')
+
+if [ -z "$NODE_ID" ]; then
+  echo "WARNING: Failed to get Garage Node ID, skipping layout initialization"
+elif docker exec "$GARAGE_CONTAINER" /garage -c /etc/garage/garage.toml layout show 2>/dev/null | grep -q "$NODE_ID"; then
+  echo "Layout already configured"
+else
+  echo "Configuring single-node layout..."
+  docker exec "$GARAGE_CONTAINER" /garage -c /etc/garage/garage.toml layout assign "$NODE_ID" -z zone1 -c 1G -t 1G
+  docker exec "$GARAGE_CONTAINER" /garage -c /etc/garage/garage.toml layout apply --version 1
+  echo "Layout applied"
+fi
+
+# ==============================================================================
+# 保持容器运行
+# ==============================================================================
+
+echo "=== Initialization complete ==="
+
+# 保持容器运行以通过 healthcheck
+tail -f /dev/null
+INIT_SCRIPT
+
+RUN chmod +x /usr/local/bin/init.sh
+
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/init.sh"]
