@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 
@@ -11,6 +11,9 @@ const inputClassName =
 
 const buttonClassName =
   "mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none";
+
+const warningBoxClassName =
+  "rounded-md border border-border bg-surface-muted p-4";
 
 type EnableStep = "idle" | "setup";
 
@@ -24,11 +27,16 @@ export function TotpSection({ enabled }: { enabled: boolean }) {
 
 function EnableSection() {
   const router = useRouter();
+  const passwordInputId = useId();
+  const codeInputId = useId();
+  const savedCheckboxId = useId();
+
   const [step, setStep] = useState<EnableStep>("idle");
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [codesSaved, setCodesSaved] = useState(false);
 
   async function handleEnable(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,21 +54,32 @@ function EnableSection() {
         return;
       }
 
-      const data = result.data as { totpURI: string; backupCodes: string[] } | null;
+      const data = result.data as {
+        totpURI: string;
+        backupCodes: string[];
+      } | null;
 
       if (!data) {
         setMessage("暂时无法启用，请稍后重试。");
         return;
       }
 
-      const dataUrl = await QRCode.toDataURL(data.totpURI, {
-        width: 200,
-        margin: 1,
-        color: { dark: "#181512", light: "#ffffff" },
-      });
+      let dataUrl: string;
+
+      try {
+        dataUrl = await QRCode.toDataURL(data.totpURI, {
+          width: 200,
+          margin: 1,
+          color: { dark: "#181512", light: "#ffffff" },
+        });
+      } catch {
+        setMessage("二维码生成失败，请重试。");
+        return;
+      }
 
       setBackupCodes(data.backupCodes);
       setQrDataUrl(dataUrl);
+      setCodesSaved(false);
       setStep("setup");
     } catch {
       setMessage("暂时无法启用，请稍后重试。");
@@ -112,17 +131,37 @@ function EnableSection() {
         </div>
 
         {backupCodes.length > 0 && (
-          <div className="mt-6 rounded-md border border-border bg-surface-muted p-4">
-            <p
-              className="m-0 font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
-              lang="en"
-            >
-              Backup codes
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              请妥善保存以下恢复码。丢失认证设备时可用它们恢复访问。
-            </p>
-            <ul className="mt-3 grid grid-cols-2 gap-1 font-mono text-sm">
+          <div className={warningBoxClassName}>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-background">
+                <svg
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    clipRule="evenodd"
+                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625l6.28-10.875zM11 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1-8a1 1 0 0 0-1 1v3a1 1 0 0 0 2 0V6a1 1 0 0 0-1-1z"
+                    fillRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p
+                  className="m-0 font-medium text-foreground"
+                  lang="en"
+                >
+                  Save your recovery codes
+                </p>
+                <p className="m-0 mt-1 text-sm leading-body text-muted-foreground">
+                  在继续之前，请将恢复码保存到安全位置。这是你唯一一次可以查看它们。
+                  如果丢失认证设备且没有恢复码，将无法恢复账户访问。
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-4 grid grid-cols-2 gap-2 rounded-md border border-border bg-background p-4 font-mono text-sm">
               {backupCodes.map((code) => (
                 <li key={code} className="text-foreground">
                   {code}
@@ -136,7 +175,7 @@ function EnableSection() {
           <div>
             <label
               className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
-              htmlFor="totp-code"
+              htmlFor={codeInputId}
               lang="en"
             >
               Verification code
@@ -144,7 +183,7 @@ function EnableSection() {
             <input
               autoComplete="one-time-code"
               className={inputClassName}
-              id="totp-code"
+              id={codeInputId}
               inputMode="numeric"
               maxLength={6}
               name="code"
@@ -156,6 +195,22 @@ function EnableSection() {
             />
           </div>
 
+          <div className="mt-5 flex items-start gap-3">
+            <input
+              checked={codesSaved}
+              className="mt-1 h-4 w-4 shrink-0 accent-foreground"
+              id={savedCheckboxId}
+              onChange={(event) => setCodesSaved(event.target.checked)}
+              type="checkbox"
+            />
+            <label
+              className="text-sm leading-body text-foreground"
+              htmlFor={savedCheckboxId}
+            >
+              我已将恢复码保存到安全位置。
+            </label>
+          </div>
+
           <p
             aria-live="polite"
             className="mt-5 min-h-[1.65em] text-sm text-accent"
@@ -164,7 +219,11 @@ function EnableSection() {
             {message}
           </p>
 
-          <button className={buttonClassName} disabled={isPending} type="submit">
+          <button
+            className={buttonClassName}
+            disabled={isPending || !codesSaved}
+            type="submit"
+          >
             {isPending ? "Verifying…" : "Confirm and enable"}
           </button>
         </form>
@@ -182,7 +241,7 @@ function EnableSection() {
         <div>
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
-            htmlFor="enable-password"
+            htmlFor={passwordInputId}
             lang="en"
           >
             Current password
@@ -190,7 +249,7 @@ function EnableSection() {
           <input
             autoComplete="current-password"
             className={inputClassName}
-            id="enable-password"
+            id={passwordInputId}
             maxLength={128}
             minLength={15}
             name="password"
@@ -217,6 +276,7 @@ function EnableSection() {
 
 function DisableSection() {
   const router = useRouter();
+  const passwordInputId = useId();
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -254,7 +314,7 @@ function DisableSection() {
         <div>
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
-            htmlFor="disable-password"
+            htmlFor={passwordInputId}
             lang="en"
           >
             Current password
@@ -262,7 +322,7 @@ function DisableSection() {
           <input
             autoComplete="current-password"
             className={inputClassName}
-            id="disable-password"
+            id={passwordInputId}
             maxLength={128}
             minLength={15}
             name="password"

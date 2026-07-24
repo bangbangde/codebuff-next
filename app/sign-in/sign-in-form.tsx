@@ -15,6 +15,7 @@ export function SignInForm() {
   const [step, setStep] = useState<Step>("credentials");
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   async function handleCredentialsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,6 +25,8 @@ export function SignInForm() {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
+
+    setPendingEmail(email);
 
     try {
       const result = await authClient.signIn.email({ email, password });
@@ -54,7 +57,7 @@ export function SignInForm() {
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
-    const code = String(formData.get("code") ?? "").trim();
+    const code = String(formData.get("totp-code") ?? "").trim();
 
     try {
       const result = await authClient.twoFactor.verifyTotp({ code });
@@ -76,10 +79,18 @@ export function SignInForm() {
   if (step === "totp") {
     return (
       <form className="mt-10" onSubmit={handleTotpSubmit}>
-        <div>
+        <div className="rounded-md border border-border bg-surface-muted p-4">
+          <p className="m-0 text-sm leading-body text-foreground">
+            两步验证已启用。请输入认证应用为账户
+            <span className="font-medium"> {pendingEmail} </span>
+            生成的 6 位验证码。
+          </p>
+        </div>
+
+        <div className="mt-6">
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
-            htmlFor="code"
+            htmlFor="totp-code"
             lang="en"
           >
             Authentication code
@@ -87,10 +98,10 @@ export function SignInForm() {
           <input
             autoComplete="one-time-code"
             className={inputClassName}
-            id="code"
+            id="totp-code"
             inputMode="numeric"
             maxLength={6}
-            name="code"
+            name="totp-code"
             pattern="[0-9]{6}"
             placeholder="000000"
             required
@@ -113,17 +124,6 @@ export function SignInForm() {
           type="submit"
         >
           {isPending ? "Verifying…" : "Verify"}
-        </button>
-
-        <button
-          className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-5 py-2.5 font-mono text-sm text-muted-foreground transition-[color,border-color] duration-150 ease-[ease] hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent motion-reduce:transition-none"
-          onClick={() => {
-            setStep("credentials");
-            setMessage("");
-          }}
-          type="button"
-        >
-          Back to sign in
         </button>
       </form>
     );

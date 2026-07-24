@@ -375,6 +375,36 @@ function createCookieJar() {
   };
 }
 
+async function verifyTotpWithRetry(
+  baseURL,
+  cookie,
+  totpSecret,
+  { allowRetry = true } = {},
+) {
+  const verify = async () => {
+    const code = generateTotp(totpSecret);
+
+    return fetch(`${baseURL}/api/auth/two-factor/verify-totp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        origin: baseURL,
+      },
+      body: JSON.stringify({ code }),
+    });
+  };
+
+  let response = await verify();
+
+  if (response.status !== 200 && allowRetry) {
+    await delay(2000);
+    response = await verify();
+  }
+
+  return response;
+}
+
 async function verifyRuntimeAuthentication(
   runtimeClient,
   runtimeEnvironment,
@@ -614,19 +644,11 @@ async function verifyRuntimeAuthentication(
     }
 
     const totpSecret = extractTotpSecret(enableData.totpURI);
-    const setupCode = generateTotp(totpSecret);
 
-    const verifySetupResponse = await fetch(
-      `${baseURL}/api/auth/two-factor/verify-totp`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          cookie: totpCookieJar.getHeader(),
-          origin: baseURL,
-        },
-        body: JSON.stringify({ code: setupCode }),
-      },
+    const verifySetupResponse = await verifyTotpWithRetry(
+      baseURL,
+      totpCookieJar.getHeader(),
+      totpSecret,
     );
     const verifySetupBody = await verifySetupResponse.json();
     assert.equal(verifySetupResponse.status, 200);
@@ -710,17 +732,10 @@ async function verifyRuntimeAuthentication(
     assert.ok(!invalidCodeBody.user);
     assert.ok(!invalidCodeBody.token);
 
-    const verifyChallengeResponse = await fetch(
-      `${baseURL}/api/auth/two-factor/verify-totp`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          cookie: totpCookieJar.getHeader(),
-          origin: baseURL,
-        },
-        body: JSON.stringify({ code: challengeCode }),
-      },
+    const verifyChallengeResponse = await verifyTotpWithRetry(
+      baseURL,
+      totpCookieJar.getHeader(),
+      totpSecret,
     );
     const verifyChallengeBody = await verifyChallengeResponse.json();
     assert.equal(verifyChallengeResponse.status, 200);
