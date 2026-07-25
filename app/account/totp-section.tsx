@@ -274,11 +274,18 @@ function EnableSection() {
   );
 }
 
+type DisableStep = "idle" | "regenerate-prompt" | "regenerate";
+
 function DisableSection() {
   const router = useRouter();
   const passwordInputId = useId();
+  const regeneratePasswordId = useId();
+  const savedCheckboxId = useId();
+  const [disableStep, setDisableStep] = useState<DisableStep>("idle");
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [regenerateCodes, setRegenerateCodes] = useState<string[]>([]);
+  const [codesSaved, setCodesSaved] = useState(false);
 
   async function handleDisable(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -304,13 +311,182 @@ function DisableSection() {
     }
   }
 
+  async function handleRegenerate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsPending(true);
+    setMessage("");
+
+    const formData = new FormData(event.currentTarget);
+    const password = String(formData.get("regenerate-password") ?? "");
+
+    try {
+      const result = await authClient.twoFactor.generateBackupCodes({
+      password,
+    });
+
+      if (result.error) {
+        setMessage("密码不正确，请重试。");
+        return;
+      }
+
+      const data = result.data as {
+        status: boolean;
+        backupCodes: string[];
+      } | null;
+
+      if (!data || !data.backupCodes?.length) {
+        setMessage("暂时无法生成，请稍后重试。");
+        return;
+      }
+
+      setRegenerateCodes(data.backupCodes);
+      setCodesSaved(false);
+      setDisableStep("regenerate");
+    } catch {
+      setMessage("暂时无法生成，请稍后重试。");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  if (disableStep === "regenerate") {
+    return (
+      <div>
+        <div className={warningBoxClassName}>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-background">
+              <svg
+                aria-hidden="true"
+                className="h-3.5 w-3.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  clipRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625l6.28-10.875zM11 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1-8a1 1 0 0 0-1 1v3a1 1 0 0 0 2 0V6a1 1 0 0 0-1-1z"
+                  fillRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p
+                className="m-0 font-medium text-foreground"
+                lang="en"
+              >
+                Save your new recovery codes
+              </p>
+              <p className="m-0 mt-1 text-sm leading-body text-muted-foreground">
+                旧的恢复码已全部作废。请将新的恢复码保存到安全位置。这是你唯一一次可以查看它们。
+              </p>
+            </div>
+          </div>
+
+          <ul className="mt-4 grid grid-cols-2 gap-2 rounded-md border border-border bg-background p-4 font-mono text-sm">
+            {regenerateCodes.map((code) => (
+              <li key={code} className="text-foreground">
+                {code}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-5 flex items-start gap-3">
+          <input
+            checked={codesSaved}
+            className="mt-1 h-4 w-4 shrink-0 accent-foreground"
+            id={savedCheckboxId}
+            onChange={(event) => setCodesSaved(event.target.checked)}
+            type="checkbox"
+          />
+          <label
+            className="text-sm leading-body text-foreground"
+            htmlFor={savedCheckboxId}
+          >
+            我已将新恢复码保存到安全位置。
+          </label>
+        </div>
+
+        <button
+          className={buttonClassName}
+          disabled={!codesSaved}
+          onClick={() => {
+            setDisableStep("idle");
+            setRegenerateCodes([]);
+            setCodesSaved(false);
+            setMessage("");
+          }}
+          type="button"
+        >
+          完成
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <p className="mt-3 text-sm leading-body text-muted-foreground">
         两步验证已启用。禁用后登录将仅需要密码。
       </p>
 
-      <form className="mt-6" onSubmit={handleDisable}>
+      {disableStep === "regenerate-prompt" ? (
+        <form className="mt-6" onSubmit={handleRegenerate}>
+          <div>
+            <label
+              className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
+              htmlFor={regeneratePasswordId}
+              lang="en"
+            >
+              Current password
+            </label>
+            <input
+              autoComplete="current-password"
+              className={inputClassName}
+              id={regeneratePasswordId}
+              maxLength={128}
+              minLength={15}
+              name="regenerate-password"
+              required
+              type="password"
+            />
+          </div>
+
+          <p
+            aria-live="polite"
+            className="mt-5 min-h-[1.65em] text-sm text-accent"
+            role="status"
+          >
+            {message}
+          </p>
+
+          <button className={buttonClassName} disabled={isPending} type="submit">
+            {isPending ? "Generating…" : "Generate new codes"}
+          </button>
+
+          <button
+            className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+            onClick={() => {
+              setDisableStep("idle");
+              setMessage("");
+            }}
+            type="button"
+          >
+            取消
+          </button>
+        </form>
+      ) : (
+        <button
+          className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-5 py-3 font-mono text-sm font-medium text-foreground transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          onClick={() => setDisableStep("regenerate-prompt")}
+          type="button"
+        >
+          重新生成恢复码
+        </button>
+      )}
+
+      <div className="my-6 h-px bg-border" />
+
+      <form onSubmit={handleDisable}>
         <div>
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
