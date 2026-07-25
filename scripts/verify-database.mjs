@@ -749,10 +749,11 @@ async function verifyRuntimeAuthentication(
     );
     assert.equal(activeChallengeSessions.rows[0].count, 1);
 
-    // The /sign-in/email custom rule (max: 5 per 60s) is already exhausted by
-    // the preceding sign-in and TOTP challenge flows. Reset the counters so the
-    // backup-code recovery flow can issue its own sign-in attempts. Rate-limit
-    // enforcement itself was already asserted above.
+    // Rate-limit reset point: the /sign-in/email custom rule (max: 5 per 60s)
+    // and the two-factor plugin rule (/two-factor/* max: 3 per 10s) are both
+    // exhausted by the preceding flows. Reset the counters so the backup-code
+    // recovery flow can issue its own requests. Rate-limit enforcement itself
+    // was already asserted above.
     await runtimeClient.query("DELETE FROM rate_limit");
 
     // === Backup code recovery flow ===
@@ -871,6 +872,10 @@ async function verifyRuntimeAuthentication(
     assert.equal(consumedBackupResponse.status, 401);
     assert.equal(consumedBackupBody.code, "INVALID_BACKUP_CODE");
 
+    // Rate-limit reset point: the three backup-code verifications above
+    // exhausted the two-factor plugin's /two-factor/* budget (max: 3 per 10s).
+    await runtimeClient.query("DELETE FROM rate_limit");
+
     // The generate-backup-codes endpoint requires an authenticated session
     // (sessionMiddleware). The preceding sign-out revoked the session and
     // the second sign-in/email only issued a 2FA cookie, so re-establish a
@@ -930,6 +935,10 @@ async function verifyRuntimeAuthentication(
     for (const code of regenerateData.backupCodes) {
       additionalSecrets.add(code);
     }
+
+    // Rate-limit reset point: the regenerate-session verification plus two
+    // generate-backup-codes calls exhausted the /two-factor/* budget again.
+    await runtimeClient.query("DELETE FROM rate_limit");
 
     const oldBackupAfterRegenerate = await fetch(
       `${baseURL}/api/auth/two-factor/verify-backup-code`,
