@@ -911,7 +911,9 @@ async function verifyRuntimeAuthentication(
         body: JSON.stringify({ password: `${accountPassword}-wrong` }),
       },
     );
-    assert.equal(regenerateResponse.status, 401);
+    // checkPassword rejects an incorrect password with BAD_REQUEST (400),
+    // not UNAUTHORIZED, because the session itself is valid.
+    assert.equal(regenerateResponse.status, 400);
 
     const regenerateSuccessResponse = await fetch(
       `${baseURL}/api/auth/two-factor/generate-backup-codes`,
