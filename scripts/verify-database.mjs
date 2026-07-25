@@ -871,6 +871,29 @@ async function verifyRuntimeAuthentication(
     assert.equal(consumedBackupResponse.status, 401);
     assert.equal(consumedBackupBody.code, "INVALID_BACKUP_CODE");
 
+    // The generate-backup-codes endpoint requires an authenticated session
+    // (sessionMiddleware). The preceding sign-out revoked the session and
+    // the second sign-in/email only issued a 2FA cookie, so re-establish a
+    // session by completing the 2FA challenge with a fresh backup code
+    // before exercising the regenerate flow.
+    const regenerateSessionResponse = await fetch(
+      `${baseURL}/api/auth/two-factor/verify-backup-code`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: totpCookieJar.getHeader(),
+          origin: baseURL,
+        },
+        body: JSON.stringify({ code: enableData.backupCodes[1] }),
+      },
+    );
+    const regenerateSessionBody = await regenerateSessionResponse.json();
+    assert.equal(regenerateSessionResponse.status, 200);
+    assert.equal(regenerateSessionBody.user.email, accountEmail);
+    totpCookieJar.update(regenerateSessionResponse);
+    additionalSecrets.add(regenerateSessionBody.token);
+
     const regenerateResponse = await fetch(
       `${baseURL}/api/auth/two-factor/generate-backup-codes`,
       {
