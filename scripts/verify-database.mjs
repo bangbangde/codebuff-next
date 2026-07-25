@@ -749,6 +749,12 @@ async function verifyRuntimeAuthentication(
     );
     assert.equal(activeChallengeSessions.rows[0].count, 1);
 
+    // The /sign-in/email custom rule (max: 5 per 60s) is already exhausted by
+    // the preceding sign-in and TOTP challenge flows. Reset the counters so the
+    // backup-code recovery flow can issue its own sign-in attempts. Rate-limit
+    // enforcement itself was already asserted above.
+    await runtimeClient.query("DELETE FROM rate_limit");
+
     // === Backup code recovery flow ===
     const backupSignOutResponse = await fetch(`${baseURL}/api/auth/sign-out`, {
       method: "POST",
