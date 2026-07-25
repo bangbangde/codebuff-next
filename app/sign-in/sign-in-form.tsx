@@ -110,7 +110,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/account");
+      router.replace("/account?recovery=1");
       router.refresh();
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
