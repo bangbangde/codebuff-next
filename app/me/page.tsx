@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getCurrentSession } from "@/lib/auth/session";
 import { ContentContainer } from "../_components/content-container";
 import { SectionLabel } from "../_components/section-label";
 import { FactList } from "./_components/fact-list";
@@ -35,13 +36,14 @@ export const metadata: Metadata = {
   description: "A concise introduction to CQ and the work behind CQ’s Lab.",
 };
 
-export default function MePage() {
+export default async function MePage() {
+  const session = await getCurrentSession();
+  const user = session?.user ?? null;
+
   return (
-    <main
-      className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]"
-      id="main-content"
-    >
+    <main className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]" id="main-content">
       <ContentContainer>
+        {user ? "Account" : "Sign in"}
         <section
           className="border-b border-border pb-[clamp(4rem,8vw,7rem)]"
           aria-labelledby="me-page-title"
@@ -49,7 +51,7 @@ export default function MePage() {
           <SectionLabel>Me / Frontend engineer</SectionLabel>
           <div className="mt-6 grid grid-cols-[minmax(0,0.9fr)_minmax(24rem,1fr)] [align-items:start] gap-[clamp(3rem,8vw,8rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
             <h1
-              className="m-0 max-w-[12ch] text-display font-[520] leading-display tracking-[-0.05em]"
+              className="m-0 max-w-[12ch] text-display font-[520] leading-display tracking-tighter"
               id="me-page-title"
               lang="en"
             >
@@ -57,10 +59,11 @@ export default function MePage() {
             </h1>
             <div className="pt-2 [@media(max-width:40rem)]:pt-0">
               <p
-                className="m-0 max-w-[38rem] text-lg leading-body text-muted-foreground"
+                className="m-0 max-w-152 text-lg leading-body text-muted-foreground"
                 lang="zh-CN"
               >
-                我是一名前端工程师，关注产品理解、系统设计与工程判断，也在持续实践 AI-native 的软件协作方式
+                我是一名前端工程师，关注产品理解、系统设计与工程判断，也在持续实践
+                AI-native 的软件协作方式。
               </p>
               <div lang="en">
                 <FactList facts={facts} />

@@ -33,10 +33,10 @@ separate approved work item explicitly changes them.
 | Shared document chrome | `app/layout.tsx`, `app/site-header.tsx`, `app/site-footer.tsx` | Root composition, skip link, site shell, sticky header, primary navigation, and footer implemented with Tailwind utilities |
 | Brand mark | `app/brand-mark.tsx` | Decorative monoline SVG with Tailwind-owned presentation inside the accessible home link; foreground and warm-accent strokes inherit theme colors |
 | Global theme and document rules | `app/globals.css` | Runtime color theme, Tailwind theme mappings, global focus, and selection |
-| Landing | `app/page.tsx` | Tailwind-first reference editorial direction, Lab and Me discovery, interactive entry rows, fact summary, and page ending |
-| Lab | `app/lab/page.tsx`, `app/content.ts` | Tailwind-first editorial page header and numbered, anchorable article rows |
-| Me | `app/me/page.tsx` | Tailwind-first split editorial introduction, fact summary, and three-part practice composition |
-| Shared content semantics | `app/fact-list.tsx`, `app/section-label.tsx` | Semantic fact-list markup and the repeated Lab/Me paragraph-style section label; surface composition remains with each page |
+| Home | `app/page.tsx` | Tailwind-first landing intro + full Notes index; combines former Landing hero and Notes listing into one page |
+| Notes detail | `app/notes/[slug]/page.tsx` | SSG-rendered note detail pages preserved for URL stability |
+| Me | `app/me/page.tsx` | Tailwind-first editorial introduction, fact summary, practice composition, and session-guarded account-security section |
+| Shared content semantics | `app/_components/section-label.tsx`, `app/me/_components/fact-list.tsx` | Semantic fact-list markup and the repeated section label; surface composition remains with each page |
 | Stable product rules | `docs/project.md` | Editorial language, punctuation, visual direction, and page-ending guidance |
 
 Global chrome, Landing, Lab, and Me now use Tailwind utilities as their primary
@@ -76,8 +76,8 @@ theme-specific color literals, which is a boundary to preserve. The unused
 | Tailwind `--text-sm` | `0.875rem` | Skip link, header links, Landing section links | Tailwind v4 default is the shared control-size authority |
 | Tailwind `--text-base` | `1rem` | Body and Landing end note | Tailwind v4 default is the body-size authority |
 | Tailwind `--text-lg` | `1.125rem` | Landing supporting copy and title arrow, interior introductions | Tailwind v4 default is the lead-size authority |
-| `--text-display` | `clamp(2.25rem, 6vw, 4.75rem)` | Lab and Me `h1` | Intentional project value registered in `@theme inline` |
-| `--leading-display` | `1.05` | Lab and Me `h1` | Intentional project value registered without overriding Tailwind's `leading-tight` |
+| `--text-display` | `clamp(2.25rem, 6vw, 4.75rem)` | Notes detail and Me `h1` | Intentional project value registered in `@theme inline` |
+| `--leading-display` | `1.05` | Notes detail and Me `h1` | Intentional project value registered without overriding Tailwind's `leading-tight` |
 | `--leading-body` | `1.65` | `body` | Intentional project reading leading registered in `@theme inline` |
 | `--tracking-label` | `0.08em` | Kicker, indexes, metadata, fact terms, interior eyebrows, end label | Intentional editorial-label tracking registered in `@theme inline` |
 
@@ -93,7 +93,7 @@ until another surface demonstrates the same role.
 ### Spacing
 
 Tailwind v4's installed `--spacing: 0.25rem` scale owns fixed spacing. Issue #20
-retired the remaining `--space-*` aliases after Lab and Me migrated. Fluid
+retired the remaining `--space-*` aliases after Home/Notes and Me migrated. Fluid
 composition values remain explicit arbitrary utilities such as
 `clamp(3rem,7vw,6rem)` because they encode surface-specific responsive rhythm,
 not reusable fixed spacing tokens.
@@ -110,7 +110,7 @@ not reusable fixed spacing tokens.
 ## Responsive, focus, theme, and motion boundaries
 
 - `40rem` is the shared narrow-layout boundary. It collapses the footer, Landing
-  entry/about layouts, Lab rows, and Me split/principle layouts. It matches the
+  entry/about layouts, Home notes index, and Me split/principle layouts. It matches the
   installed Tailwind `sm` breakpoint value, but current CSS uses a max-width
   query and must retain the same side of the boundary during migration.
 - `64rem` is Landing's wide hero boundary. It matches the installed Tailwind
@@ -130,7 +130,7 @@ not reusable fixed spacing tokens.
   it would be an intentional behavior choice and should not be hidden inside a
   mechanical migration.
 - Sticky-header offset behavior is split between `html` scroll padding and Lab
-  item `scroll-mt-8`. `/lab#…` destinations remain a required regression check.
+  item `scroll-mt-8`. `/notes/…` destinations remain a required regression check.
 
 ## Pattern classification
 
@@ -141,7 +141,7 @@ not reusable fixed spacing tokens.
 | Semantic color theme | Every surface consumes the same background, foreground, muted, accent, soft-accent, and border roles | CSS variables for light/dark values; Tailwind `--color-*` inline aliases | Do not place palette literals in components; verify all surfaces in both system themes |
 | Body and metadata typography | Body stack is global; monospaced labels appear in header, footer, Landing, Lab, and Me | Tailwind font, text, leading, and tracking theme namespaces | Do not turn distinct fluid display hierarchies into one generic heading scale |
 | Structural rules | Header, sections, lists, facts, cards, and endcap consistently use a one-pixel semantic border | Semantic border color plus Tailwind's default border width | Preserve exactly which edges are drawn; a generic bordered container is not supported by evidence |
-| Editorial label | Landing kicker/index, Lab/Me eyebrow, list metadata, fact terms, principle index, and end label share mono type, compact size, and tracking | `SectionLabel` owns only the identical Lab/Me paragraph-style section label; other semantic elements keep local Tailwind recipes | `dt`, entry metadata, and numerical indexes have different semantics and are not forced through the component |
+| Editorial label | Landing kicker/index, Me eyebrow, list metadata, fact terms, principle index, and end label share mono type, compact size, and tracking | `SectionLabel` owns only the identical Lab/Me paragraph-style section label; other semantic elements keep local Tailwind recipes | `dt`, entry metadata, and numerical indexes have different semantics and are not forced through the component |
 | Fact list | Landing and Me repeat `dl > div > dt + dd`, border rules, mono terms, and row rhythm | `FactList` owns the semantic markup, rule, row spacing, and term typography; each page supplies its column composition | No generic variants: Landing retains its 5rem term column and Me retains its 8rem-to-5rem responsive behavior |
 | Global chrome | Header, navigation, shell, skip link, and footer are shared by the root layout | Focused `SiteHeader` and `SiteFooter` components own their Tailwind utilities; `layout.tsx` owns composition | They remain single global instances; the boundary expresses semantic ownership rather than a generic component system |
 | BrandMark | Existing focused React component, consumed by the global home link | React owns the SVG and its Tailwind presentation | Preserve decorative SVG semantics, accessible link label, dimensions, stroke widths, currentColor behavior, and accent nodes |
@@ -149,14 +149,15 @@ not reusable fixed spacing tokens.
 
 ### Surface-specific composition to retain locally
 
-- Landing's oversized single-line wide hero, two discovery sections, interactive
-  entry grid, about split, and centered endcap form its reference composition.
-- Lab's article rows are non-clickable, anchorable content records. They should
-  not share a component with Landing's interactive entry links even though both
-  use numbered metadata and structural rules.
+- Home (/) carries both the Landing hero and the full Notes index in a single page. The hero
+  retains Landing's oversized single-line heading, status pulse, and supporting copy. The Notes
+  index below it uses the former Notes-page listing style with numbered rows, excerpts, and metadata.
+- Notes detail (/notes/[slug]) preserves its SSG-rendered article layout with back-link to Home.
+
+
 - Me's split hero and three-column practice sequence express Me-specific content
   relationships. Their responsive collapse remains colocated in `app/me/page.tsx`.
-- Lab and Me keep distinct page composition. Their JSX differs enough that a
+- Home/Notes and Me keep distinct page composition. Their JSX differs enough that a
   generic page-template component would add props without removing meaningful
   duplication.
 - Fluid heading sizes, grid fractions, reading measures, end-mark geometry, and
@@ -172,7 +173,7 @@ not reusable fixed spacing tokens.
   versus expanding/translated rows. Do not merge them without review.
 - Repeated grid fractions around `0.3fr` describe different content structures,
   not a shared layout primitive.
-- Landing and interior reading widths (`36rem`, `38rem`, `40rem`, and `44rem`)
+- Home and interior reading widths (`36rem`, `38rem`, `40rem`, and `44rem`)
   are context-specific measures, not evidence for several global container
   tokens.
 - The unused `surface`, project radius, and shadow declarations were retired in
@@ -202,7 +203,7 @@ overlap framework namespaces:
 | Semantic colors | Inline `--color-background`, `surface-muted`, `foreground`, `muted-foreground`, `accent`, `accent-soft`, and `border`; `surface` remains omitted until used | Produces utilities while preserving runtime light/dark variables |
 | Font families | Inline `--font-sans` and `--font-mono` mappings | Shared across global CSS and future utilities |
 | `xs`, `sm`, `base`, `lg` text | Installed Tailwind values | Accepted values are exact matches |
-| Interior display text | Custom `--text-display` theme value | Creates the intentional `text-display` utility used by Lab and Me |
+| Interior display text | Custom `--text-display` theme value | Creates the intentional `text-display` utility used by Home/Notes and Me |
 | Display/body leading | Custom `--leading-display` and `--leading-body` values | Preserves Tailwind's built-in `leading-tight` semantics |
 | Editorial tracking | Custom `--tracking-label` value | Demonstrated on all three surfaces |
 | Spacing | Tailwind's installed `0.25rem` base scale | Issue #20 retired every duplicate `--space-*` alias after the final surface migration |
@@ -216,7 +217,7 @@ Retain `BrandMark`. `SiteHeader` and `SiteFooter` are focused ownership
 boundaries introduced with the global-chrome Tailwind migration; they are not a
 generic component system. `FactList` owns repeated Landing/Me definition-list
 semantics while leaving grid columns to each page. `SectionLabel` owns only the
-identical paragraph-style label used by Lab and Me. Entry rows, page endings,
+identical paragraph-style label used by Home/Notes and Me. Entry rows, page endings,
 generic headings, links, and layout primitives are not justified as shared React
 components by the current implementation.
 
@@ -236,7 +237,7 @@ document state or pseudo-elements and are not surface-level styling exceptions.
    Tailwind utilities while preserving exact interaction and responsive output.
 3. **Issue #19: migrate Landing.** Landing now uses Tailwind utilities for its
    full presentation, with no retained local-CSS exception.
-4. **Issue #20: migrate Lab and Me and finish shared semantics.** This completed
+4. **Issue #20: migrate Home/Notes and Me and finish shared semantics.** This completed
    the page migration, extracted `FactList` and the narrowly scoped
    `SectionLabel`, removed obsolete aliases/CSS Modules, and consolidated the
    regression evidence required for M003 review.
@@ -247,12 +248,12 @@ requires an owner-led live review after the implementation Issues are accepted.
 ## Regression evidence required for follow-up work
 
 - `npm run lint` and `npm run build` pass.
-- Landing, Lab, and Me match the accepted output at a representative narrow
+- Home (Landing + Notes index) and Me match the accepted output at a representative narrow
   width below `40rem` and desktop width at or above `64rem`.
 - System light and dark modes retain contrast, warm accents, translucent header,
   structural rules, selection, and BrandMark colors.
 - Keyboard review covers skip link, brand home link, primary navigation,
-  Landing section links, entry links, and `/lab#…` destinations.
+  Landing section links, entry links, and `/notes/…` destinations.
 - Reduced-motion mode removes all transitions without removing state feedback.
 - The bilingual content, `lang="zh-CN"` annotations, short-copy punctuation,
   metadata, navigation, and information architecture remain unchanged.

@@ -42,7 +42,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/account");
+      router.replace("/me");
       router.refresh();
     } catch {
       setMessage("暂时无法登录，请稍后重试。");
@@ -67,7 +67,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/account");
+      router.replace("/me");
       router.refresh();
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
@@ -110,7 +110,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/account?recovery=1");
+      router.replace("/me?recovery=1");
       router.refresh();
     } catch {
       setMessage("暂时无法验证，请稍后重试。");

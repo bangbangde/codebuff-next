@@ -9,7 +9,7 @@ export function ContentContainer({
 }) {
   return (
     <div
-      className={`mx-auto w-full max-w-[calc(var(--layout-max)_+_2*var(--layout-gutter))] px-[var(--layout-gutter)] ${className}`}
+      className={`mx-auto w-full max-w-[calc(var(--layout-max)+2*var(--layout-gutter))] px-(--layout-gutter) ${className}`}
     >
       {children}
     </div>

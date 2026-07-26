@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { ContentContainer } from "../_components/content-container";
-import { SectionLabel } from "../_components/section-label";
+import { ContentContainer } from "../../_components/content-container";
+import { SectionLabel } from "../../_components/section-label";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
@@ -30,7 +30,8 @@ export default function SignInPage() {
               Sign in to continue.
             </h1>
             <p className="mt-7 max-w-[34rem] text-lg leading-body text-muted-foreground">
-              这里是 CQ&apos;s Lab 的私人账户入口。当前不开放注册，账户由站点所有者创建。
+              这里是 CQ&apos;s Lab
+              的私人账户入口。当前不开放注册，账户由站点所有者创建。
             </p>
           </div>
 

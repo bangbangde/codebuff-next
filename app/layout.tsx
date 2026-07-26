@@ -19,10 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className="min-h-full bg-background scroll-pt-[5.5rem] [text-rendering:optimizeLegibility]"
+      className="bg-background [text-rendering:optimizeLegibility]"
       lang="zh-CN"
     >
-      <body className="min-h-full bg-background font-sans text-base leading-body text-foreground antialiased">
+      <body className="flex min-h-dvh flex-col  font-sans text-base leading-body text-foreground antialiased">
         <SiteHeader />
         {children}
         <SiteFooter />

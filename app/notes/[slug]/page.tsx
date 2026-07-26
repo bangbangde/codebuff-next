@@ -48,7 +48,7 @@ export default async function NotePage({ params }: NotePageProps) {
           <header className="border-b border-border pt-[clamp(2.5rem,6vw,5rem)] pb-[clamp(3.5rem,8vw,6.5rem)]">
             <Link
               className="inline-flex min-h-11 items-center gap-2 font-mono text-xs leading-body tracking-[0.05em] text-muted-foreground transition-colors duration-150 hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
-              href="/notes"
+              href="/"
               lang="en"
             >
               <span aria-hidden="true">←</span>
@@ -76,7 +76,7 @@ export default async function NotePage({ params }: NotePageProps) {
           <footer className="border-t border-border py-[clamp(2.5rem,5vw,4rem)]">
             <Link
               className="inline-flex min-h-11 items-center gap-3 border-b border-[color-mix(in_srgb,var(--accent)_42%,transparent)] font-mono text-sm text-accent transition-colors duration-150 hover:border-accent focus-visible:border-accent motion-reduce:transition-none"
-              href="/notes"
+              href="/"
               lang="en"
             >
               Browse all notes
