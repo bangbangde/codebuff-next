@@ -159,14 +159,18 @@ async function bootstrapAuthUser() {
   }
 }
 
-try {
-  await bootstrapAuthUser();
-} catch (error) {
-  console.error(
-    `Authentication account bootstrap failed: ${redactSecrets(
-      error,
-      secretsToRedact,
-    )}`,
-  );
-  process.exitCode = 1;
+async function main() {
+  try {
+    await bootstrapAuthUser();
+  } catch (error) {
+    console.error(
+      `Authentication account bootstrap failed: ${redactSecrets(
+        error,
+        secretsToRedact,
+      )}`,
+    );
+    process.exitCode = 1;
+  }
 }
+
+void main();

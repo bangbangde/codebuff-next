@@ -60,8 +60,8 @@ pnpm db:migrate
 最终应用镜像包含经过 bundling 的迁移和账户初始化入口，不复制项目完整的 `node_modules`：
 
 ```bash
-node migrate/index.js
-node scripts/bootstrap-auth-user.mjs
+node runtime-tools/db/migrate.cjs
+node runtime-tools/auth/bootstrap-user.cjs
 ```
 
 迁移器只执行尚未记录的迁移。没有待执行迁移时正常退出，失败时以非零状态退出；它不会在镜像构建、应用启动或请求处理中自动运行。基础设施应在发布应用前，以同一镜像和迁移角色执行该入口。
