@@ -1,0 +1,8 @@
+FROM dxflrs/garage:v1.0.1 AS garage
+
+FROM alpine:3.24
+
+COPY --from=garage /garage /garage
+COPY docker/garage-entrypoint.sh /usr/local/bin/garage-entrypoint.sh
+
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/garage-entrypoint.sh"]

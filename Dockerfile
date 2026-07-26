@@ -6,17 +6,12 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-FROM base AS production-deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN corepack enable pnpm && pnpm install --prod --frozen-lockfile
+FROM deps AS production-deps
+RUN pnpm prune --prod
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+FROM deps AS builder
 COPY . .
-RUN corepack enable pnpm && pnpm build
+RUN pnpm build
 
 FROM base AS runner
 WORKDIR /app

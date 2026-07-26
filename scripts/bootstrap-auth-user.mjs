@@ -33,6 +33,24 @@ function positiveIntegerEnvironmentVariable(name, fallback) {
   return value;
 }
 
+function booleanEnvironmentVariable(name, fallback = false) {
+  const rawValue = process.env[name]?.trim();
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  if (rawValue === "true") {
+    return true;
+  }
+
+  if (rawValue === "false") {
+    return false;
+  }
+
+  throw new Error(`${name} must be either true or false`);
+}
+
 function redactSecrets(value, secrets) {
   let message = value instanceof Error ? value.message : String(value);
 
@@ -51,6 +69,9 @@ const password = requiredEnvironmentVariable("AUTH_BOOTSTRAP_PASSWORD", {
 const name = requiredEnvironmentVariable("AUTH_BOOTSTRAP_NAME");
 const email = requiredEnvironmentVariable("AUTH_BOOTSTRAP_EMAIL").toLowerCase();
 const databasePassword = requiredEnvironmentVariable("PG_PWD", { trim: false });
+const bootstrapIfMissing = booleanEnvironmentVariable(
+  "AUTH_BOOTSTRAP_IF_MISSING",
+);
 const secretsToRedact = [
   password,
   databasePassword,
@@ -95,25 +116,30 @@ try {
   );
 
   if (existingAccount.rowCount) {
-    throw new Error("An authentication account already exists");
+    if (!bootstrapIfMissing) {
+      throw new Error("An authentication account already exists");
+    }
+
+    await client.query("ROLLBACK");
+    console.info("Authentication account already exists; skipping.");
+  } else {
+    const userId = randomUUID();
+    const passwordHash = await hashPassword(password);
+
+    await client.query(
+      'INSERT INTO "user" (id, name, email) VALUES ($1, $2, $3)',
+      [userId, name, email],
+    );
+    await client.query(
+      `INSERT INTO "account"
+        (id, account_id, provider_id, user_id, password, updated_at)
+       VALUES ($1, $2, 'credential', $2, $3, now())`,
+      [randomUUID(), userId, passwordHash],
+    );
+
+    await client.query("COMMIT");
+    console.info("Authentication account created.");
   }
-
-  const userId = randomUUID();
-  const passwordHash = await hashPassword(password);
-
-  await client.query(
-    'INSERT INTO "user" (id, name, email) VALUES ($1, $2, $3)',
-    [userId, name, email],
-  );
-  await client.query(
-    `INSERT INTO "account"
-      (id, account_id, provider_id, user_id, password, updated_at)
-     VALUES ($1, $2, 'credential', $2, $3, now())`,
-    [randomUUID(), userId, passwordHash],
-  );
-
-  await client.query("COMMIT");
-  console.info("Authentication account created.");
 } catch (error) {
   try {
     await client.query("ROLLBACK");

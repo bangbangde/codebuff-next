@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getCurrentSession } from "@/lib/auth/session";
 import { ContentContainer } from "../_components/content-container";
 import { SectionLabel } from "../_components/section-label";
 import { FactList } from "./_components/fact-list";
@@ -36,14 +35,10 @@ export const metadata: Metadata = {
   description: "A concise introduction to CQ and the work behind CQ’s Lab.",
 };
 
-export default async function MePage() {
-  const session = await getCurrentSession();
-  const user = session?.user ?? null;
-
+export default function MePage() {
   return (
     <main className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]" id="main-content">
       <ContentContainer>
-        {user ? "Account" : "Sign in"}
         <section
           className="border-b border-border pb-[clamp(4rem,8vw,7rem)]"
           aria-labelledby="me-page-title"

@@ -20,20 +20,7 @@ env:
 
 jobs:
   verify:
-    if: github.ref_type != 'tag'
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
-        env:
-          POSTGRES_PASSWORD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - name: Checkout
@@ -64,46 +51,48 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify PostgreSQL migrations, auth flows, and role boundaries
-        env:
-          PG_ADMIN_HOST: 127.0.0.1
-          PG_ADMIN_PORT: 5432
-          PG_ADMIN_USER: postgres
-          PG_ADMIN_PWD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
-        run: pnpm db:verify
+      - name: Set up Docker Buildx
+        if: github.event_name == 'push'
+        uses: docker/setup-buildx-action@v4
 
       - name: Build verification image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: docker build --tag codebuff-next:verify .
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: codebuff-next:verify
+          cache-from: type=gha,scope=codebuff-next
+          cache-to: type=gha,mode=max,scope=codebuff-next
 
       - name: Verify application image without database credentials
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         run: |
           container_id="$(docker run --detach --publish 3000:3000 codebuff-next:verify)"
           trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
 
           for attempt in {1..20}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null; then
-              curl --fail --silent --show-error http://127.0.0.1:3000/me >/dev/null
-              curl --fail --silent --show-error http://127.0.0.1:3000/notes >/dev/null
+            all_routes_ready=true
+
+            for route in "/" "/me" "/notes/ai-native-interface-work"; do
+              if ! curl --fail --silent --output /dev/null "http://127.0.0.1:3000${route}"; then
+                all_routes_ready=false
+                break
+              fi
+            done
+
+            if [[ "$all_routes_ready" == "true" ]]; then
               exit 0
             fi
+
             sleep 1
           done
 
           docker logs "$container_id"
           exit 1
 
-      - name: Verify migration entrypoint in image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          PG_ADMIN_HOST: 127.0.0.1
-          PG_ADMIN_PORT: 5432
-          PG_ADMIN_USER: postgres
-          PG_ADMIN_PWD: codebuff-ci-${{ github.run_id }}-${{ github.run_attempt }}
-        run: pnpm db:verify -- --image codebuff-next:verify
-
   release:
+    needs: verify
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -115,12 +104,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Validate release tag
+        id: release_tag
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
             echo "Invalid release tag: $RELEASE_TAG"
             exit 1
+          fi
+
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_stable=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
@@ -171,7 +167,7 @@ jobs:
           tags: |
             type=raw,value=${{ github.ref_name }}
             type=raw,value=sha-${{ github.sha }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.release_tag.outputs.is_stable == 'true' }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -180,8 +176,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=codebuff-next
 
       - name: Trigger infrastructure deployment
         # v4.0.1

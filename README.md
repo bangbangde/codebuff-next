@@ -7,6 +7,15 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+完整本地栈使用 `.env.example` 作为主机侧配置模板；Compose 会把容器内的数据库地址覆盖为服务名，并且只把应用、PostgreSQL 和 Garage 端口绑定到本机回环地址：
+
+```powershell
+Copy-Item .env.example .env
+docker compose -f docker-compose-dev.yml --profile app up --build
+```
+
+`init` 会在 PostgreSQL 健康后一次性执行迁移并创建缺失的本地认证账号；Garage 在自己的容器内配置单节点 layout。任一初始化失败都会阻止应用启动，重复启动会安全跳过已经存在的本地资源。
+
 ## PostgreSQL 基础
 
 数据库层使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。Better Auth 只负责生成当前认证模型；`lib/auth/schema-config.ts` 是生成器输入，不是可挂载的认证处理器。
@@ -53,11 +62,11 @@ node migrate/index.js
 
 迁移器只执行尚未记录的迁移。没有待执行迁移时正常退出，失败时以非零状态退出；它不会在镜像构建、应用启动或请求处理中自动运行。基础设施应在发布应用前，以同一镜像和迁移角色执行该入口。
 
-### 权限边界
+### CI 校验边界
 
-- 迁移角色拥有应用数据库对象，可执行 DDL。
-- 运行角色只获得 `public` schema 的使用权限，以及当前/未来业务表的 `SELECT`、`INSERT`、`UPDATE`、`DELETE` 权限；不得执行 DDL，也不得读取 Drizzle 迁移日志。
-- CI 使用与基础设施相同摘要的 PostgreSQL 18.4 镜像，验证空库迁移、重复执行无变化、全部认证表 DML、运行角色 DDL 拒绝，以及最终应用镜像内的迁移入口。
+CI 会重新生成认证 schema 和 Drizzle migration，并通过 `git diff` 确认 `lib/db/schema.ts` 与 `drizzle/` 已提交且保持同步。`pnpm build` 同时编译最终镜像使用的迁移入口。
+
+CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检查角色权限或模拟生产迁移。生产部署仍应在启动新版本应用前，使用基础设施提供的迁移凭据执行镜像内迁移入口。
 
 ## 当前认证边界
 
@@ -93,4 +102,4 @@ AUTH_BOOTSTRAP_PASSWORD="<15-to-128-character-password>" \
 node scripts/bootstrap-auth-user.mjs
 ```
 
-该命令使用运行时 PostgreSQL 角色，密码通过 Better Auth 的默认 scrypt 实现散列。邮箱已存在时命令会失败，不会覆盖既有账户。
+该命令使用运行时 PostgreSQL 角色，密码通过 Better Auth 的默认 scrypt 实现散列。邮箱已存在时命令默认失败，不会覆盖既有账户。可重复执行的本地初始化可以额外设置 `AUTH_BOOTSTRAP_IF_MISSING=true`，此时同一邮箱已存在会作为成功跳过，其他错误仍会失败。
