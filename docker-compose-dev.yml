@@ -44,66 +44,9 @@ services:
       timeout: 5s
       retries: 3
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-      target: development
-    working_dir: /app
-    ports:
-      - "127.0.0.1:${APP_PORT:-3000}:3000"
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-      - next_cache:/app/.next
-    environment:
-      NODE_ENV: development
-      HOSTNAME: 0.0.0.0
-      PG_HOST: postgres
-      PG_PORT: 5432
-      PG_USER: ${PG_USER:-codebuff}
-      PG_PWD: ${PG_PWD:-codebuff}
-      PG_DB: ${PG_DB:-codebuff_next}
-      PG_POOL_MAX: ${PG_POOL_MAX:-5}
-      PG_CONNECTION_TIMEOUT_MS: ${PG_CONNECTION_TIMEOUT_MS:-10000}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS:-0:dev-local-secret-that-must-be-at-least-32-characters-long-for-better-auth}
-    depends_on:
-      init:
-        condition: service_completed_successfully
-      garage:
-        condition: service_healthy
-    profiles:
-      - app
-    tty: true
-    stdin_open: true
-    restart: no
-
-  init:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    working_dir: /app
-    environment:
-      PG_HOST: postgres
-      PG_PORT: 5432
-      PG_USER: ${PG_USER:-codebuff}
-      PG_PWD: ${PG_PWD:-codebuff}
-      PG_DB: ${PG_DB:-codebuff_next}
-      PG_CONNECTION_TIMEOUT_MS: ${PG_CONNECTION_TIMEOUT_MS:-10000}
-      AUTH_BOOTSTRAP_NAME: ${AUTH_BOOTSTRAP_NAME:-Codebuff Admin}
-      AUTH_BOOTSTRAP_EMAIL: ${AUTH_BOOTSTRAP_EMAIL:-admin@codebuff.local}
-      AUTH_BOOTSTRAP_PASSWORD: ${AUTH_BOOTSTRAP_PASSWORD:-Local-Dev-Bootstrap-Password}
-      AUTH_BOOTSTRAP_IF_MISSING: "true"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
 volumes:
   postgres_data:
   garage_data:
-  node_modules:
-  next_cache:
 
 configs:
   garage_config:

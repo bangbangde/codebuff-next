@@ -9,12 +9,27 @@ import { getPostgresConfig } from "../lib/db/config";
 const migrationsFolder = path.join(__dirname, "drizzle");
 
 function describeMigrationError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
   const databasePassword = process.env.PG_PWD;
+  const messages: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
 
-  return databasePassword
-    ? message.replaceAll(databasePassword, "[redacted]")
-    : message;
+  while (current !== undefined && current !== null && !seen.has(current)) {
+    seen.add(current);
+
+    const message = current instanceof Error ? current.message : String(current);
+    const redactedMessage = databasePassword
+      ? message.replaceAll(databasePassword, "[redacted]")
+      : message;
+
+    if (redactedMessage && messages.at(-1) !== redactedMessage) {
+      messages.push(redactedMessage);
+    }
+
+    current = current instanceof Error ? current.cause : undefined;
+  }
+
+  return messages.join(": ");
 }
 
 async function runMigrations(): Promise<void> {

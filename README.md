@@ -1,20 +1,24 @@
 # codebuff-next
 
-CQ's Lab 的 Next.js 应用。项目使用 `pnpm`，本地启动方式：
-
-```bash
-pnpm install --frozen-lockfile
-pnpm dev
-```
-
-完整本地栈使用 `.env.example` 作为主机侧配置模板；Compose 会把容器内的数据库地址覆盖为服务名，并且只把应用、PostgreSQL 和 Garage 端口绑定到本机回环地址：
+CQ's Lab 的 Next.js 应用。Compose 只提供 PostgreSQL 和 Garage；Next.js、数据库迁移和首次账户初始化都在宿主机显式运行。首次设置：
 
 ```powershell
 Copy-Item .env.example .env
-docker compose -f docker-compose-dev.yml --profile app up --build
+pnpm install --frozen-lockfile
+docker compose -f docker-compose-dev.yml up --detach --wait
+pnpm db:migrate
+pnpm auth:bootstrap
+pnpm dev
 ```
 
-`init` 会在 PostgreSQL 健康后一次性执行迁移并创建缺失的本地认证账号；Garage 在自己的容器内配置单节点 layout。任一初始化失败都会阻止应用启动，重复启动会安全跳过已经存在的本地资源。
+`pnpm auth:bootstrap` 只需在首次创建本地账户时执行。日常开发只需确保基础设施健康，然后启动应用：
+
+```powershell
+docker compose -f docker-compose-dev.yml up --detach --wait
+pnpm dev
+```
+
+Compose 不启动应用，也不自动执行迁移或账户初始化。Garage 会在自己的容器内配置并复用单节点 layout。
 
 ## PostgreSQL 基础
 
@@ -45,27 +49,26 @@ pnpm db:generate
 
 提交变更前需同时审查 `lib/db/schema.ts`、`drizzle/*.sql` 和 `drizzle/meta/`。生产环境禁止使用 `drizzle-kit push`；所有结构变化都必须先生成并提交 SQL，再由迁移器执行。
 
-本地构建并执行迁移：
+本地执行迁移：
 
 ```powershell
-pnpm build:migrate
-$env:PG_HOST = "127.0.0.1"
-$env:PG_USER = "migration-role"
-$env:PG_PWD = "migration-password"
 pnpm db:migrate
 ```
 
-最终应用镜像包含相同入口：
+`pnpm db:migrate` 和 `pnpm auth:bootstrap` 会在 `.env` 存在时读取它；当前进程已经提供的变量仍可用于覆盖配置。拉取到新的迁移文件后，需要再次显式执行迁移。
+
+最终应用镜像包含经过 bundling 的迁移和账户初始化入口，不复制项目完整的 `node_modules`：
 
 ```bash
 node migrate/index.js
+node scripts/bootstrap-auth-user.mjs
 ```
 
 迁移器只执行尚未记录的迁移。没有待执行迁移时正常退出，失败时以非零状态退出；它不会在镜像构建、应用启动或请求处理中自动运行。基础设施应在发布应用前，以同一镜像和迁移角色执行该入口。
 
 ### CI 校验边界
 
-CI 会重新生成认证 schema 和 Drizzle migration，并通过 `git diff` 确认 `lib/db/schema.ts` 与 `drizzle/` 已提交且保持同步。`pnpm build` 同时编译最终镜像使用的迁移入口。
+CI 会重新生成认证 schema 和 Drizzle migration，并通过 `git diff` 确认 `lib/db/schema.ts` 与 `drizzle/` 已提交且保持同步。`pnpm build` 同时生成最终镜像使用的迁移器和账户初始化 bundle。
 
 CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检查角色权限或模拟生产迁移。生产部署仍应在启动新版本应用前，使用基础设施提供的迁移凭据执行镜像内迁移入口。
 

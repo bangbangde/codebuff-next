@@ -12,10 +12,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=codebuff-pnpm-store,target=/pnpm/store,sharing=locked \
     pnpm install --frozen-lockfile --store-dir=/pnpm/store
 
-FROM deps AS production-deps
-RUN --mount=type=cache,id=codebuff-pnpm-store,target=/pnpm/store,sharing=locked \
-    CI=true pnpm --config.store-dir=/pnpm/store prune --prod
-
 FROM deps AS builder
 COPY . .
 RUN pnpm build
@@ -27,10 +23,8 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=production-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.build/migrate/migrate ./migrate
-COPY --from=builder --chown=nextjs:nodejs /app/.build/migrate/lib ./lib
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/bootstrap-auth-user.mjs ./scripts/bootstrap-auth-user.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/.build/migrate/scripts ./scripts
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
