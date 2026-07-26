@@ -4,6 +4,7 @@ const DEFAULT_HOST = "postgres";
 const DEFAULT_PORT = 5432;
 const DEFAULT_DATABASE = "codebuff_next";
 const DEFAULT_POOL_MAX = 5;
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
 
 function requiredEnvironmentVariable(name: "PG_USER" | "PG_PWD"): string {
   const rawValue = process.env[name];
@@ -17,7 +18,7 @@ function requiredEnvironmentVariable(name: "PG_USER" | "PG_PWD"): string {
 }
 
 function positiveIntegerEnvironmentVariable(
-  name: "PG_PORT" | "PG_POOL_MAX",
+  name: "PG_PORT" | "PG_POOL_MAX" | "PG_CONNECTION_TIMEOUT_MS",
   fallback: number,
 ): number {
   const rawValue = process.env[name]?.trim();
@@ -44,6 +45,10 @@ export function getPostgresConfig(
     database: process.env.PG_DB?.trim() || DEFAULT_DATABASE,
     user: requiredEnvironmentVariable("PG_USER"),
     password: requiredEnvironmentVariable("PG_PWD"),
+    connectionTimeoutMillis: positiveIntegerEnvironmentVariable(
+      "PG_CONNECTION_TIMEOUT_MS",
+      DEFAULT_CONNECTION_TIMEOUT_MS,
+    ),
     max:
       overrides.max ??
       positiveIntegerEnvironmentVariable("PG_POOL_MAX", DEFAULT_POOL_MAX),

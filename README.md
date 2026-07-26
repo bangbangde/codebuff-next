@@ -30,6 +30,7 @@ docker compose -f docker-compose-dev.yml --profile app up --build
 | `PG_PORT` | `5432` | 非生产环境可覆盖 |
 | `PG_DB` | `codebuff_next` | 非生产环境可覆盖 |
 | `PG_POOL_MAX` | `5` | 应用连接池上限；迁移器固定覆盖为 1 |
+| `PG_CONNECTION_TIMEOUT_MS` | `10000` | 建立数据库连接的超时时间，单位为毫秒 |
 
 数据库日志不得输出密码或完整连接串。
 
@@ -70,9 +71,7 @@ CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检�
 
 ## 当前认证边界
 
-当前 schema 覆盖用户、账号密码凭据、会话、验证、TOTP/恢复码、Passkey 和数据库限流，但 Issue #47 不提供认证 API、登录 UI 或首个用户初始化。
-
-M006 要求 Passkey 用户验证（UV）为 `required`。固定的 `@better-auth/passkey@1.6.23` 可生成所需表，并可在注册选项中声明该偏好，但尚未在认证验证阶段强制 UV。因此后续认证路由在解决并测试这一差距前，不得直接挂载当前生成配置。
+当前运行时提供认证 API、邮箱密码登录、受保护的账户页、TOTP 双因素认证和一次性首个账户初始化，公开注册始终关闭。schema 同时保留 Passkey 相关表，但运行时尚未启用 Passkey 插件，因此不能把表结构存在等同于 Passkey 功能可用。
 
 ## 常用校验
 

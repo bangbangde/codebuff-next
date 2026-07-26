@@ -8,6 +8,15 @@ import { getPostgresConfig } from "../lib/db/config";
 
 const migrationsFolder = path.join(__dirname, "drizzle");
 
+function describeMigrationError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const databasePassword = process.env.PG_PWD;
+
+  return databasePassword
+    ? message.replaceAll(databasePassword, "[redacted]")
+    : message;
+}
+
 async function runMigrations(): Promise<void> {
   console.info("Applying pending database migrations...");
 
@@ -23,7 +32,7 @@ async function runMigrations(): Promise<void> {
   }
 }
 
-void runMigrations().catch(() => {
-  console.error("Database migration failed.");
+void runMigrations().catch((error: unknown) => {
+  console.error(`Database migration failed: ${describeMigrationError(error)}`);
   process.exitCode = 1;
 });
