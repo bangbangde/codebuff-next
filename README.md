@@ -1,6 +1,26 @@
 # codebuff-next
 
-CQ's Lab 的 Next.js 应用。Compose 只提供 PostgreSQL 和 Garage；Next.js、数据库迁移和首次账户初始化都在宿主机显式运行。首次设置：
+CQ's Lab 的 Next.js 应用，使用 App Router、TypeScript、Tailwind CSS、本地
+MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
+
+## 当前实现
+
+| 路径 | 实现 |
+| --- | --- |
+| `/` | 站点简介、当前状态和 `Coming Soon...` 占位内容 |
+| `/me` | 公开的个人简介与工作方法 |
+| `/notes/[slug]` | 从仓库内 MDX 静态生成的文章详情；当前没有 Notes 索引页 |
+| `/sign-in` | 邮箱密码登录，以及已启用账户的 TOTP/恢复码验证 |
+| `/account` | 查询当前 Session，并在已登录时显示账户与 TOTP 管理界面 |
+| `/api/auth/*` | Better Auth 的 Node.js API |
+
+公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 已作为本地对象存储
+基础设施提供，但应用代码目前尚未接入 S3 API。
+
+## 本地开发
+
+Compose 只提供 PostgreSQL 和 Garage；Next.js、数据库迁移和首次账户初始化
+都在宿主机显式运行。首次设置：
 
 ```powershell
 Copy-Item .env.example .env
@@ -20,9 +40,22 @@ pnpm dev
 
 Compose 不启动应用，也不自动执行迁移或账户初始化。Garage 会在自己的容器内配置并复用单节点 layout。
 
+## Notes 内容
+
+每篇文章位于 `content/notes/<slug>/index.mdx`，并导出经过 `defineNote`
+校验的 `note` 元数据。目录名和 `slug` 必须一致且使用小写 kebab-case；
+`publishedAt`/`updatedAt` 使用 `YYYY-MM-DD`，`language` 当前只接受
+`zh-CN` 或 `en`。正文前必须保留 `{/* note-body */}` 标记，阅读时间会从
+标记后的中英文内容估算。
+
+构建会枚举所有文章并生成 `/notes/[slug]` 静态参数；未知 slug 不启用动态
+回退。文章的 MDX 元素样式集中在 `mdx-components.tsx`。
+
 ## PostgreSQL 基础
 
-数据库层使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。Better Auth 只负责生成当前认证模型；`lib/auth/schema-config.ts` 是生成器输入，不是可挂载的认证处理器。
+数据库层使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。
+`lib/auth/schema-config.ts` 只负责让 Better Auth 生成当前认证 schema，不是
+可挂载的认证处理器；实际运行时配置位于 `lib/auth/runtime.ts`。
 
 应用和迁移器在真正访问数据库时才读取配置，因此 `pnpm build` 不需要数据库连通性或数据库凭据。
 
@@ -74,7 +107,12 @@ CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检�
 
 ## 当前认证边界
 
-当前运行时提供认证 API、邮箱密码登录、受保护的账户页、TOTP 双因素认证和一次性首个账户初始化，公开注册始终关闭。schema 同时保留 Passkey 相关表，但运行时尚未启用 Passkey 插件，因此不能把表结构存在等同于 Passkey 功能可用。
+当前运行时提供认证 API、邮箱密码登录、基于 Session 条件渲染的账户页、
+TOTP 双因素认证、一次性恢复码和一次性首个账户初始化，公开注册始终关闭。
+`/account` 会查询 Session，但当前不会把未登录访问者重定向到
+`/sign-in`；无 Session 时不渲染账户内容。schema 同时保留 Passkey
+相关表，但运行时尚未启用 Passkey 插件，因此不能把表结构存在等同于
+Passkey 功能可用。
 
 ## 常用校验
 
@@ -86,7 +124,9 @@ git diff --check
 
 ## 认证运行时
 
-认证 API 只会在 `/api/auth/*` 请求和受保护的 `/account` 页面访问时初始化。公开的 Landing、Notes、Me 和 `/sign-in` 不读取数据库或认证密钥。
+认证运行时只会在 `/api/auth/*` 请求和 `/account` 的 Session 查询时初始化。
+公开的 Home、Me、静态 Notes 详情和 `/sign-in` 的初始页面渲染不读取数据库
+或认证密钥；登录表单提交会调用认证 API。
 
 运行时除 PostgreSQL 变量外还需要：
 

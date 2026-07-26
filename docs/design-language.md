@@ -1,259 +1,293 @@
-# Accepted Interface Language and Component Inventory
+# Interface Design Language
 
-This document inventories the interface accepted at the end of M002. It is an
-implementation reference for incremental UI-foundation work; it is not a new
-design specification. The accepted visual baseline is commit `909d5b8`. Issues
-#16, #18, #19, and #20 migrated that output to the current Tailwind-first
-implementation without changing its product or visual boundary.
+## Purpose
 
-The current output is the regression boundary. Follow-up work must preserve the
-rendered hierarchy, responsive layouts, system light and dark themes, keyboard
-focus, reduced-motion behavior, content, and information architecture unless a
-separate approved work item explicitly changes them.
+This document guides the visual and interaction design of `CQ’s Lab`. It turns
+the stable experience direction in [`docs/project.md`](./project.md) into
+practical UI rules without prescribing the composition of a particular page.
 
-## Authority and scope
+Use it when designing or reviewing a new surface, extending an existing
+pattern, or deciding whether a visual choice belongs in the shared language.
+Current product scope belongs in GitHub Issues and Milestones. Routes, feature
+behavior, component inventories, and implementation defects do not belong here.
 
-- Stable product and design direction remains in [`docs/project.md`](./project.md).
-- The bilingual editorial division and Simplified Chinese UI punctuation
-  convention remain authoritative in
-  [`docs/project.md#editorial-conventions`](./project.md#editorial-conventions).
-  [Issue #5](https://github.com/bangbangde/codebuff-next/issues/5) is the
-  approval history for the bilingual decision. This inventory does not redefine
-  either convention.
-- [PR #12](https://github.com/bangbangde/codebuff-next/pull/12) is the accepted
-  M002 implementation evidence.
-- Issue #14 established this inventory. Issues #16, #18, #19, and #20 record the
-  M003 implementation history. The M003 Milestone remains the source of truth
-  for the phase boundary and requires a separate owner-led closure review.
+## Experience qualities
 
-## Implementation map
+The interface should feel:
 
-| Area | Authoritative implementation | Current responsibility |
+- **Technical:** structure and precision are visible, but the site does not look
+  like a developer tool dashboard.
+- **Human:** language and rhythm feel authored rather than generated from a
+  generic template.
+- **Calm:** hierarchy is clear without oversized claims, excessive whitespace,
+  or constant motion.
+- **Credible:** typography, alignment, states, and content details are handled
+  consistently.
+- **In progress:** the site may show active exploration, but placeholders and
+  unfinished work should be honest and deliberate.
+
+The overall character is editorial rather than promotional. Avoid portfolio
+theater, generic SaaS composition, ornamental complexity, and interaction added
+only to demonstrate implementation skill.
+
+## Core principles
+
+### Lead with content
+
+Keep introductions compact and let substantive content appear early. Visual
+hierarchy should help readers understand the material rather than compete with
+it.
+
+### Create hierarchy with restraint
+
+Use typography, spacing, alignment, and fine structural rules before adding
+containers, shadows, illustrations, or decorative effects. A small number of
+strong relationships is preferable to many weak visual signals.
+
+### Use warmth as emphasis
+
+Warm orange is an accent, not a background theme or a substitute for
+hierarchy. Most of the interface should remain neutral so links, focus,
+metadata, and important status can carry the accent clearly.
+
+### Prefer coherence over uniformity
+
+Surfaces should share tokens and interaction behavior without being forced into
+one page template. Extract a visual pattern only after repeated use or a clear
+shared semantic need.
+
+### Keep every interaction purposeful
+
+Hover, focus, transition, and animation should communicate state or navigation.
+The experience must remain understandable with motion reduced or absent.
+
+## Color
+
+The palette uses semantic roles. Components should consume the role rather than
+copying its literal value.
+
+| Role | Light | Dark | Usage |
+| --- | --- | --- | --- |
+| Background | `white` | `#151310` | Primary document and control background |
+| Muted surface | `#fff8eb` | `#2b241b` | Secondary panels, notices, quotes, and quiet separation |
+| Foreground | `#181512` | `#f7f3ed` | Primary text and strong controls |
+| Muted foreground | `#706961` | `#bdb4aa` | Supporting copy, navigation, labels, and metadata |
+| Accent | `#b85d16` | `#ffad57` | Links, focus, labels, status, and selective emphasis |
+| Soft accent | `#fff0cc` | `#3c2917` | Selection, low-emphasis feedback, and inline highlights |
+| Border | `#ebe6df` | `#3c352e` | Structural rules, fields, and panel boundaries |
+
+### Color rules
+
+- Preserve readable contrast in both system themes.
+- Use foreground for primary actions and accent for their interactive state
+  when a stronger filled control is needed.
+- Use muted foreground only for genuinely secondary information.
+- Prefer a one-pixel border to a shadow for grouping and structure.
+- Do not introduce isolated palette literals when an existing semantic role
+  expresses the intent.
+- The brand mark owns its fixed black and orange artwork. Do not derive general
+  interface colors from the asset.
+
+Dark mode follows the system `prefers-color-scheme` setting. There is currently
+no product requirement for a manual theme control. Theme differences should be
+expressed through semantic roles rather than per-component dark branches.
+
+## Typography
+
+Typography carries most of the interface character.
+
+### Families
+
+- **Body:** system sans-serif with Simplified Chinese fallbacks. Use for
+  headings, prose, and interface copy.
+- **Monospace:** system monospace. Reserve for navigation, editorial labels,
+  metadata, indexes, and compact controls.
+
+Monospace is a supporting editorial voice, not the default for all technical
+content.
+
+### Hierarchy
+
+- Display headings may use the shared fluid size
+  `clamp(2.25rem, 6vw, 4.75rem)` with `1.05` leading.
+- Body copy uses comfortable `1.65` leading by default. Long-form article prose
+  may open further, especially on wider screens.
+- Editorial labels use compact type, monospace, uppercase when appropriate, and
+  approximately `0.08em` tracking.
+- Use tighter tracking as headings grow. Avoid loose tracking on large display
+  text.
+- Use fluid display sizes only for genuine page-level hierarchy. Ordinary
+  section and card headings should remain quieter.
+
+Do not turn every heading into the same generic scale. Local composition may
+need different size, weight, measure, or leading, but those choices should
+remain visibly related to the shared type system.
+
+## Layout and spacing
+
+### Shared measures
+
+| Role | Value | Guidance |
 | --- | --- | --- |
-| Shared document chrome | `app/layout.tsx`, `app/site-header.tsx`, `app/site-footer.tsx` | Root composition, skip link, site shell, sticky header, primary navigation, and footer implemented with Tailwind utilities |
-| Brand mark | `app/brand-mark.tsx` | Decorative monoline SVG with Tailwind-owned presentation inside the accessible home link; foreground and warm-accent strokes inherit theme colors |
-| Global theme and document rules | `app/globals.css` | Runtime color theme, Tailwind theme mappings, global focus, and selection |
-| Home | `app/page.tsx` | Tailwind-first landing intro + full Notes index; combines former Landing hero and Notes listing into one page |
-| Notes detail | `app/notes/[slug]/page.tsx` | SSG-rendered note detail pages preserved for URL stability |
-| Me | `app/me/page.tsx` | Tailwind-first editorial introduction, fact summary, practice composition, and session-guarded account-security section |
-| Shared content semantics | `app/_components/section-label.tsx`, `app/me/_components/fact-list.tsx` | Semantic fact-list markup and the repeated section label; surface composition remains with each page |
-| Stable product rules | `docs/project.md` | Editorial language, punctuation, visual direction, and page-ending guidance |
+| Site maximum | `72rem` | Maximum width for the shared shell and broad editorial layouts |
+| Reading measure | `44rem` | Upper bound for sustained article prose |
+| Page gutter | `clamp(1.25rem, 4vw, 3rem)` | Fluid horizontal breathing room from narrow to wide screens |
 
-Global chrome, Landing, Lab, and Me now use Tailwind utilities as their primary
-styling mechanism. Semantic colors, font families, and project-specific display
-typography are registered with `@theme inline`. No CSS Module remains.
+### Composition
 
-## Global token inventory
+- Favor editorial grids, asymmetric splits, and clear reading measures over
+  uniform card matrices.
+- Keep text columns narrow enough to read comfortably even when the surrounding
+  composition is wide.
+- Use spacing to express relationships: tight inside a group, larger between
+  sections, and deliberate at page endings.
+- Fixed spacing and standard radii should come from the existing Tailwind
+  scale. Use custom fluid values only when they express responsive
+  composition—not to create a parallel spacing system.
+- Preserve useful information density. Calm does not mean empty.
 
-Global token ownership remains in `app/globals.css`: runtime theme values live
-in `:root`, project-specific Tailwind theme values live in `@theme inline`, and
-framework scale values come from Tailwind's imported defaults. “Tailwind alias
-only” means no current rendered element uses the corresponding utility class.
+### Shape and separation
 
-### Color
+- Structural borders are the default separator.
+- Medium radii are appropriate for controls and small interaction surfaces;
+  larger panels may use a slightly larger radius.
+- Avoid turning editorial content into a collection of rounded cards.
+- Use shadows sparingly and only when depth communicates behavior.
+- Page endings should feel intentional. Add a next step only when it serves a
+  clear navigation purpose.
 
-| Token | Light / dark value | Actual consumers | Finding |
-| --- | --- | --- | --- |
-| `--background` | `#fdfcf9` / `#151310` | `html`, `body`, skip link, translucent site header, `--color-background` | Stable semantic theme token |
-| `--surface-muted` | `#fff8eb` / `#2b241b` | Landing entry hover/focus, `--color-surface-muted` | Stable interactive surface token |
-| `--foreground` | `#181512` / `#f7f3ed` | Body text, skip link, BrandMark, selection text, `--color-foreground` | Stable semantic theme token |
-| `--muted-foreground` | `#706961` / `#bdb4aa` | Header links, footer, supporting copy, labels, facts, entry metadata, `--color-muted-foreground` | Stable secondary-text token used on all surfaces |
-| `--accent` | `#b85d16` / `#ffad57` | Brand accent, hover/focus text, focus outline, labels, end mark, `--color-accent` | Stable brand/action token used on all surfaces |
-| `--accent-soft` | `#fff0cc` / `#3c2917` | Header and Landing-link hover/focus backgrounds, selection background, `--color-accent-soft` | Stable low-emphasis interaction token |
-| `--border` | `#ebe6df` / `#3c352e` | Header, sections, rows, fact lists, end mark, `--color-border` | Stable structural-rule token used on all surfaces |
+## Responsive behavior
 
-Dark mode changes only these semantic color values. Components do not contain
-theme-specific color literals, which is a boundary to preserve. The unused
-`surface` role was retired by the Issue #16 normalization.
+Design from narrow and wide conditions together.
 
-### Typography
+- `40rem` is the principal narrow-layout boundary in the current language.
+- Additional content-driven breakpoints are allowed when a control or column
+  has a real minimum width; they should not be introduced merely to tune one
+  screenshot.
+- Multi-column editorial layouts should collapse to a clear single reading
+  order.
+- Maintain the fluid page gutter and prevent horizontal overflow at `375px`.
+- Do not preserve desktop line breaks when they create awkward narrow-screen
+  rhythm.
+- Touch targets remain at least `44px`; primary form controls should generally
+  reach `48px`.
 
-| Token | Value | Actual consumers | Finding |
-| --- | --- | --- | --- |
-| `--typeface-body` | System sans stack with Simplified Chinese fallbacks | `body`, `--font-sans` | Stable shared font family |
-| `--typeface-code` | System monospace stack | Header links, footer, skip link, editorial labels, fact terms, `--font-mono` | Stable metadata/label font family |
-| Tailwind `--text-xs` | `0.75rem` | Footer, editorial metadata, fact terms, end label | Tailwind v4 default is the shared size authority |
-| Tailwind `--text-sm` | `0.875rem` | Skip link, header links, Landing section links | Tailwind v4 default is the shared control-size authority |
-| Tailwind `--text-base` | `1rem` | Body and Landing end note | Tailwind v4 default is the body-size authority |
-| Tailwind `--text-lg` | `1.125rem` | Landing supporting copy and title arrow, interior introductions | Tailwind v4 default is the lead-size authority |
-| `--text-display` | `clamp(2.25rem, 6vw, 4.75rem)` | Notes detail and Me `h1` | Intentional project value registered in `@theme inline` |
-| `--leading-display` | `1.05` | Notes detail and Me `h1` | Intentional project value registered without overriding Tailwind's `leading-tight` |
-| `--leading-body` | `1.65` | `body` | Intentional project reading leading registered in `@theme inline` |
-| `--tracking-label` | `0.08em` | Kicker, indexes, metadata, fact terms, interior eyebrows, end label | Intentional editorial-label tracking registered in `@theme inline` |
+Responsive review must cover content hierarchy and reading order, not only the
+absence of overflow.
 
-Issue #16 removed the duplicate local text declarations and renamed the custom
-display leading. Tailwind's installed text scale and `leading-tight` now retain
-their framework meanings; project-specific roles are explicit theme entries.
+## Interaction states
 
-The large Landing hero, section headings, item headings, principle headings,
-and endcap heading use distinct fluid sizes, weights, tracking, and leading.
-Those values encode composition-specific hierarchy and should remain local
-until another surface demonstrates the same role.
+Every interactive element needs an identifiable default, hover, and
+keyboard-focus state. Add active, selected, disabled, loading, success, and
+error states when the interaction semantics require them.
 
-### Spacing
+### Focus
 
-Tailwind v4's installed `--spacing: 0.25rem` scale owns fixed spacing. Issue #20
-retired the remaining `--space-*` aliases after Home/Notes and Me migrated. Fluid
-composition values remain explicit arbitrary utilities such as
-`clamp(3rem,7vw,6rem)` because they encode surface-specific responsive rhythm,
-not reusable fixed spacing tokens.
+- The shared keyboard-focus treatment is a `2px` accent outline with a `3px`
+  offset.
+- Form fields may replace the outer outline with an accent border and
+  soft-accent ring when this gives clearer field-level feedback.
+- Never remove an outline without supplying an equally visible replacement.
+- Focus feedback must remain distinguishable from hover.
 
-### Shape, border, and layout
+### Hover and active feedback
 
-| Token | Value | Actual consumers | Finding |
-| --- | --- | --- | --- |
-| Tailwind `--radius-md` | `0.375rem` | Header navigation and Landing section links | Tailwind v4 default now owns the accepted control radius |
-| `--layout-max` | `72rem` | Root, header, and footer max-width utilities | Stable site-shell maximum consumed through Tailwind arbitrary-value utilities; equals the installed `6xl` width |
-| `--layout-reading` | `44rem` | Landing hero explanatory copy | Stable reading measure; keep semantic because it is not a default container step |
-| `--layout-gutter` | `clamp(1.25rem, 4vw, 3rem)` | Root, header, footer, and skip-link utilities | Stable fluid page gutter consumed by Tailwind arbitrary-value utilities |
+- Text and navigation actions may shift from muted foreground to accent.
+- Soft accent is suitable for low-emphasis hover or focus backgrounds.
+- Filled primary actions may change from foreground to accent.
+- Avoid layout shifts, large translations, or decorative reveals for routine
+  controls.
 
-## Responsive, focus, theme, and motion boundaries
+### Motion
 
-- `40rem` is the shared narrow-layout boundary. It collapses the footer, Landing
-  entry/about layouts, Home notes index, and Me split/principle layouts. It matches the
-  installed Tailwind `sm` breakpoint value, but current CSS uses a max-width
-  query and must retain the same side of the boundary during migration.
-- `64rem` is Landing's wide hero boundary. It matches the installed Tailwind
-  `lg` breakpoint and keeps the hero statement on one line.
-- The site shell uses a fluid gutter and a `72rem` content maximum. Interior and
-  Landing compositions deliberately use their own grid proportions inside it.
-- All keyboard-visible focus uses the global `2px` accent outline with a `3px`
-  offset. Hover and focus share feedback on navigation, section links, and
-  Landing entry rows. The skip link becomes visible on focus.
-- Header navigation and Landing section links provide at least `2.75rem` (44px)
-  target height. The brand link also has a 44px minimum height.
-- System dark mode is token-driven through `prefers-color-scheme: dark`; there
-  is no theme toggle or component-level dark branch.
-- Motion is limited to 140ms control/brand transitions and 160ms Landing-row
-  transitions. `prefers-reduced-motion: reduce` disables every declared
-  transition. The 140ms/160ms difference is minor duplication, but consolidating
-  it would be an intentional behavior choice and should not be hidden inside a
-  mechanical migration.
-- Sticky-header offset behavior is split between `html` scroll padding and Lab
-  item `scroll-mt-8`. `/notes/…` destinations remain a required regression check.
+- Most transitions should remain in the `140–150ms` range.
+- Animate only properties that communicate a state change.
+- Repeating animation is reserved for meaningful live status and should remain
+  visually quiet.
+- Every declared transition or animation must have an effective
+  `prefers-reduced-motion` alternative.
 
-## Pattern classification
+## Content and language
 
-### Stable shared semantics
+- `CQ’s Lab`, product-surface names, compact labels, and short positioning
+  phrases may remain in English.
+- Simplified Chinese carries most explanation and long-form interface copy.
+- Chinese-English mixing should sound natural, not perform technical identity.
+- Use concise, direct language. Avoid inflated claims and explanations that are
+  more elaborate than the underlying work.
+- Apply the correct `lang` attribute when a meaningful text region differs from
+  the document language.
+- Keep punctuation appropriate to the language of the phrase.
 
-| Pattern | Evidence and consumers | Proposed ownership | Exclusions and regression checks |
-| --- | --- | --- | --- |
-| Semantic color theme | Every surface consumes the same background, foreground, muted, accent, soft-accent, and border roles | CSS variables for light/dark values; Tailwind `--color-*` inline aliases | Do not place palette literals in components; verify all surfaces in both system themes |
-| Body and metadata typography | Body stack is global; monospaced labels appear in header, footer, Landing, Lab, and Me | Tailwind font, text, leading, and tracking theme namespaces | Do not turn distinct fluid display hierarchies into one generic heading scale |
-| Structural rules | Header, sections, lists, facts, cards, and endcap consistently use a one-pixel semantic border | Semantic border color plus Tailwind's default border width | Preserve exactly which edges are drawn; a generic bordered container is not supported by evidence |
-| Editorial label | Landing kicker/index, Me eyebrow, list metadata, fact terms, principle index, and end label share mono type, compact size, and tracking | `SectionLabel` owns only the identical Lab/Me paragraph-style section label; other semantic elements keep local Tailwind recipes | `dt`, entry metadata, and numerical indexes have different semantics and are not forced through the component |
-| Fact list | Landing and Me repeat `dl > div > dt + dd`, border rules, mono terms, and row rhythm | `FactList` owns the semantic markup, rule, row spacing, and term typography; each page supplies its column composition | No generic variants: Landing retains its 5rem term column and Me retains its 8rem-to-5rem responsive behavior |
-| Global chrome | Header, navigation, shell, skip link, and footer are shared by the root layout | Focused `SiteHeader` and `SiteFooter` components own their Tailwind utilities; `layout.tsx` owns composition | They remain single global instances; the boundary expresses semantic ownership rather than a generic component system |
-| BrandMark | Existing focused React component, consumed by the global home link | React owns the SVG and its Tailwind presentation | Preserve decorative SVG semantics, accessible link label, dimensions, stroke widths, currentColor behavior, and accent nodes |
-| Interaction feedback | Header links, Landing section links, and Landing entry rows share accent/soft-accent hover and focus feedback | Shared color/focus/motion tokens; keep composition selectors local | These controls have different semantics and layouts; do not create a generic `Link` wrapper solely to share classes |
+## Recurring UI patterns
 
-### Surface-specific composition to retain locally
+These patterns describe visual and semantic behavior, not required React
+components.
 
-- Home (/) carries both the Landing hero and the full Notes index in a single page. The hero
-  retains Landing's oversized single-line heading, status pulse, and supporting copy. The Notes
-  index below it uses the former Notes-page listing style with numbered rows, excerpts, and metadata.
-- Notes detail (/notes/[slug]) preserves its SSG-rendered article layout with back-link to Home.
+### Global chrome
 
+Keep branding and primary navigation compact. The header may remain visible
+during reading, but it should not dominate the viewport. The footer should give
+the page a clear ending without becoming another content section.
 
-- Me's split hero and three-column practice sequence express Me-specific content
-  relationships. Their responsive collapse remains colocated in `app/me/page.tsx`.
-- Home/Notes and Me keep distinct page composition. Their JSX differs enough that a
-  generic page-template component would add props without removing meaningful
-  duplication.
-- Fluid heading sizes, grid fractions, reading measures, end-mark geometry, and
-  wide/narrow composition adjustments remain local to their surfaces. Migrate
-  them in focused slices; retain minimal local CSS only when an equivalent
-  utility expression would materially reduce readability.
+### Editorial introduction
 
-### Incidental duplication not to abstract
+Use one clear title, a restrained label or status when useful, and concise
+supporting copy. Avoid stacking several slogans, badges, or calls to action
+before the main content.
 
-- Similar `font-weight` values (`520` and `540`) belong to different local
-  heading roles; do not invent a broad project weight taxonomy yet.
-- The 140ms and 160ms transitions are close but currently express controls
-  versus expanding/translated rows. Do not merge them without review.
-- Repeated grid fractions around `0.3fr` describe different content structures,
-  not a shared layout primitive.
-- Home and interior reading widths (`36rem`, `38rem`, `40rem`, and `44rem`)
-  are context-specific measures, not evidence for several global container
-  tokens.
-- The unused `surface`, project radius, and shadow declarations were retired in
-  Issue #16. Their former presence is not evidence for cards, panels, or
-  elevation.
+### Labels and metadata
 
-## Current token ownership and proposed component split
+Use monospace, compact sizing, restrained tracking, and muted or accent color.
+Metadata should help scanning without competing with titles.
 
-### CSS variables
+### Long-form content
 
-Keep CSS variables as the runtime authority for semantic values that change with
-system theme (`background`, foreground roles, accents, and border) and for fluid
-layout values consumed through Tailwind arbitrary-value utilities (`layout-gutter`
-and reading measure).
-Tailwind Preflight owns reset behavior. Global CSS continues to own selection,
-focus outline, and the runtime theme media query. Tailwind utilities colocated
-with `SiteHeader`, `SiteFooter`, `BrandMark`, `layout.tsx`, and `page.tsx` own
-body defaults, skip-link behavior, global chrome, and Landing presentation.
+Use a stable reading measure, generous line height, strong section hierarchy,
+and deliberate spacing around lists, quotations, code, and rules. Code blocks
+may use an inverse neutral surface; inline code uses the soft accent role.
 
-### Tailwind v4 `@theme`
+### Forms and account-like controls
 
-Tailwind registration is explicit rather than relying on `:root` names that
-overlap framework namespaces:
+Group related controls in a quiet muted surface with a clear border. Labels,
+instructions, status messages, disabled states, and destructive consequences
+must remain explicit. Do not rely on placeholder text as the only label.
 
-| Accepted role | Current Tailwind ownership | Rationale |
-| --- | --- | --- |
-| Semantic colors | Inline `--color-background`, `surface-muted`, `foreground`, `muted-foreground`, `accent`, `accent-soft`, and `border`; `surface` remains omitted until used | Produces utilities while preserving runtime light/dark variables |
-| Font families | Inline `--font-sans` and `--font-mono` mappings | Shared across global CSS and future utilities |
-| `xs`, `sm`, `base`, `lg` text | Installed Tailwind values | Accepted values are exact matches |
-| Interior display text | Custom `--text-display` theme value | Creates the intentional `text-display` utility used by Home/Notes and Me |
-| Display/body leading | Custom `--leading-display` and `--leading-body` values | Preserves Tailwind's built-in `leading-tight` semantics |
-| Editorial tracking | Custom `--tracking-label` value | Demonstrated on all three surfaces |
-| Spacing | Tailwind's installed `0.25rem` base scale | Issue #20 retired every duplicate `--space-*` alias after the final surface migration |
-| Control radius | Use the installed `--radius-md` value (`0.375rem`) | Matches accepted output without overriding Tailwind's `radius-sm` name |
-| Site and reading widths | Register semantic container names only if a utility consumer is introduced; otherwise keep layout variables | Avoids theme entries with no utility consumer |
-| Motion | Keep exact values local initially; introduce named duration/easing theme values only after the 140ms/160ms choice is reviewed | Prevents an incidental visual-behavior change |
+## Avoid
 
-### Focused React components
+- Generic SaaS hero-and-card compositions.
+- Uniform grids when the content has a stronger editorial hierarchy.
+- Oversized promotional statements without substantive content nearby.
+- Decorative illustration or motion without a content purpose.
+- New colors, spacing aliases, or component variants introduced for one local
+  convenience.
+- Low-contrast muted text used for important instructions.
+- Hover-only affordances or invisible keyboard focus.
+- Abstractions that erase meaningful differences between surfaces.
 
-Retain `BrandMark`. `SiteHeader` and `SiteFooter` are focused ownership
-boundaries introduced with the global-chrome Tailwind migration; they are not a
-generic component system. `FactList` owns repeated Landing/Me definition-list
-semantics while leaving grid columns to each page. `SectionLabel` owns only the
-identical paragraph-style label used by Home/Notes and Me. Entry rows, page endings,
-generic headings, links, and layout primitives are not justified as shared React
-components by the current implementation.
+## UI review checklist
 
-### Retained non-Tailwind CSS
+For a meaningful interface change, verify:
 
-No CSS Module remains. `app/globals.css` is the only CSS file and is intentionally
-limited to Tailwind import/theme registration, runtime light/dark variables,
-selection, and the global focus-visible outline. These concerns depend on global
-document state or pseudo-elements and are not surface-level styling exceptions.
+- The result still feels technical, human, calm, credible, and editorial.
+- Content appears early and hierarchy is understandable without decoration.
+- Semantic color roles work in system light and dark themes.
+- Typography, reading measure, and spacing support the content.
+- Desktop and `375px` layouts have a deliberate reading order and no horizontal
+  overflow.
+- Keyboard focus is visible and all controls are reachable.
+- Touch targets meet the minimum size.
+- Hover, disabled, loading, success, and error states are present where needed.
+- Reduced-motion mode removes nonessential movement without removing state
+  feedback.
+- Chinese and English copy use appropriate language annotations and
+  punctuation.
+- New shared tokens or patterns are supported by repeated or semantic need.
 
-## Recommended implementation sequence
+Code-level verification remains:
 
-1. **Issue #16: normalize token ownership and Tailwind mappings.** This completed
-   the namespace cleanup and registered the accepted custom theme roles.
-2. **Issue #18: migrate global chrome.** Move the shell, skip link, header,
-   navigation, footer, and BrandMark presentation into focused components with
-   Tailwind utilities while preserving exact interaction and responsive output.
-3. **Issue #19: migrate Landing.** Landing now uses Tailwind utilities for its
-   full presentation, with no retained local-CSS exception.
-4. **Issue #20: migrate Home/Notes and Me and finish shared semantics.** This completed
-   the page migration, extracted `FactList` and the narrowly scoped
-   `SectionLabel`, removed obsolete aliases/CSS Modules, and consolidated the
-   regression evidence required for M003 review.
-
-The sequence keeps each migration independently reviewable. M003 closure still
-requires an owner-led live review after the implementation Issues are accepted.
-
-## Regression evidence required for follow-up work
-
-- `npm run lint` and `npm run build` pass.
-- Home (Landing + Notes index) and Me match the accepted output at a representative narrow
-  width below `40rem` and desktop width at or above `64rem`.
-- System light and dark modes retain contrast, warm accents, translucent header,
-  structural rules, selection, and BrandMark colors.
-- Keyboard review covers skip link, brand home link, primary navigation,
-  Landing section links, entry links, and `/notes/…` destinations.
-- Reduced-motion mode removes all transitions without removing state feedback.
-- The bilingual content, `lang="zh-CN"` annotations, short-copy punctuation,
-  metadata, navigation, and information architecture remain unchanged.
+```bash
+pnpm lint
+pnpm build
+git diff --check
+```
