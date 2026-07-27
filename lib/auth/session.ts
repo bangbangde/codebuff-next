@@ -7,9 +7,9 @@ import { redirect } from "next/navigation";
 import { getRuntimeAuth } from "./runtime";
 
 export const getCurrentSession = cache(async () => {
-  const headers = await headers();
+  const requestHeaders = await headers();
   return getRuntimeAuth().api.getSession({
-    headers,
+    headers: requestHeaders,
     query: {
       disableCookieCache: true,
       disableRefresh: true,
