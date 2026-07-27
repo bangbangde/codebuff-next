@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth/client";
 import {
+  AUTH_PASSWORD_MAX_LENGTH,
+  AUTH_PASSWORD_MIN_LENGTH,
+} from "@/lib/auth/constants";
+import {
   authInputClassName,
   authPrimaryButtonClassName,
 } from "../_components/auth-form-styles";
@@ -269,8 +273,8 @@ export function SignInForm() {
           autoComplete="current-password"
           className={authInputClassName}
           id="password"
-          maxLength={128}
-          minLength={15}
+          maxLength={AUTH_PASSWORD_MAX_LENGTH}
+          minLength={AUTH_PASSWORD_MIN_LENGTH}
           name="password"
           required
           type="password"

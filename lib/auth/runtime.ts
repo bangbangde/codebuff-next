@@ -3,8 +3,8 @@ import "server-only";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 
+import { AUTH_APP_NAME } from "@/lib/auth/constants";
 import {
-  AUTH_APP_NAME,
   createEmailAndPasswordPolicy,
   createTwoFactorPlugin,
 } from "@/lib/auth/policy";

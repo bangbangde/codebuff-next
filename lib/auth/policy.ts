@@ -1,13 +1,17 @@
 import { twoFactor } from "better-auth/plugins";
 
-export const AUTH_APP_NAME = "CQ's Lab";
+import {
+  AUTH_APP_NAME,
+  AUTH_PASSWORD_MAX_LENGTH,
+  AUTH_PASSWORD_MIN_LENGTH,
+} from "@/lib/auth/constants";
 
 export function createEmailAndPasswordPolicy() {
   return {
     enabled: true,
     disableSignUp: true,
-    minPasswordLength: 15,
-    maxPasswordLength: 128,
+    minPasswordLength: AUTH_PASSWORD_MIN_LENGTH,
+    maxPasswordLength: AUTH_PASSWORD_MAX_LENGTH,
   };
 }
 
