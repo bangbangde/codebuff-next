@@ -2,8 +2,12 @@ import "server-only";
 
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { twoFactor } from "better-auth/plugins";
 
+import {
+  AUTH_APP_NAME,
+  createEmailAndPasswordPolicy,
+  createTwoFactorPlugin,
+} from "@/lib/auth/policy";
 import { getDatabase } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
 
@@ -94,19 +98,14 @@ function createRuntimeAuth() {
   const baseURL = getBaseURL();
 
   return betterAuth({
-    appName: "CQ's Lab",
+    appName: AUTH_APP_NAME,
     baseURL: baseURL.origin,
     secrets: getVersionedSecrets(),
     database: drizzleAdapter(getDatabase(), {
       provider: "pg",
       schema,
     }),
-    emailAndPassword: {
-      enabled: true,
-      disableSignUp: true,
-      minPasswordLength: 15,
-      maxPasswordLength: 128,
-    },
+    emailAndPassword: createEmailAndPasswordPolicy(),
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -120,18 +119,7 @@ function createRuntimeAuth() {
         },
       },
     },
-    plugins: [
-      twoFactor({
-        issuer: "CQ's Lab",
-        skipVerificationOnEnable: false,
-        allowPasswordless: false,
-        accountLockout: {
-          enabled: true,
-          maxFailedAttempts: 10,
-          durationSeconds: 15 * 60,
-        },
-      }),
-    ],
+    plugins: [createTwoFactorPlugin()],
     trustedOrigins: [baseURL.origin],
     advanced: {
       useSecureCookies: baseURL.protocol === "https:",

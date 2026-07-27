@@ -107,12 +107,11 @@ CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检�
 
 ## 当前认证边界
 
-当前运行时提供认证 API、邮箱密码登录、基于 Session 条件渲染的账户页、
+当前运行时提供认证 API、邮箱密码登录、受 Session 保护的账户页、
 TOTP 双因素认证、一次性恢复码和一次性首个账户初始化，公开注册始终关闭。
-`/account` 会查询 Session，但当前不会把未登录访问者重定向到
-`/sign-in`；无 Session 时不渲染账户内容。schema 同时保留 Passkey
-相关表，但运行时尚未启用 Passkey 插件，因此不能把表结构存在等同于
-Passkey 功能可用。
+`/account` 会查询 Session，并把未登录访问者重定向到 `/sign-in`。
+schema 同时保留 Passkey 相关表，但运行时尚未启用 Passkey 插件，因此
+不能把表结构存在等同于 Passkey 功能可用。
 
 ## 常用校验
 

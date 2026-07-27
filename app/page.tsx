@@ -1,8 +1,8 @@
 import { ContentContainer } from "./_components/content-container";
 
-export default async function Home() {
+export default function Home() {
   return (
-    <div className="flex-1 flex flex-col">
+    <main className="flex flex-1 flex-col" id="main-content">
       <section
         className="bg-[radial-gradient(circle_at_calc(50%-min(26rem,32vw))_9%,rgba(184,93,22,0.045),transparent_28rem)]"
         aria-labelledby="landing-title"
@@ -37,12 +37,15 @@ export default async function Home() {
       </section>
 
       <ContentContainer className="flex-1 flex justify-center items-center">
-        <section aria-labelledby="articles">
-          <p className="text-2xl font-bold tracking-tight text-balance ">
+        <section aria-labelledby="articles-title">
+          <h2
+            className="text-2xl font-bold tracking-tight text-balance"
+            id="articles-title"
+          >
             Coming Soon...
-          </p>
+          </h2>
         </section>
       </ContentContainer>
-    </div>
+    </main>
   );
 }

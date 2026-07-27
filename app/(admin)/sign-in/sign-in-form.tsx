@@ -4,9 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth/client";
-
-const inputClassName =
-  "mt-2 min-h-12 w-full rounded-md border border-border bg-background px-4 py-3 text-base text-foreground shadow-[0_1px_0_color-mix(in_srgb,var(--foreground)_4%,transparent)] transition-[border-color,box-shadow] duration-150 ease-[ease] placeholder:text-muted-foreground/70 hover:border-[color-mix(in_srgb,var(--foreground)_24%,var(--border))] focus:border-accent focus:outline-none focus-visible:shadow-[0_0_0_3px_var(--accent-soft)] motion-reduce:transition-none";
+import {
+  authInputClassName,
+  authPrimaryButtonClassName,
+} from "../_components/auth-form-styles";
 
 type Step = "credentials" | "totp" | "backup";
 
@@ -16,6 +17,11 @@ export function SignInForm() {
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
+
+  function completeSignIn(recoveryCodeUsed = false) {
+    router.replace(recoveryCodeUsed ? "/account?recovery=1" : "/account");
+    router.refresh();
+  }
 
   async function handleCredentialsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,7 +38,7 @@ export function SignInForm() {
       const result = await authClient.signIn.email({ email, password });
       const data = result.data as Record<string, unknown> | null;
 
-      if (data && "twoFactorRedirect" in data) {
+      if (data?.twoFactorRedirect === true) {
         setStep("totp");
         return;
       }
@@ -42,8 +48,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/me");
-      router.refresh();
+      completeSignIn();
     } catch {
       setMessage("暂时无法登录，请稍后重试。");
     } finally {
@@ -67,8 +72,7 @@ export function SignInForm() {
         return;
       }
 
-      router.replace("/me");
-      router.refresh();
+      completeSignIn();
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
     } finally {
@@ -78,40 +82,22 @@ export function SignInForm() {
 
   async function handleBackupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsPending(true);
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
-    const rawCode = String(formData.get("backup-code") ?? "");
-    const matches = rawCode.match(/[A-Za-z0-9]{5}-?[A-Za-z0-9]{5}/g);
-    const extracted = matches && matches.length > 0
-      ? (() => {
-          const alnum = matches[0].replace(/-/g, "");
-          return `${alnum.slice(0, 5)}-${alnum.slice(5)}`;
-        })()
-      : rawCode.trim();
+    const code = String(formData.get("backup-code") ?? "").trim();
+
+    setIsPending(true);
 
     try {
-      let result = await authClient.twoFactor.verifyBackupCode({
-        code: extracted,
-      });
+      const result = await authClient.twoFactor.verifyBackupCode({ code });
 
       if (result.error) {
-        const upper = extracted.toUpperCase();
-        if (upper !== extracted) {
-          result = await authClient.twoFactor.verifyBackupCode({
-            code: upper,
-          });
-        }
-      }
-
-      if (result.error) {
-        setMessage("恢复码不正确，请重试。");
+        setMessage("恢复码无效或已使用，请核对后重试。");
         return;
       }
 
-      router.replace("/me?recovery=1");
-      router.refresh();
+      completeSignIn(true);
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
     } finally {
@@ -140,7 +126,7 @@ export function SignInForm() {
           </label>
           <input
             autoComplete="one-time-code"
-            className={inputClassName}
+            className={authInputClassName}
             id="totp-code"
             inputMode="numeric"
             maxLength={6}
@@ -162,7 +148,7 @@ export function SignInForm() {
         </p>
 
         <button
-          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          className={authPrimaryButtonClassName}
           disabled={isPending}
           type="submit"
         >
@@ -190,7 +176,7 @@ export function SignInForm() {
       <form className="mt-10" onSubmit={handleBackupSubmit}>
         <div className="rounded-md border border-border bg-surface-muted p-4">
           <p className="m-0 text-sm leading-body text-foreground">
-            输入你的恢复码以完成登录。每个恢复码只能使用一次。
+            输入任意一枚未使用的恢复码以完成登录。每枚只能使用一次。
           </p>
         </div>
 
@@ -204,7 +190,7 @@ export function SignInForm() {
           </label>
           <input
             autoComplete="off"
-            className={inputClassName}
+            className={authInputClassName}
             id="backup-code"
             name="backup-code"
             placeholder="xxxxx-xxxxx"
@@ -223,7 +209,7 @@ export function SignInForm() {
         </p>
 
         <button
-          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          className={authPrimaryButtonClassName}
           disabled={isPending}
           type="submit"
         >
@@ -259,7 +245,7 @@ export function SignInForm() {
         <input
           autoCapitalize="none"
           autoComplete="email"
-          className={inputClassName}
+          className={authInputClassName}
           id="email"
           inputMode="email"
           maxLength={320}
@@ -281,7 +267,7 @@ export function SignInForm() {
         </label>
         <input
           autoComplete="current-password"
-          className={inputClassName}
+          className={authInputClassName}
           id="password"
           maxLength={128}
           minLength={15}
@@ -300,7 +286,7 @@ export function SignInForm() {
       </p>
 
       <button
-        className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+        className={authPrimaryButtonClassName}
         disabled={isPending}
         type="submit"
       >
