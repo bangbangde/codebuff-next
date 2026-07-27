@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { ContentContainer } from "../_components/content-container";
-import { SectionLabel } from "../_components/section-label";
+import { ContentContainer } from "@/app/(site)/_components/content-container";
+import { SectionLabel } from "@/app/(site)/_components/section-label";
 import { FactList } from "./_components/fact-list";
 
 const facts = [

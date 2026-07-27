@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ContentContainer } from "@/app/(site)/_components/content-container";
 import { formatNoteDate, getAllNotes, getNote } from "@/lib/content/notes";
-import { ContentContainer } from "../../_components/content-container";
 
 type NotePageProps = {
   params: Promise<{ slug: string }>;

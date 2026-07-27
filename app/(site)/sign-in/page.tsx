@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { ContentContainer } from "../../_components/content-container";
-import { SectionLabel } from "../../_components/section-label";
-import { SignInForm } from "./sign-in-form";
+import { ContentContainer } from "@/app/(site)/_components/content-container";
+import { SectionLabel } from "@/app/(site)/_components/section-label";
+import { SignInForm } from "./_components/sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",

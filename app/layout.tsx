@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { SiteFooter } from "./_components/site-footer";
-import { SiteHeader } from "./_components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,9 +21,7 @@ export default function RootLayout({
       lang="zh-CN"
     >
       <body className="flex min-h-dvh flex-col  font-sans text-base leading-body text-foreground antialiased">
-        <SiteHeader />
         {children}
-        <SiteFooter />
       </body>
     </html>
   );

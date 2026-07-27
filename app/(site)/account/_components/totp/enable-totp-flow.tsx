@@ -12,12 +12,12 @@ import {
 import {
   authInputClassName,
   authPrimaryButtonClassName,
-} from "../../_components/auth-form-styles";
+} from "@/app/(site)/_components/auth-form-styles";
 import { RecoveryCodePanel } from "./recovery-code-panel";
 
 type EnableStep = "idle" | "setup";
 
-export function EnableTotpSection() {
+export function EnableTotpFlow() {
   const router = useRouter();
   const passwordInputId = useId();
   const codeInputId = useId();
