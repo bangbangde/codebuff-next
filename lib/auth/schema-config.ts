@@ -12,9 +12,8 @@ import {
  * application handler. Runtime auth configuration lives in runtime.ts and
  * injects the database, secrets, origin, and security policy.
  *
- * The pinned passkey plugin exposes the registration preference below, but
- * v1.6.23 does not yet enforce user verification during authentication.
- * Runtime integration must resolve that gap before exposing passkey endpoints.
+ * Runtime integration adds fresh-session mutation checks and enforces user
+ * verification on both the authentication request and verified response.
  */
 export const auth = betterAuth({
   appName: AUTH_APP_NAME,
