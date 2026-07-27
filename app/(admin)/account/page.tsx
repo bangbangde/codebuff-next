@@ -22,7 +22,7 @@ export default async function AccountPage({
     params?.recovery === "1" && Boolean(user.twoFactorEnabled);
 
   return (
-    <main className="min-h-[70svh] pt-[clamp(3rem,7vw,6rem)]" id="main-content">
+    <main className="min-h-[70svh] pb-[clamp(3rem,7vw,6rem)]" id="main-content">
       <ContentContainer>
         {showRecoveryNotice && (
           <div
@@ -92,9 +92,7 @@ export default async function AccountPage({
                   >
                     Name
                   </dt>
-                  <dd className="mt-2 ml-0 text-lg font-medium">
-                    {user.name}
-                  </dd>
+                  <dd className="mt-2 ml-0 text-lg font-medium">{user.name}</dd>
                 </div>
                 <div className="pt-6">
                   <dt
@@ -103,9 +101,7 @@ export default async function AccountPage({
                   >
                     Email
                   </dt>
-                  <dd className="mt-2 ml-0 break-all text-lg">
-                    {user.email}
-                  </dd>
+                  <dd className="mt-2 ml-0 break-all text-lg">{user.email}</dd>
                 </div>
               </dl>
               <div className="mt-10 border-t border-border pt-8">
