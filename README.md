@@ -10,8 +10,8 @@ MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
 | `/` | 站点简介、当前状态和 `Coming Soon...` 占位内容 |
 | `/me` | 公开的个人简介与工作方法 |
 | `/notes/[slug]` | 从仓库内 MDX 静态生成的文章详情；当前没有 Notes 索引页 |
-| `/sign-in` | 邮箱密码登录，以及已启用账户的 TOTP/恢复码验证 |
-| `/account` | 查询当前 Session，并在已登录时显示账户与 TOTP 管理界面 |
+| `/sign-in` | 邮箱密码、Passkey 登录，以及密码登录后的 TOTP/恢复码验证 |
+| `/account` | 查询当前 Session，并在已登录时显示账户、TOTP 与 Passkey 管理界面 |
 | `/api/auth/*` | Better Auth 的 Node.js API |
 
 公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 已作为本地对象存储
@@ -39,6 +39,9 @@ pnpm dev
 ```
 
 Compose 不启动应用，也不自动执行迁移或账户初始化。Garage 会在自己的容器内配置并复用单节点 layout。
+从 `.env.example` 新建 `.env` 时，本地 Passkey 配置已经包含
+`BETTER_AUTH_URL=http://localhost:3000` 与 `PASSKEY_RP_ID=localhost`。如果复用旧的
+`.env`，需要手动补齐 `PASSKEY_RP_ID`；它必须与访问应用时使用的 hostname 保持一致。
 
 ## Notes 内容
 
@@ -103,22 +106,35 @@ node runtime-tools/auth/bootstrap-user.cjs
 
 CI 会重新生成认证 schema 和 Drizzle migration，并通过 `git diff` 确认 `lib/db/schema.ts` 与 `drizzle/` 已提交且保持同步。`pnpm build` 同时生成最终镜像使用的迁移器和账户初始化 bundle。
 
-CI 不连接 PostgreSQL，也不查询真实表结构、执行业务 DML、检查角色权限或模拟生产迁移。生产部署仍应在启动新版本应用前，使用基础设施提供的迁移凭据执行镜像内迁移入口。
+常规 verify job 不连接 PostgreSQL，也不查询真实表结构、检查角色权限或模拟生产迁移。
+独立的 Passkey E2E job 使用临时 PostgreSQL 服务和随机命名数据库，执行迁移、初始化测试账户，
+再通过系统 Chrome 的 WebAuthn 虚拟验证器验证完整认证链路；测试结束后删除该数据库。
+生产部署仍应在启动新版本应用前，使用基础设施提供的迁移凭据执行镜像内迁移入口。
 
 ## 当前认证边界
 
 当前运行时提供认证 API、邮箱密码登录、受 Session 保护的账户页、
-TOTP 双因素认证、一次性恢复码和一次性首个账户初始化，公开注册始终关闭。
+Passkey 登录与管理、TOTP 双因素认证、一次性恢复码和一次性首个账户初始化，
+公开注册始终关闭。
 `/account` 会查询 Session，并把未登录访问者重定向到 `/sign-in`。
-schema 同时保留 Passkey 相关表，但运行时尚未启用 Passkey 插件，因此
-不能把表结构存在等同于 Passkey 功能可用。
+Passkey 注册与登录都要求验证器完成用户验证；Passkey 登录成功后不会再次进入
+TOTP 流程。注册、重命名和移除只允许在最近 10 分钟内建立的 Session 中操作，
+并且不能移除账户最后一个可用的登录方式。
 
 ## 常用校验
 
 ```bash
+pnpm test
 pnpm lint
 pnpm build
 git diff --check
+```
+
+完整 Passkey 浏览器测试还需要本地 PostgreSQL 和系统 Chrome。它会创建并清理独立数据库，
+不会使用 `PG_DB` 指向的应用数据库：
+
+```bash
+pnpm test:e2e:passkey
 ```
 
 ## 认证运行时
@@ -132,7 +148,11 @@ git diff --check
 | 环境变量 | 说明 |
 | --- | --- |
 | `BETTER_AUTH_URL` | 站点的公开 origin；生产环境必须使用 HTTPS，本机开发允许 `http://localhost` 或 `http://127.0.0.1` |
+| `PASSKEY_RP_ID` | WebAuthn relying party ID；必须等于 `BETTER_AUTH_URL` 的 hostname 或其可注册父域，本机开发使用 `localhost` |
 | `BETTER_AUTH_SECRETS` | 版本化密钥列表，例如 `2:<current-secret>,1:<previous-secret>`；每个密钥至少 32 个字符，首项用于新数据 |
+
+Passkey ceremony 的 origin 固定为 `BETTER_AUTH_URL`，不会从请求头推导。部署域名变化时
+必须同步审查 `BETTER_AUTH_URL` 与 `PASSKEY_RP_ID`，否则现有凭据可能无法使用。
 
 公开注册始终关闭。首次账户由运维人员在应用镜像中通过一次性命令创建；姓名、邮箱和密码只从当前进程环境读取，命令不会输出这些值：
 

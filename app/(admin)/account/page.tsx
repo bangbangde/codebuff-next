@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireCurrentSession } from "@/lib/auth/session";
 import { ContentContainer } from "../../_components/content-container";
 import { SectionLabel } from "../../_components/section-label";
+import { PasskeySection } from "./_components/passkey-section";
 import { SignOutButton } from "./_components/sign-out-button";
 import { TotpSection } from "./_components/totp-section";
 
@@ -135,6 +136,29 @@ export default async function AccountPage({
                 {user.twoFactorEnabled ? "TOTP enabled" : "TOTP not enabled"}
               </h3>
               <TotpSection enabled={Boolean(user.twoFactorEnabled)} />
+            </div>
+          </div>
+        </section>
+        <section
+          className="mt-[clamp(4rem,8vw,7rem)] border-t border-border pt-[clamp(4rem,8vw,7rem)]"
+          aria-labelledby="passkey-title"
+        >
+          <SectionLabel>Private / Passkeys</SectionLabel>
+          <div className="mt-6 grid grid-cols-[minmax(0,0.9fr)_minmax(20rem,1fr)] items-start gap-[clamp(3rem,8vw,8rem)] [@media(max-width:46rem)]:grid-cols-1 [@media(max-width:46rem)]:gap-10">
+            <div>
+              <h2
+                className="m-0 max-w-[16ch] text-[1.75rem] font-[520] leading-tight tracking-[-0.035em]"
+                id="passkey-title"
+                lang="en"
+              >
+                Passkeys
+              </h2>
+              <p className="mt-5 max-w-[32rem] text-lg leading-body text-muted-foreground">
+                使用设备解锁、密码管理器或安全密钥登录。认证私钥始终留在你的设备或凭据提供方。
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-surface-muted p-[clamp(1.5rem,4vw,2.5rem)]">
+              <PasskeySection />
             </div>
           </div>
         </section>

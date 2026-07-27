@@ -3,7 +3,11 @@ import "server-only";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 
-import { AUTH_APP_NAME } from "@/lib/auth/constants";
+import {
+  AUTH_APP_NAME,
+  AUTH_FRESH_SESSION_MAX_AGE_SECONDS,
+} from "@/lib/auth/constants";
+import { createRuntimePasskeyPlugins } from "@/lib/auth/passkey-runtime";
 import {
   createEmailAndPasswordPolicy,
   createTwoFactorPlugin,
@@ -106,6 +110,9 @@ function createRuntimeAuth() {
       schema,
     }),
     emailAndPassword: createEmailAndPasswordPolicy(),
+    session: {
+      freshAge: AUTH_FRESH_SESSION_MAX_AGE_SECONDS,
+    },
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -117,9 +124,28 @@ function createRuntimeAuth() {
           window: 60,
           max: 5,
         },
+        "/passkey/generate-authenticate-options": {
+          window: 60,
+          max: 10,
+        },
+        "/passkey/verify-authentication": {
+          window: 60,
+          max: 5,
+        },
+        "/passkey/generate-register-options": {
+          window: 60,
+          max: 10,
+        },
+        "/passkey/verify-registration": {
+          window: 60,
+          max: 5,
+        },
       },
     },
-    plugins: [createTwoFactorPlugin()],
+    plugins: [
+      createTwoFactorPlugin(),
+      ...createRuntimePasskeyPlugins(baseURL),
+    ],
     trustedOrigins: [baseURL.origin],
     advanced: {
       useSecureCookies: baseURL.protocol === "https:",

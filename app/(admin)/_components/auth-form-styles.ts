@@ -3,3 +3,6 @@ export const authInputClassName =
 
 export const authPrimaryButtonClassName =
   "mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-foreground px-5 py-3 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-accent focus-visible:bg-accent disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none";
+
+export const authSecondaryButtonClassName =
+  "inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-5 py-3 font-mono text-sm font-medium text-foreground transition-[border-color,background-color,color,opacity] duration-150 ease-[ease] hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none";

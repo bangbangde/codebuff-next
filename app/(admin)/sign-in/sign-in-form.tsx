@@ -11,10 +11,12 @@ import {
 import {
   authInputClassName,
   authPrimaryButtonClassName,
+  authSecondaryButtonClassName,
 } from "../_components/auth-form-styles";
 
 type Step = "credentials" | "totp" | "backup";
 type TwoFactorMethod = Exclude<Step, "credentials">;
+type PendingAction = Step | "passkey";
 type AuthClientError = {
   code?: string;
 };
@@ -75,9 +77,12 @@ function getTwoFactorFailure(
 export function SignInForm() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("credentials");
-  const [isPending, setIsPending] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
   const [message, setMessage] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
+  const isPending = pendingAction !== null;
 
   function completeSignIn(recoveryCodeUsed = false) {
     router.replace(recoveryCodeUsed ? "/account?recovery=1" : "/account");
@@ -100,7 +105,7 @@ export function SignInForm() {
 
   async function handleCredentialsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsPending(true);
+    setPendingAction("credentials");
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
@@ -127,13 +132,13 @@ export function SignInForm() {
     } catch {
       setMessage("暂时无法登录，请稍后重试。");
     } finally {
-      setIsPending(false);
+      setPendingAction(null);
     }
   }
 
   async function handleTotpSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsPending(true);
+    setPendingAction("totp");
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
@@ -151,7 +156,7 @@ export function SignInForm() {
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
     } finally {
-      setIsPending(false);
+      setPendingAction(null);
     }
   }
 
@@ -162,7 +167,7 @@ export function SignInForm() {
     const formData = new FormData(event.currentTarget);
     const code = String(formData.get("backup-code") ?? "").trim();
 
-    setIsPending(true);
+    setPendingAction("backup");
 
     try {
       const result = await authClient.twoFactor.verifyBackupCode({ code });
@@ -176,7 +181,41 @@ export function SignInForm() {
     } catch {
       setMessage("暂时无法验证，请稍后重试。");
     } finally {
-      setIsPending(false);
+      setPendingAction(null);
+    }
+  }
+
+  async function handlePasskeySignIn() {
+    if (!("PublicKeyCredential" in window)) {
+      setMessage("当前浏览器或设备不支持 Passkey。");
+      return;
+    }
+
+    setPendingAction("passkey");
+    setMessage("");
+
+    try {
+      const result = await authClient.signIn.passkey();
+      const error = result.error as AuthClientError | null;
+
+      if (error) {
+        if (
+          error.code === "AUTH_CANCELLED" ||
+          error.code === "ERROR_CEREMONY_ABORTED"
+        ) {
+          setMessage("Passkey 登录已取消，你仍可使用邮箱和密码。");
+        } else {
+          setMessage("无法使用 Passkey 登录，请重试或改用邮箱和密码。");
+        }
+
+        return;
+      }
+
+      completeSignIn();
+    } catch {
+      setMessage("暂时无法使用 Passkey 登录，请稍后重试。");
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -365,8 +404,33 @@ export function SignInForm() {
         disabled={isPending}
         type="submit"
       >
-        {isPending ? "Signing in…" : "Sign in"}
+        {pendingAction === "credentials" ? "Signing in…" : "Sign in"}
       </button>
+
+      <div
+        aria-hidden="true"
+        className="my-7 flex items-center gap-3 text-muted-foreground"
+      >
+        <span className="h-px flex-1 bg-border" />
+        <span className="font-mono text-[0.7rem] tracking-label uppercase">
+          or
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <button
+        className={authSecondaryButtonClassName}
+        disabled={isPending}
+        onClick={handlePasskeySignIn}
+        type="button"
+      >
+        {pendingAction === "passkey"
+          ? "Waiting for passkey…"
+          : "Sign in with a passkey"}
+      </button>
+      <p className="mt-3 text-center text-sm leading-body text-muted-foreground">
+        使用设备解锁、密码管理器或安全密钥完成登录，无需再次验证 TOTP。
+      </p>
     </form>
   );
 }

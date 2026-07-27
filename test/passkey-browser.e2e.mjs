@@ -1,0 +1,530 @@
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import net from "node:net";
+import { fileURLToPath } from "node:url";
+
+import pg from "pg";
+import { chromium } from "playwright-core";
+
+const { Client } = pg;
+
+const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+const nextCli = fileURLToPath(
+  new URL("../node_modules/next/dist/bin/next", import.meta.url),
+);
+const testDatabaseName =
+  `codebuff_passkey_e2e_${process.pid}_${Date.now()}`.toLowerCase();
+const testEmail = "passkey-e2e@codebuff.local";
+const testPassword = "Passkey-E2E-Local-Password-2026!";
+const initialPasskeyName = "E2E platform passkey";
+const renamedPasskeyName = "Renamed E2E passkey";
+const authenticationOptionsPath =
+  "/api/auth/passkey/generate-authenticate-options";
+const authenticationVerificationPath =
+  "/api/auth/passkey/verify-authentication";
+const registrationOptionsPath =
+  "/api/auth/passkey/generate-register-options";
+const registrationVerificationPath =
+  "/api/auth/passkey/verify-registration";
+
+let browser;
+let page;
+let server;
+let serverLog = "";
+let databaseCreated = false;
+
+function databaseConfig(database) {
+  return {
+    host: process.env.PG_HOST?.trim() || "127.0.0.1",
+    port: Number(process.env.PG_PORT?.trim() || "5432"),
+    user: process.env.PG_USER?.trim() || "codebuff",
+    password: process.env.PG_PWD || "codebuff",
+    database,
+    connectionTimeoutMillis: Number(
+      process.env.PG_CONNECTION_TIMEOUT_MS?.trim() || "10000",
+    ),
+  };
+}
+
+async function usingDatabase(database, callback) {
+  const client = new Client(databaseConfig(database));
+
+  try {
+    await client.connect();
+    return await callback(client);
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
+
+async function createTestDatabase() {
+  assert.match(testDatabaseName, /^[a-z0-9_]+$/);
+
+  await usingDatabase(
+    process.env.PG_MAINTENANCE_DB?.trim() || "postgres",
+    (client) => client.query(`CREATE DATABASE "${testDatabaseName}"`),
+  );
+  databaseCreated = true;
+}
+
+async function dropTestDatabase() {
+  if (!databaseCreated) {
+    return;
+  }
+
+  await usingDatabase(
+    process.env.PG_MAINTENANCE_DB?.trim() || "postgres",
+    async (client) => {
+      await client.query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+        [testDatabaseName],
+      );
+      await client.query(`DROP DATABASE IF EXISTS "${testDatabaseName}"`);
+    },
+  );
+  databaseCreated = false;
+}
+
+async function runNode(label, arguments_, environment) {
+  const child = spawn(process.execPath, arguments_, {
+    cwd: projectRoot,
+    env: environment,
+    stdio: "inherit",
+    windowsHide: true,
+  });
+  const [exitCode] = await once(child, "exit");
+
+  if (exitCode !== 0) {
+    throw new Error(`${label} exited with code ${exitCode}`);
+  }
+}
+
+function captureServerOutput(stream) {
+  stream.setEncoding("utf8");
+  stream.on("data", (chunk) => {
+    serverLog = `${serverLog}${chunk}`.slice(-30_000);
+  });
+}
+
+async function reservePort() {
+  const listener = net.createServer();
+  listener.unref();
+  await new Promise((resolve, reject) => {
+    listener.once("error", reject);
+    listener.listen(0, "127.0.0.1", resolve);
+  });
+  const address = listener.address();
+  assert(address && typeof address === "object");
+  const { port } = address;
+  await new Promise((resolve, reject) => {
+    listener.close((error) => (error ? reject(error) : resolve()));
+  });
+  return port;
+}
+
+async function waitForServer(baseURL) {
+  const deadline = Date.now() + 120_000;
+
+  while (Date.now() < deadline) {
+    if (server.exitCode !== null || server.signalCode !== null) {
+      throw new Error(
+        `Next.js exited before becoming ready.\n${serverLog}`,
+      );
+    }
+
+    try {
+      const response = await fetch(`${baseURL}/sign-in`);
+
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // The server is still compiling or has not bound its port yet.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Next.js did not become ready.\n${serverLog}`);
+}
+
+async function stopServer() {
+  if (
+    !server ||
+    server.exitCode !== null ||
+    server.signalCode !== null
+  ) {
+    return;
+  }
+
+  server.kill("SIGTERM");
+  await Promise.race([
+    once(server, "exit"),
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
+
+  if (server.exitCode === null && server.signalCode === null) {
+    server.kill("SIGKILL");
+    await once(server, "exit").catch(() => undefined);
+  }
+}
+
+function waitForApiResponse(pathname) {
+  return page.waitForResponse(
+    (response) => new URL(response.url()).pathname === pathname,
+    { timeout: 30_000 },
+  );
+}
+
+async function setTestUserTwoFactorEnabled(enabled) {
+  await usingDatabase(testDatabaseName, (client) =>
+    client.query(
+      'UPDATE "user" SET "two_factor_enabled" = $1 WHERE "email" = $2',
+      [enabled, testEmail],
+    ),
+  );
+}
+
+async function ageCurrentSessions() {
+  await usingDatabase(testDatabaseName, (client) =>
+    client.query(
+      'UPDATE "session" SET "created_at" = NOW() - INTERVAL \'20 minutes\'',
+    ),
+  );
+}
+
+async function removeCredentialPassword() {
+  return usingDatabase(testDatabaseName, async (client) => {
+    const result = await client.query(
+      'SELECT "password" FROM "account" WHERE "provider_id" = $1',
+      ["credential"],
+    );
+    const password = result.rows[0]?.password;
+    assert.equal(typeof password, "string");
+    assert(password.length > 0);
+
+    await client.query(
+      'UPDATE "account" SET "password" = NULL WHERE "provider_id" = $1',
+      ["credential"],
+    );
+    return password;
+  });
+}
+
+async function restoreCredentialPassword(password) {
+  await usingDatabase(testDatabaseName, (client) =>
+    client.query(
+      'UPDATE "account" SET "password" = $1 WHERE "provider_id" = $2',
+      [password, "credential"],
+    ),
+  );
+}
+
+async function passkeyRowCount() {
+  return usingDatabase(testDatabaseName, async (client) => {
+    const result = await client.query(
+      'SELECT COUNT(*)::integer AS "count" FROM "passkey"',
+    );
+    return result.rows[0].count;
+  });
+}
+
+async function runBrowserScenario(baseURL) {
+  browser = await chromium.launch({
+    channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL?.trim() || "chrome",
+    headless: true,
+  });
+  const context = await browser.newContext();
+  page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+
+  await cdp.send("WebAuthn.enable");
+  const { authenticatorId } = await cdp.send(
+    "WebAuthn.addVirtualAuthenticator",
+    {
+      options: {
+        protocol: "ctap2",
+        ctap2Version: "ctap2_1",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        automaticPresenceSimulation: true,
+        isUserVerified: true,
+      },
+    },
+  );
+
+  await page.goto(`${baseURL}/sign-in`);
+  await page.getByLabel("Email", { exact: true }).fill(testEmail);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(`${baseURL}/account`);
+
+  await page
+    .getByRole("heading", { name: "Registered passkeys" })
+    .waitFor();
+  await page
+    .getByLabel("Name (optional)", { exact: true })
+    .fill(initialPasskeyName);
+  await page
+    .getByLabel("Authenticator", { exact: true })
+    .selectOption("platform");
+
+  const registrationOptionsResponse = waitForApiResponse(
+    registrationOptionsPath,
+  );
+  const registrationVerificationResponse = waitForApiResponse(
+    registrationVerificationPath,
+  );
+  await page
+    .getByRole("button", { name: "Register passkey", exact: true })
+    .click();
+
+  const [registrationOptions, registrationVerification] =
+    await Promise.all([
+      registrationOptionsResponse,
+      registrationVerificationResponse,
+    ]);
+  assert.equal(registrationOptions.ok(), true);
+  assert.equal(registrationVerification.ok(), true);
+  assert.equal(
+    (await registrationOptions.json()).authenticatorSelection
+      .userVerification,
+    "required",
+  );
+  await page
+    .getByText("Passkey 已注册，可以用于下次登录。", { exact: true })
+    .waitFor();
+  await page.getByText(initialPasskeyName, { exact: true }).waitFor();
+  assert.equal(await passkeyRowCount(), 1);
+
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await page
+    .getByLabel("Passkey name", { exact: true })
+    .fill(renamedPasskeyName);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page
+    .getByText("Passkey 名称已更新。", { exact: true })
+    .waitFor();
+  await page.getByText(renamedPasskeyName, { exact: true }).waitFor();
+
+  await ageCurrentSessions();
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await page
+    .getByLabel("Passkey name", { exact: true })
+    .fill("This rename must be rejected");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page
+    .getByText(
+      "当前登录已超过 10 分钟。请退出并重新登录后再更改 Passkey。",
+      { exact: true },
+    )
+    .waitFor();
+
+  await setTestUserTwoFactorEnabled(true);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.waitForURL(`${baseURL}/sign-in`);
+
+  await page.getByLabel("Email", { exact: true }).fill(testEmail);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByLabel("Authentication code", { exact: true })
+    .waitFor();
+  await page.goto(`${baseURL}/sign-in`);
+
+  await cdp.send("WebAuthn.setResponseOverrideBits", {
+    authenticatorId,
+    isBadUV: true,
+    isBadUP: false,
+    isBogusSignature: false,
+  });
+  const rejectedOptionsResponse = waitForApiResponse(
+    authenticationOptionsPath,
+  );
+  const rejectedVerificationResponse = waitForApiResponse(
+    authenticationVerificationPath,
+  );
+  await page
+    .getByRole("button", {
+      name: "Sign in with a passkey",
+      exact: true,
+    })
+    .click();
+
+  const [rejectedOptions, rejectedVerification] = await Promise.all([
+    rejectedOptionsResponse,
+    rejectedVerificationResponse,
+  ]);
+  assert.equal(rejectedOptions.ok(), true);
+  assert.equal(
+    (await rejectedOptions.json()).userVerification,
+    "required",
+  );
+  assert.equal(rejectedVerification.ok(), false);
+  await page
+    .getByText(
+      "无法使用 Passkey 登录，请重试或改用邮箱和密码。",
+      { exact: true },
+    )
+    .waitFor();
+  assert.equal(new URL(page.url()).pathname, "/sign-in");
+
+  await cdp.send("WebAuthn.setResponseOverrideBits", {
+    authenticatorId,
+    isBadUV: false,
+    isBadUP: false,
+    isBogusSignature: false,
+  });
+  const successfulOptionsResponse = waitForApiResponse(
+    authenticationOptionsPath,
+  );
+  const successfulVerificationResponse = waitForApiResponse(
+    authenticationVerificationPath,
+  );
+  await page
+    .getByRole("button", {
+      name: "Sign in with a passkey",
+      exact: true,
+    })
+    .click();
+
+  const [successfulOptions, successfulVerification] = await Promise.all([
+    successfulOptionsResponse,
+    successfulVerificationResponse,
+  ]);
+  assert.equal(successfulOptions.ok(), true);
+  assert.equal(
+    (await successfulOptions.json()).userVerification,
+    "required",
+  );
+  assert.equal(successfulVerification.ok(), true);
+  await page.waitForURL(`${baseURL}/account`);
+  await page
+    .getByRole("heading", { name: "TOTP enabled", exact: true })
+    .waitFor();
+  await page.getByText(renamedPasskeyName, { exact: true }).waitFor();
+
+  const credentialPassword = await removeCredentialPassword();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Remove passkey", exact: true })
+    .click();
+  await page
+    .getByText(
+      "无法移除账户最后一个可用的登录方式。",
+      { exact: true },
+    )
+    .waitFor();
+  assert.equal(await passkeyRowCount(), 1);
+
+  await restoreCredentialPassword(credentialPassword);
+  await page
+    .getByRole("button", { name: "Remove passkey", exact: true })
+    .click();
+  await page.getByText("Passkey 已移除。", { exact: true }).waitFor();
+  await page
+    .getByText("还没有注册 Passkey。密码和 TOTP 登录方式不会因注册 Passkey", {
+      exact: false,
+    })
+    .waitFor();
+  assert.equal(await passkeyRowCount(), 0);
+
+  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
+    authenticatorId,
+  });
+  await cdp.send("WebAuthn.disable");
+}
+
+async function main() {
+  const port = await reservePort();
+  const baseURL = `http://localhost:${port}`;
+  const testEnvironment = {
+    ...process.env,
+    NODE_ENV: "development",
+    NEXT_TELEMETRY_DISABLED: "1",
+    PG_DB: testDatabaseName,
+    BETTER_AUTH_URL: baseURL,
+    PASSKEY_RP_ID: "localhost",
+    BETTER_AUTH_SECRETS:
+      "0:passkey-e2e-only-secret-with-at-least-32-characters",
+    AUTH_BOOTSTRAP_NAME: "Passkey E2E User",
+    AUTH_BOOTSTRAP_EMAIL: testEmail,
+    AUTH_BOOTSTRAP_PASSWORD: testPassword,
+  };
+
+  console.log("Creating isolated PostgreSQL database...");
+  await createTestDatabase();
+  await runNode(
+    "Runtime-tool build",
+    ["scripts/build-runtime-tools.mjs"],
+    testEnvironment,
+  );
+  await runNode(
+    "Database migration",
+    [".build/runtime-tools/db/migrate.cjs"],
+    testEnvironment,
+  );
+  await runNode(
+    "Account bootstrap",
+    ["scripts/bootstrap-auth-user.mjs"],
+    testEnvironment,
+  );
+
+  console.log("Starting isolated Next.js server...");
+  server = spawn(
+    process.execPath,
+    [
+      nextCli,
+      "dev",
+      "--hostname",
+      "localhost",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: projectRoot,
+      env: testEnvironment,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    },
+  );
+  captureServerOutput(server.stdout);
+  captureServerOutput(server.stderr);
+  await waitForServer(baseURL);
+
+  console.log("Running Passkey browser scenario...");
+  await runBrowserScenario(baseURL);
+  console.log("Passkey browser scenario passed.");
+}
+
+try {
+  await main();
+} catch (error) {
+  if (page) {
+    await page
+      .screenshot({
+        path: fileURLToPath(
+          new URL("../.build/passkey-e2e-failure.png", import.meta.url),
+        ),
+        fullPage: true,
+      })
+      .catch(() => undefined);
+  }
+
+  console.error(error);
+
+  if (serverLog) {
+    console.error("\nNext.js output:\n", serverLog);
+  }
+
+  process.exitCode = 1;
+} finally {
+  await browser?.close().catch(() => undefined);
+  await stopServer().catch((error) => console.error(error));
+  await dropTestDatabase().catch((error) => {
+    console.error("Unable to remove the isolated test database:", error);
+    process.exitCode = 1;
+  });
+}
