@@ -135,7 +135,7 @@ export function RegenerateRecoveryCodes({
 
         <p
           aria-live="polite"
-          className="mt-5 min-h-[1.65em] text-sm text-accent"
+          className="mt-5 min-h-[1.65em] text-sm text-brand-accent"
           role="status"
         >
           {message}
@@ -166,7 +166,7 @@ export function RegenerateRecoveryCodes({
 
   return (
     <button
-      className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-5 py-3 font-mono text-sm font-medium text-foreground transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+      className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border bg-background px-5 py-3 font-mono text-sm font-medium text-foreground transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
       disabled={disabled}
       onClick={() => {
         setStep("prompt");

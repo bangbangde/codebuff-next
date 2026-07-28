@@ -8,8 +8,10 @@ practical UI rules without prescribing the composition of a particular page.
 
 Use it when designing or reviewing a new surface, extending an existing
 pattern, or deciding whether a visual choice belongs in the shared language.
-Current product scope belongs in GitHub Issues and Milestones. Routes, feature
-behavior, component inventories, and implementation defects do not belong here.
+It also defines the stable ownership boundary between shared interaction
+semantics and product-surface styling. Current product scope belongs in GitHub
+Issues and Milestones. Routes, feature behavior, component inventories, and
+implementation defects do not belong here.
 
 ## Experience qualities
 
@@ -56,15 +58,43 @@ Surfaces should share tokens and interaction behavior without being forced into
 one page template. Extract a visual pattern only after repeated use or a clear
 shared semantic need.
 
+Site and Admin are distinct product surfaces. They share semantic role names,
+accessible primitive behavior, and color-scheme state, but they do not inherit
+one another's palette, typography, density, radius, elevation, or composition.
+
 ### Keep every interaction purposeful
 
 Hover, focus, transition, and animation should communicate state or navigation.
 The experience must remain understandable with motion reduced or absent.
 
+## UI layers
+
+The interface uses six layers, in this order:
+
+1. **Color-scheme state:** `next-themes` applies Light or Dark from the system
+   preference. It does not identify the product surface.
+2. **Shared semantic contract:** roles such as `background`, `foreground`,
+   `primary`, `muted`, `accent`, `destructive`, `border`, `input`, and `ring`
+   describe component intent.
+3. **Surface-theme binding:** the Site and Admin route layouts independently
+   bind every shared role for both color schemes.
+4. **Shared primitives:** project-owned shadcn/ui source in `components/ui`
+   consumes semantic roles without knowing which surface is active.
+5. **Surface-local composition:** Site and Admin page structure remains
+   colocated with the relevant route group.
+6. **Portal propagation:** overlays and global feedback explicitly carry the
+   active surface binding when rendered outside the route wrapper.
+
+The root Stone configuration and Nova component style are generation
+baselines. They provide a predictable source shape but are not a product visual
+identity.
+
 ## Color
 
 The palette uses semantic roles. Components should consume the role rather than
 copying its literal value.
+
+### Site binding
 
 | Role | Light | Dark | Usage |
 | --- | --- | --- | --- |
@@ -72,15 +102,23 @@ copying its literal value.
 | Muted surface | `#fff8eb` | `#2b241b` | Secondary panels, notices, quotes, and quiet separation |
 | Foreground | `#181512` | `#f7f3ed` | Primary text and strong controls |
 | Muted foreground | `#706961` | `#bdb4aa` | Supporting copy, navigation, labels, and metadata |
-| Accent | `#b85d16` | `#ffad57` | Links, focus, labels, status, and selective emphasis |
-| Soft accent | `#fff0cc` | `#3c2917` | Selection, low-emphasis feedback, and inline highlights |
+| Brand accent | `#b85d16` | `#ffad57` | Links, editorial labels, status, and selective emphasis |
+| Brand accent soft | `#fff0cc` | `#3c2917` | Selection, low-emphasis brand feedback, and inline highlights |
+| Interaction accent | `#f5efe8` | `#302b26` | Transient hover, expanded, and selected component states |
 | Border | `#ebe6df` | `#3c352e` | Structural rules, fields, and panel boundaries |
+
+Admin binds the same shared roles to a denser, neutral tool surface. Its
+specific values are intentionally independent from Site and may evolve with
+real Admin work. Changing an Admin value must not alter Site, and vice versa.
 
 ### Color rules
 
 - Preserve readable contrast in both system themes.
-- Use foreground for primary actions and accent for their interactive state
-  when a stronger filled control is needed.
+- Use foreground or `primary` for strong actions and interaction `accent` for
+  transient component states.
+- Use `brand-accent` and `brand-accent-soft` only where product identity or
+  editorial emphasis is intended. Never use component `accent` as an alias for
+  the brand orange.
 - Use muted foreground only for genuinely secondary information.
 - Prefer a one-pixel border to a shadow for grouping and structure.
 - Do not introduce isolated palette literals when an existing semantic role
@@ -88,9 +126,10 @@ copying its literal value.
 - The brand mark owns its fixed black and orange artwork. Do not derive general
   interface colors from the asset.
 
-Dark mode follows the system `prefers-color-scheme` setting. There is currently
-no product requirement for a manual theme control. Theme differences should be
-expressed through semantic roles rather than per-component dark branches.
+Color scheme defaults to the system preference through `next-themes` and
+responds to system changes. There is no product requirement for a manual theme
+control. Route layouts own surface identity; `next-themes` must never choose
+between Site and Admin.
 
 ## Typography
 
@@ -104,7 +143,9 @@ Typography carries most of the interface character.
   metadata, indexes, and compact controls.
 
 Monospace is a supporting editorial voice, not the default for all technical
-content.
+content. Admin may use it more frequently for dense labels and operational
+metadata, but the family remains a semantic choice rather than a dashboard
+costume.
 
 ### Hierarchy
 
@@ -183,18 +224,20 @@ error states when the interaction semantics require them.
 
 ### Focus
 
-- The shared keyboard-focus treatment is a `2px` accent outline with a `3px`
+- The shared keyboard-focus treatment is a `2px` `ring` outline with a `3px`
   offset.
-- Form fields may replace the outer outline with an accent border and
-  soft-accent ring when this gives clearer field-level feedback.
+- Form fields may replace the outer outline with a `ring` border and
+  surface-appropriate soft ring when this gives clearer field-level feedback.
 - Never remove an outline without supplying an equally visible replacement.
 - Focus feedback must remain distinguishable from hover.
 
 ### Hover and active feedback
 
-- Text and navigation actions may shift from muted foreground to accent.
-- Soft accent is suitable for low-emphasis hover or focus backgrounds.
-- Filled primary actions may change from foreground to accent.
+- Site text and navigation actions may shift from muted foreground to
+  `brand-accent`.
+- Shared controls use interaction `accent` for low-emphasis hover, expanded, or
+  selected backgrounds.
+- Filled primary actions may use a surface-owned state derived from `primary`.
 - Avoid layout shifts, large translations, or decorative reveals for routine
   controls.
 
@@ -261,6 +304,9 @@ must remain explicit. Do not rely on placeholder text as the only label.
 - Decorative illustration or motion without a content purpose.
 - New colors, spacing aliases, or component variants introduced for one local
   convenience.
+- Shared primitives that hard-code Site or Admin palette values.
+- Portal content that falls back to root generation colors instead of the
+  active surface binding.
 - Low-contrast muted text used for important instructions.
 - Hover-only affordances or invisible keyboard focus.
 - Abstractions that erase meaningful differences between surfaces.
@@ -271,7 +317,8 @@ For a meaningful interface change, verify:
 
 - The result still feels technical, human, calm, credible, and editorial.
 - Content appears early and hierarchy is understandable without decoration.
-- Semantic color roles work in system light and dark themes.
+- Semantic color roles work in Site Light/Dark and Admin Light/Dark.
+- Brand accent remains distinct from transient component accent.
 - Typography, reading measure, and spacing support the content.
 - Desktop and `375px` layouts have a deliberate reading order and no horizontal
   overflow.
@@ -283,6 +330,7 @@ For a meaningful interface change, verify:
 - Chinese and English copy use appropriate language annotations and
   punctuation.
 - New shared tokens or patterns are supported by repeated or semantic need.
+- Portal overlays and global feedback retain the active product surface.
 
 Code-level verification remains:
 

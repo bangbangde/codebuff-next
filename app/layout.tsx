@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { ColorSchemeProvider } from "@/components/color-scheme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,11 +19,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className="bg-background [text-rendering:optimizeLegibility]"
+      className="[text-rendering:optimizeLegibility]"
       lang="zh-CN"
+      suppressHydrationWarning
     >
-      <body className="flex min-h-dvh flex-col  font-sans text-base leading-body text-foreground antialiased">
-        {children}
+      <body className="min-h-dvh font-sans text-base leading-body antialiased">
+        <ColorSchemeProvider>{children}</ColorSchemeProvider>
       </body>
     </html>
   );

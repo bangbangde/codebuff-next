@@ -51,7 +51,7 @@ export function PasskeyItem({
         </div>
         <div className="flex shrink-0 flex-wrap gap-3">
           <button
-            className="min-h-10 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs font-medium text-foreground transition-[border-color,color] hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+            className="min-h-10 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs font-medium text-foreground transition-[border-color,color] hover:border-brand-accent hover:text-brand-accent focus-visible:border-brand-accent focus-visible:text-brand-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
             disabled={disabled}
             onClick={onStartRename}
             type="button"
@@ -59,7 +59,7 @@ export function PasskeyItem({
             Rename
           </button>
           <button
-            className="min-h-10 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs font-medium text-muted-foreground transition-[border-color,color] hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+            className="min-h-10 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs font-medium text-muted-foreground transition-[border-color,color] hover:border-brand-accent hover:text-brand-accent focus-visible:border-brand-accent focus-visible:text-brand-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
             disabled={disabled}
             onClick={onStartDelete}
             type="button"

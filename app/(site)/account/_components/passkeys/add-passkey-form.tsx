@@ -95,7 +95,7 @@ export function AddPasskeyForm({
 
       <p
         aria-live="polite"
-        className="mt-5 min-h-[1.65em] text-sm leading-body text-accent"
+        className="mt-5 min-h-[1.65em] text-sm leading-body text-brand-accent"
         role="status"
       >
         {message}

@@ -14,7 +14,7 @@ export default function Home() {
           >
             <span className="inline-block">嗨，这里是</span>{" "}
             <span
-              className="ml-[0.16em] inline-block text-accent [@media(max-width:40rem)]:ml-[0.12em]"
+              className="ml-[0.16em] inline-block text-brand-accent [@media(max-width:40rem)]:ml-[0.12em]"
               lang="en"
             >
               CQ’s Lab
@@ -28,8 +28,8 @@ export default function Home() {
             lang="en"
           >
             <span className="relative flex size-2 shrink-0" aria-hidden="true">
-              <span className="absolute -inset-1 animate-ping rounded-full border border-accent opacity-70 [animation-duration:1.8s] [animation-timing-function:cubic-bezier(0,0,0.2,1)] motion-reduce:animate-none motion-reduce:opacity-0" />
-              <span className="relative size-2 rounded-full bg-accent shadow-[0_0_0_0.25rem_var(--accent-soft)]" />
+              <span className="absolute -inset-1 animate-ping rounded-full border border-brand-accent opacity-70 [animation-duration:1.8s] [animation-timing-function:cubic-bezier(0,0,0.2,1)] motion-reduce:animate-none motion-reduce:opacity-0" />
+              <span className="relative size-2 rounded-full bg-brand-accent shadow-[0_0_0_0.25rem_var(--brand-accent-soft)]" />
             </span>
             Now — Getting the site ready.
           </p>
