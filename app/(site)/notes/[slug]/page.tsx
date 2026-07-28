@@ -47,14 +47,14 @@ export default async function NotePage({ params }: NotePageProps) {
         <ContentContainer>
           <header className="border-b border-border pt-[clamp(2.5rem,6vw,5rem)] pb-[clamp(3.5rem,8vw,6.5rem)]">
             <Link
-              className="inline-flex min-h-11 items-center gap-2 font-mono text-xs leading-body tracking-[0.05em] text-muted-foreground transition-colors duration-150 hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
+              className="inline-flex min-h-11 items-center gap-2 font-mono text-xs leading-body tracking-[0.05em] text-muted-foreground transition-colors duration-150 hover:text-brand-accent focus-visible:text-brand-accent motion-reduce:transition-none"
               href="/"
               lang="en"
             >
               <span aria-hidden="true">←</span>
               All notes
             </Link>
-            <p className="mt-8 mb-0 font-mono text-xs leading-body tracking-label text-accent uppercase">
+            <p className="mt-8 mb-0 font-mono text-xs leading-body tracking-label text-brand-accent uppercase">
               {note.kind} ·{" "}
               <time dateTime={note.publishedAt}>
                 {formatNoteDate(note.publishedAt, note.language)}
@@ -75,7 +75,7 @@ export default async function NotePage({ params }: NotePageProps) {
 
           <footer className="border-t border-border py-[clamp(2.5rem,5vw,4rem)]">
             <Link
-              className="inline-flex min-h-11 items-center gap-3 border-b border-[color-mix(in_srgb,var(--accent)_42%,transparent)] font-mono text-sm text-accent transition-colors duration-150 hover:border-accent focus-visible:border-accent motion-reduce:transition-none"
+              className="inline-flex min-h-11 items-center gap-3 border-b border-[color-mix(in_srgb,var(--brand-accent)_42%,transparent)] font-mono text-sm text-brand-accent transition-colors duration-150 hover:border-brand-accent focus-visible:border-brand-accent motion-reduce:transition-none"
               href="/"
               lang="en"
             >

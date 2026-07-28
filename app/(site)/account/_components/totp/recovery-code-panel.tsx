@@ -10,7 +10,7 @@ export function RecoveryCodePanel({
   return (
     <div className="rounded-md border border-border bg-surface-muted p-4">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-background">
+        <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-accent text-background">
           <svg
             aria-hidden="true"
             className="h-3.5 w-3.5"
@@ -40,7 +40,7 @@ export function RecoveryCodePanel({
         </div>
       </div>
 
-      <ul className="mt-4 grid list-inside list-disc grid-cols-2 gap-2 rounded-md border border-border bg-background p-4 font-mono text-sm marker:text-accent">
+      <ul className="mt-4 grid list-inside list-disc grid-cols-2 gap-2 rounded-md border border-border bg-background p-4 font-mono text-sm marker:text-brand-accent">
         {codes.map((code) => (
           <li key={code} className="text-foreground">
             {code}

@@ -77,7 +77,7 @@ export function DisableTotpForm({
 
       <p
         aria-live="polite"
-        className="mt-5 min-h-[1.65em] text-sm text-accent"
+        className="mt-5 min-h-[1.65em] text-sm text-brand-accent"
         role="status"
       >
         {message}

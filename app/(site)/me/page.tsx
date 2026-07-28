@@ -87,7 +87,7 @@ export default function MePage() {
                 className="border-t border-border pt-6"
                 key={principle.label}
               >
-                <p className="m-0 font-mono text-xs leading-body tracking-label text-accent">
+                <p className="m-0 font-mono text-xs leading-body tracking-label text-brand-accent">
                   {String(index + 1).padStart(2, "0")}
                 </p>
                 <h3

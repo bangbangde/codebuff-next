@@ -51,7 +51,7 @@ export function RenamePasskeyForm({
       />
       <div className="mt-4 flex flex-wrap gap-3">
         <button
-          className="min-h-10 rounded-md bg-foreground px-4 py-2 font-mono text-xs font-medium text-background transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none"
+          className="min-h-10 rounded-md bg-foreground px-4 py-2 font-mono text-xs font-medium text-background transition-colors hover:bg-brand-accent focus-visible:bg-brand-accent focus-visible:outline-none disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none"
           disabled={disabled}
           type="submit"
         >
