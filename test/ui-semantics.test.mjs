@@ -65,11 +65,20 @@ describe("shared UI semantics", () => {
 
   it("propagates the active surface through portal-based UI", async () => {
     const dialog = await readFile("components/ui/dialog.tsx", "utf8");
+    const sonner = await readFile("components/ui/sonner.tsx", "utf8");
     const surfaceTheme = await readFile("components/surface-theme.tsx", "utf8");
 
     assert.match(dialog, /useSurfaceClassName/);
     assert.match(dialog, /DialogPrimitive\.Portal/);
+    assert.match(
+      dialog,
+      /className=\{cn\(surfaceClassName, className\)\}/,
+    );
     assert.match(surfaceTheme, /surface-\$\{surface\}/);
-    assert.match(surfaceTheme, /<Toaster/);
+    assert.match(
+      surfaceTheme,
+      /<Toaster className=\{cn\("toaster group", surfaceClassName\)\} \/>/,
+    );
+    assert.match(sonner, /description: "text-muted-foreground!"/);
   });
 });
