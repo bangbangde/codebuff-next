@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SiteUtilityLinks } from "./site-utility-links";
 
 const navigationLinkClassName =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color,border-color] duration-[140ms] ease-[ease] hover:bg-brand-accent-soft hover:text-brand-accent focus-visible:bg-brand-accent-soft focus-visible:text-brand-accent motion-reduce:transition-none";
@@ -35,10 +36,14 @@ export function SiteHeader() {
             />
             CQ’s Lab
           </Link>
-          <nav className="flex gap-1" aria-label="Primary navigation">
+          <nav
+            className="flex items-center gap-1"
+            aria-label="Primary navigation"
+          >
             <Link className={navigationLinkClassName} href="/me">
               Me
             </Link>
+            <SiteUtilityLinks />
           </nav>
         </div>
       </header>
