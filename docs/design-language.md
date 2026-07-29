@@ -107,9 +107,24 @@ copying its literal value.
 | Interaction accent | `#f5efe8` | `#302b26` | Transient hover, expanded, and selected component states |
 | Border | `#ebe6df` | `#3c352e` | Structural rules, fields, and panel boundaries |
 
-Admin binds the same shared roles to a denser, neutral tool surface. Its
-specific values are intentionally independent from Site and may evolve with
-real Admin work. Changing an Admin value must not alter Site, and vice versa.
+Admin binds the same shared roles to a denser, GitHub-inspired tool surface. A
+white default canvas, subtle cool-gray secondary surfaces, crisp borders, and
+functional blue emphasis keep the workspace clear without copying the Site
+palette. Its specific values remain independently owned by Admin. Changing an
+Admin value must not alter Site, and vice versa.
+
+### Admin binding
+
+| Role | Light | Dark | Usage |
+| --- | --- | --- | --- |
+| Background | `#ffffff` | `#0d1117` | Application canvas and fixed header |
+| Card | `#ffffff` | `#161b22` | Sidebar, cards, and primary work surfaces |
+| Muted surface | `#f6f8fa` | `#161b22` | Secondary regions and quiet separation |
+| Foreground | `#1f2328` | `#f0f6fc` | Primary text and strong controls |
+| Muted foreground | `#59636e` | `#8b949e` | Supporting copy, labels, and metadata |
+| Brand accent | `#0969da` | `#58a6ff` | Product identity, focus, and selected emphasis |
+| Interaction accent | `#e6eaef` | `#21262d` | Hover, expanded, and current-navigation states |
+| Border | `#d1d9e0` | `#30363d` | Shell structure, fields, and panel boundaries |
 
 ### Color rules
 
