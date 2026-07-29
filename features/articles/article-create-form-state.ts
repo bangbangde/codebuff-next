@@ -1,11 +1,13 @@
 import type { ArticleCreateValues } from "./article-dto";
 
-export type ArticleCreateFieldErrors = Partial<
+export type ArticleFieldErrors = Partial<
   Record<keyof ArticleCreateValues, readonly string[]>
 >;
 
+export type ArticleCreateFieldErrors = ArticleFieldErrors;
+
 export type ArticleCreateFormState = Readonly<{
-  fieldErrors: ArticleCreateFieldErrors;
+  fieldErrors: ArticleFieldErrors;
   formError: string | null;
   values: ArticleCreateValues;
 }>;

@@ -22,12 +22,16 @@ function formatUpdatedAt(article: ArticleSummary) {
 export default async function ArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string | string[] }>;
+  searchParams: Promise<{
+    created?: string | string[];
+    deleted?: string | string[];
+  }>;
 }) {
   await requireAdmin();
   const query = await searchParams;
   const articles = await listArticleSummaries();
   const articleCreated = query.created === "1";
+  const articleDeleted = query.deleted === "1";
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:py-12">
@@ -65,6 +69,19 @@ export default async function ArticlesPage({
             className="mt-0.5 size-4 shrink-0 text-brand-accent"
           />
           <p>文章已保存到 PostgreSQL，目前仍处于未发布状态。</p>
+        </div>
+      ) : null}
+
+      {articleDeleted ? (
+        <div
+          className="mt-8 flex items-start gap-3 rounded-lg border border-brand-accent/35 bg-brand-accent-soft px-4 py-3 text-sm text-foreground"
+          role="status"
+        >
+          <CheckCircle2Icon
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0 text-brand-accent"
+          />
+          <p>未发布文章已从 PostgreSQL 永久删除。</p>
         </div>
       ) : null}
 
@@ -120,7 +137,14 @@ export default async function ArticlesPage({
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <h3 className="text-base font-semibold">{article.title}</h3>
+                    <h3 className="text-base font-semibold">
+                      <Link
+                        className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                        href={`/admin/articles/${article.id}`}
+                      >
+                        {article.title}
+                      </Link>
+                    </h3>
                     <span className="font-mono text-[0.6875rem] tracking-[0.06em] text-muted-foreground uppercase">
                       {article.language}
                     </span>
