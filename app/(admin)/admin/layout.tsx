@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { SurfaceTheme } from "@/components/surface-theme";
-import { requireCurrentSession } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
+import { AdminShell } from "./_components/admin-shell";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -11,14 +12,23 @@ export const metadata: Metadata = {
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  await requireCurrentSession();
+  // Resolve authorization before any Suspense boundary can stream a 200
+  // response, preserving redirect and forbidden HTTP status semantics.
+  const session = await requireAdmin();
 
   return (
     <SurfaceTheme
-      className="min-h-dvh bg-background text-foreground"
+      className="h-dvh overflow-hidden bg-background text-foreground"
       surface="admin"
     >
-      {children}
+      <AdminShell
+        identity={{
+          email: session.user.email,
+          name: session.user.name,
+        }}
+      >
+        {children}
+      </AdminShell>
     </SurfaceTheme>
   );
 }

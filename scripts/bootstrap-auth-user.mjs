@@ -133,7 +133,8 @@ async function bootstrapAuthUser() {
       const passwordHash = await hashPassword(password);
 
       await client.query(
-        'INSERT INTO "user" (id, name, email) VALUES ($1, $2, $3)',
+        `INSERT INTO "user" (id, name, email, role)
+         VALUES ($1, $2, $3, 'admin')`,
         [userId, name, email],
       );
       await client.query(

@@ -12,6 +12,7 @@ MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
 | `/notes/[slug]` | 从仓库内 MDX 静态生成的文章详情；当前没有 Notes 索引页 |
 | `/sign-in` | 邮箱密码、Passkey 登录，以及密码登录后的 TOTP/恢复码验证 |
 | `/account` | 查询当前 Session，并在已登录时显示账户、TOTP 与 Passkey 管理界面 |
+| `/admin` | 需要独立 Admin role 的后台 Overview 与响应式应用框架 |
 | `/api/auth/*` | Better Auth 的 Node.js API |
 
 公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 已作为本地对象存储
@@ -20,7 +21,9 @@ MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
 ## 本地开发
 
 Compose 只提供 PostgreSQL 和 Garage；Next.js、数据库迁移和首次账户初始化
-都在宿主机显式运行。首次设置：
+都在宿主机显式运行。本地开发刻意让 `PG_USER` 同时作为 PostgreSQL
+超级用户、数据库 owner、应用运行账号和迁移账号，以减少本地角色管理成本。
+这个便利契约不适用于生产环境。首次设置：
 
 ```powershell
 Copy-Item .env.example .env
@@ -38,10 +41,18 @@ docker compose -f docker-compose-dev.yml up --detach --wait
 pnpm dev
 ```
 
-Compose 不启动应用，也不自动执行迁移或账户初始化。Garage 会在自己的容器内配置并复用单节点 layout。
+Compose 不启动应用，也不自动执行迁移或账户初始化。PostgreSQL healthcheck
+会通过 TCP 验证 `.env` 凭据，并确认本地账号仍具有 `SUPERUSER`、
+`CREATEDB`、`CREATEROLE` 且拥有目标数据库。Garage 会在自己的容器内配置并复用单节点 layout。
 从 `.env.example` 新建 `.env` 时，本地 Passkey 配置已经包含
 `BETTER_AUTH_URL=http://localhost:3000` 与 `PASSKEY_RP_ID=localhost`。如果复用旧的
 `.env`，需要手动补齐 `PASSKEY_RP_ID`；它必须与访问应用时使用的 hostname 保持一致。
+
+PostgreSQL 官方镜像只会在数据卷为空时应用 `PG_USER`、`PG_PWD` 和 `PG_DB`
+对应的初始化参数。之后修改 `.env` 不会重写卷内角色、密码或数据库 owner；
+Compose 会因上述 healthcheck 失败而保持 unhealthy。若确认可以丢弃全部本地
+数据库数据，可先停止 Compose，再删除 `codebuff-local_postgres_data` 卷并重新
+执行首次设置；不要在需要保留本地数据时删除该卷。
 
 ## Notes 内容
 
@@ -64,8 +75,8 @@ Compose 不启动应用，也不自动执行迁移或账户初始化。Garage �
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `PG_USER` | 无 | 必填；由基础设施按迁移/运行阶段分别注入 |
-| `PG_PWD` | 无 | 必填；由基础设施按迁移/运行阶段分别注入 |
+| `PG_USER` | 无 | 必填；本地为 Compose 全能账号，生产由基础设施按迁移/运行阶段分别注入 |
+| `PG_PWD` | 无 | 必填；本地复用同一凭据，生产按迁移/运行角色分别注入 |
 | `PG_HOST` | `postgres` | 非生产环境可覆盖 |
 | `PG_PORT` | `5432` | 非生产环境可覆盖 |
 | `PG_DB` | `codebuff_next` | 非生产环境可覆盖 |
@@ -117,6 +128,8 @@ CI 会重新生成认证 schema 和 Drizzle migration，并通过 `git diff` 确
 Passkey 登录与管理、TOTP 双因素认证、一次性恢复码和一次性首个账户初始化，
 公开注册始终关闭。
 `/account` 会查询 Session，并把未登录访问者重定向到 `/sign-in`。
+`/admin/*` 在 Session 之外还会校验服务端持久化的 `role`；只有精确的
+`admin` 值可以进入后台，未来普通用户默认使用 `user`，不会因已登录获得管理权限。
 Passkey 注册与登录都要求验证器完成用户验证；Passkey 登录成功后不会再次进入
 TOTP 流程。注册、重命名和移除只允许在最近 10 分钟内建立的 Session 中操作，
 并且不能移除账户最后一个可用的登录方式。
@@ -139,7 +152,8 @@ pnpm test:e2e:passkey
 
 ## 认证运行时
 
-认证运行时只会在 `/api/auth/*` 请求和 `/account` 的 Session 查询时初始化。
+认证运行时只会在 `/api/auth/*` 请求、`/account` 的 Session 查询和
+`/admin/*` 的 Session/role 校验时初始化。
 公开的 Home、Me、静态 Notes 详情和 `/sign-in` 的初始页面渲染不读取数据库
 或认证密钥；登录表单提交会调用认证 API。
 
@@ -163,4 +177,4 @@ AUTH_BOOTSTRAP_PASSWORD="<15-to-128-character-password>" \
 node scripts/bootstrap-auth-user.mjs
 ```
 
-该命令使用运行时 PostgreSQL 角色，密码通过 Better Auth 的默认 scrypt 实现散列。邮箱已存在时命令默认失败，不会覆盖既有账户。可重复执行的本地初始化可以额外设置 `AUTH_BOOTSTRAP_IF_MISSING=true`，此时同一邮箱已存在会作为成功跳过，其他错误仍会失败。
+该命令使用运行时 PostgreSQL 角色，创建的首个账户会持久化为 `admin`，密码通过 Better Auth 的默认 scrypt 实现散列。邮箱已存在时命令默认失败，不会覆盖既有账户。可重复执行的本地初始化可以额外设置 `AUTH_BOOTSTRAP_IF_MISSING=true`，此时同一邮箱已存在会作为成功跳过，其他错误仍会失败。

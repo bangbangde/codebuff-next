@@ -273,6 +273,14 @@ Keep branding and primary navigation compact. The header may remain visible
 during reading, but it should not dominate the viewport. The footer should give
 the page a clear ending without becoming another content section.
 
+Admin uses a surface-local application shell rather than the Site chrome. Its
+desktop frame keeps a compact header and collapsible sidebar stable around a
+separately scrolling content region. Narrow screens replace the sidebar with a
+focus-managed drawer instead of compressing the desktop rail. Collapsed
+navigation must retain accessible names, visible current-location feedback, and
+labels on demand. Shell visibility never substitutes for server-side Admin
+authorization.
+
 ### Editorial introduction
 
 Use one clear title, a restrained label or status when useful, and concise

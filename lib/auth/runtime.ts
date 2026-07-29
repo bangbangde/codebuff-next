@@ -7,6 +7,7 @@ import {
   AUTH_APP_NAME,
   AUTH_FRESH_SESSION_MAX_AGE_SECONDS,
 } from "@/lib/auth/constants";
+import { userRoleField } from "@/lib/auth/admin-policy";
 import { createRuntimePasskeyPlugins } from "@/lib/auth/passkey-runtime";
 import {
   createEmailAndPasswordPolicy,
@@ -110,6 +111,11 @@ function createRuntimeAuth() {
       schema,
     }),
     emailAndPassword: createEmailAndPasswordPolicy(),
+    user: {
+      additionalFields: {
+        role: userRoleField,
+      },
+    },
     session: {
       freshAge: AUTH_FRESH_SESSION_MAX_AGE_SECONDS,
     },

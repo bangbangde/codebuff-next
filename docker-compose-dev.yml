@@ -12,8 +12,9 @@ services:
       - "127.0.0.1:${PG_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+      - ./docker/postgres-healthcheck.sh:/usr/local/bin/postgres-healthcheck.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD", "/bin/sh", "/usr/local/bin/postgres-healthcheck.sh"]
       interval: 10s
       start_interval: 1s
       start_period: 30s

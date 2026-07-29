@@ -186,6 +186,15 @@ async function setTestUserTwoFactorEnabled(enabled) {
   );
 }
 
+async function setTestUserRole(role) {
+  await usingDatabase(testDatabaseName, (client) =>
+    client.query('UPDATE "user" SET "role" = $1 WHERE "email" = $2', [
+      role,
+      testEmail,
+    ]),
+  );
+}
+
 async function ageCurrentSessions() {
   await usingDatabase(testDatabaseName, (client) =>
     client.query(
@@ -230,6 +239,143 @@ async function passkeyRowCount() {
   });
 }
 
+async function assertMinimumTouchTarget(locator, label) {
+  const box = await locator.boundingBox();
+
+  assert.ok(box, `${label} must have a rendered bounding box`);
+  assert.ok(
+    box.width >= 44 && box.height >= 44,
+    `${label} must be at least 44px by 44px; received ${box.width}px by ${box.height}px`,
+  );
+}
+
+async function assertAdminShell(baseURL, colorScheme) {
+  await page.emulateMedia({ colorScheme });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${baseURL}/admin`);
+  await page
+    .getByRole("heading", { name: "管理工作从这里开始。" })
+    .waitFor();
+  await page.waitForFunction((expectedColorScheme) => {
+    const dark = document.documentElement.classList.contains("dark");
+    return expectedColorScheme === "dark" ? dark : !dark;
+  }, colorScheme);
+  assert.equal(
+    await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
+    colorScheme,
+  );
+  assert.equal(
+    await page.locator("header").evaluate((element) => {
+      return getComputedStyle(element).position;
+    }),
+    "fixed",
+  );
+  assert.equal(
+    await page.locator("#admin-sidebar").evaluate((element) => {
+      return getComputedStyle(element).width;
+    }),
+    "256px",
+  );
+
+  const collapseSidebar = page.getByRole("button", {
+    name: "Collapse sidebar",
+    exact: true,
+  });
+  await assertMinimumTouchTarget(collapseSidebar, "Desktop sidebar toggle");
+  await collapseSidebar.click();
+  await page
+    .getByRole("button", { name: "Expand sidebar", exact: true })
+    .waitFor();
+  await page.waitForFunction(() => {
+    const sidebar = document.querySelector("#admin-sidebar");
+    return sidebar && getComputedStyle(sidebar).width === "72px";
+  });
+  assert.equal(
+    await page.locator("#admin-sidebar").evaluate((element) => {
+      return getComputedStyle(element).width;
+    }),
+    "72px",
+  );
+
+  const overviewLink = page.getByRole("link", {
+    name: "Overview",
+    exact: true,
+  });
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  assert.equal(
+    await overviewLink.evaluate(
+      (element) => element === document.activeElement,
+    ),
+    true,
+  );
+  await page.getByRole("tooltip").filter({ hasText: "Overview" }).waitFor();
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  const openNavigation = page.getByRole("button", {
+    name: "Open navigation",
+    exact: true,
+  });
+  const viewSite = page.getByRole("link", {
+    name: "View site",
+    exact: true,
+  });
+  await assertMinimumTouchTarget(openNavigation, "Mobile navigation trigger");
+  await assertMinimumTouchTarget(viewSite, "Mobile View site link");
+
+  await openNavigation.click();
+  const navigationDialog = page.getByRole("dialog");
+  await navigationDialog.waitFor();
+  await page.waitForFunction(() => {
+    const dialog = document.querySelector('[data-slot="dialog-content"]');
+    return dialog?.contains(document.activeElement);
+  });
+  assert.equal(
+    await navigationDialog.evaluate((element) =>
+      element.contains(document.activeElement),
+    ),
+    true,
+  );
+  await assertMinimumTouchTarget(
+    page.getByRole("button", { name: "Close navigation", exact: true }),
+    "Mobile navigation close button",
+  );
+  await page.keyboard.press("Escape");
+  await navigationDialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await openNavigation.evaluate(
+      (element) => element === document.activeElement,
+    ),
+    true,
+  );
+
+  await openNavigation.click();
+  await navigationDialog.waitFor();
+  await page.mouse.click(370, 400);
+  await navigationDialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await openNavigation.evaluate(
+      (element) => element === document.activeElement,
+    ),
+    true,
+  );
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    true,
+  );
+}
+
+async function signIn(baseURL) {
+  await page.goto(`${baseURL}/sign-in`);
+  await page.getByLabel("Email", { exact: true }).fill(testEmail);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(`${baseURL}/account`);
+}
+
 async function runBrowserScenario(baseURL) {
   browser = await chromium.launch({
     channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL?.trim() || "chrome",
@@ -255,12 +401,25 @@ async function runBrowserScenario(baseURL) {
     },
   );
 
-  await page.goto(`${baseURL}/sign-in`);
-  await page.getByLabel("Email", { exact: true }).fill(testEmail);
-  await page.getByLabel("Password", { exact: true }).fill(testPassword);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(`${baseURL}/account`);
+  await signIn(baseURL);
 
+  await assertAdminShell(baseURL, "light");
+  await assertAdminShell(baseURL, "dark");
+
+  await setTestUserRole("user");
+  await context.clearCookies();
+  await signIn(baseURL);
+  const forbiddenResponse = await page.goto(`${baseURL}/admin`);
+  assert.equal(forbiddenResponse?.status(), 403);
+  await page
+    .getByRole("heading", { name: "当前账户没有后台权限" })
+    .waitFor();
+
+  await setTestUserRole("admin");
+  await context.clearCookies();
+  await signIn(baseURL);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${baseURL}/account`);
   await page
     .getByRole("heading", { name: "Registered passkeys" })
     .waitFor();
