@@ -3,6 +3,9 @@ set -eu
 
 config_file="${GARAGE_CONFIG_FILE:-/etc/garage/garage.toml}"
 ready_file="/tmp/garage-layout-ready"
+media_bucket="${MEDIA_S3_BUCKET:-codebuff-next-media}"
+media_access_key_id="${MEDIA_S3_ACCESS_KEY_ID:-GK0123456789abcdef01234567}"
+media_secret_access_key="${MEDIA_S3_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
 rm -f "$ready_file"
 
@@ -67,6 +70,29 @@ else
   /garage -c "$config_file" layout apply --version "$next_version"
   echo "Garage layout version $next_version applied"
 fi
+
+if /garage -c "$config_file" key info "$media_access_key_id" >/dev/null 2>&1; then
+  echo "Garage media application key is already configured"
+else
+  /garage -c "$config_file" key import \
+    --yes \
+    -n codebuff-next-media \
+    "$media_access_key_id" \
+    "$media_secret_access_key"
+  echo "Garage media application key imported"
+fi
+
+if /garage -c "$config_file" bucket info "$media_bucket" >/dev/null 2>&1; then
+  echo "Garage media bucket is already configured"
+else
+  /garage -c "$config_file" bucket create "$media_bucket"
+  echo "Garage media bucket created"
+fi
+
+/garage -c "$config_file" bucket allow \
+  --write \
+  "$media_bucket" \
+  --key "$media_access_key_id"
 
 touch "$ready_file"
 echo "Garage is ready"

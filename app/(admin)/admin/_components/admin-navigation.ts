@@ -10,6 +10,11 @@ export const adminNavigationItems = [
     label: "Articles",
   },
   {
+    href: "/admin/media",
+    icon: "media",
+    label: "Media",
+  },
+  {
     href: "/admin/account",
     icon: "account",
     label: "Account",

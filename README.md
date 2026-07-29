@@ -13,10 +13,11 @@ MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
 | `/sign-in` | 邮箱密码、Passkey 登录，以及密码登录后的 TOTP/恢复码验证 |
 | `/account` | 查询当前 Session，并在已登录时显示账户、TOTP 与 Passkey 管理界面 |
 | `/admin` | 需要独立 Admin role 的后台 Overview 与响应式应用框架 |
+| `/admin/media` | 私有媒体上传、签名校验、Garage 写入与 PostgreSQL 生命周期列表 |
 | `/api/auth/*` | Better Auth 的 Node.js API |
 
-公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 已作为本地对象存储
-基础设施提供，但应用代码目前尚未接入 S3 API。
+公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 为后台媒体库提供私有
+S3 对象存储；应用只通过服务端上传边界写入，不向浏览器暴露存储凭据。
 
 ## 本地开发
 
@@ -43,7 +44,8 @@ pnpm dev
 
 Compose 不启动应用，也不自动执行迁移或账户初始化。PostgreSQL healthcheck
 会通过 TCP 验证 `.env` 凭据，并确认本地账号仍具有 `SUPERUSER`、
-`CREATEDB`、`CREATEROLE` 且拥有目标数据库。Garage 会在自己的容器内配置并复用单节点 layout。
+`CREATEDB`、`CREATEROLE` 且拥有目标数据库。Garage 会在自己的容器内配置并复用单节点
+layout，并幂等创建 `.env` 指定的私有媒体桶和仅具写权限的应用密钥。
 从 `.env.example` 新建 `.env` 时，本地 Passkey 配置已经包含
 `BETTER_AUTH_URL=http://localhost:3000` 与 `PASSKEY_RP_ID=localhost`。如果复用旧的
 `.env`，需要手动补齐 `PASSKEY_RP_ID`；它必须与访问应用时使用的 hostname 保持一致。
@@ -103,6 +105,19 @@ pnpm db:migrate
 ```
 
 `pnpm db:migrate` 和 `pnpm auth:bootstrap` 会在 `.env` 存在时读取它；当前进程已经提供的变量仍可用于覆盖配置。拉取到新的迁移文件后，需要再次显式执行迁移。
+
+### 私有媒体存储
+
+`/admin/media` 先在 PostgreSQL 创建 `pending` 元数据，再由服务端把经过文件
+签名校验的字节写入 Garage；写入确认后状态变为 `ready`，存储失败则保留
+`failed` 记录。单文件上限为 10 MiB，当前接受 JPEG、PNG、WebP、GIF、AVIF
+与 PDF。对象键由服务端生成，不使用原始文件名。
+
+本地 Compose 会从 `.env` 读取 `MEDIA_S3_BUCKET`、
+`MEDIA_S3_ACCESS_KEY_ID` 和 `MEDIA_S3_SECRET_ACCESS_KEY`，并幂等初始化桶与
+写入密钥。`.env.example` 中的固定值仅适用于绑定到 loopback 的本地 Garage；
+生产环境必须注入独立生成且只授权私有媒体桶的凭据。浏览器和 API 响应均不得
+暴露访问密钥、Secret 或 Garage endpoint。
 
 最终应用镜像包含经过 bundling 的迁移和账户初始化入口，不复制项目完整的 `node_modules`：
 
