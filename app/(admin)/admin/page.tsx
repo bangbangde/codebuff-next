@@ -34,7 +34,7 @@ export default function AdminPage() {
           管理工作从这里开始。
         </h1>
         <p className="mt-6 max-w-2xl text-[1.0625rem] leading-7 text-muted-foreground">
-          当前阶段提供受独立角色保护的后台框架和清晰导航。账户迁移、内容管理与其他工作流会在各自的工作项中逐步接入。
+          当前阶段提供受独立角色保护的后台框架和清晰导航。账户安全已接入，内容管理与其他工作流会在各自的工作项中逐步推进。
         </p>
       </section>
 
@@ -104,11 +104,11 @@ export default function AdminPage() {
           />
           <div>
             <h2 className="text-sm font-semibold" id="boundary-title">
-              Account 迁移尚未开始
+              Account 已接入 Admin
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              本工作项只建立 Shell 与授权边界。Account
-              仍指向现有页面，后续会在独立工作项中迁入 Admin，并保持既有安全行为。
+              资料、退出登录、Passkey、TOTP 与恢复码提示现统一位于
+              /admin/account。可复用行为已从页面外壳拆分，未来普通用户入口可独立组装。
             </p>
           </div>
         </div>

@@ -35,18 +35,11 @@ export function SiteHeader() {
             />
             CQ’s Lab
           </Link>
-          <section className="flex gap-1">
-            <nav className="flex gap-1" aria-label="Primary navigation">
-              <Link className={navigationLinkClassName} href="/me">
-                Me
-              </Link>
-            </nav>
-            <nav className="flex gap-1" aria-label="Account navigation">
-              <Link className={navigationLinkClassName} href="/account">
-                Account
-              </Link>
-            </nav>
-          </section>
+          <nav className="flex gap-1" aria-label="Primary navigation">
+            <Link className={navigationLinkClassName} href="/me">
+              Me
+            </Link>
+          </nav>
         </div>
       </header>
     </>

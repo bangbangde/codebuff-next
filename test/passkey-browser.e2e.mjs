@@ -373,7 +373,36 @@ async function signIn(baseURL) {
   await page.getByLabel("Email", { exact: true }).fill(testEmail);
   await page.getByLabel("Password", { exact: true }).fill(testPassword);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(`${baseURL}/account`);
+  await page.waitForURL(`${baseURL}/admin/account`);
+}
+
+async function assertAdminAccount(baseURL, colorScheme) {
+  await page.emulateMedia({ colorScheme });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${baseURL}/admin/account`);
+  await page.getByRole("heading", { name: "Account", exact: true }).waitFor();
+  await page.waitForFunction((expectedColorScheme) => {
+    const dark = document.documentElement.classList.contains("dark");
+    return expectedColorScheme === "dark" ? dark : !dark;
+  }, colorScheme);
+
+  const accountNavigation = page.getByRole("link", {
+    name: "Account",
+    exact: true,
+  });
+  assert.equal(await accountNavigation.getAttribute("aria-current"), "page");
+  await assertMinimumTouchTarget(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+    "Account sign-out button",
+  );
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    true,
+  );
 }
 
 async function runBrowserScenario(baseURL) {
@@ -403,6 +432,8 @@ async function runBrowserScenario(baseURL) {
 
   await signIn(baseURL);
 
+  await assertAdminAccount(baseURL, "light");
+  await assertAdminAccount(baseURL, "dark");
   await assertAdminShell(baseURL, "light");
   await assertAdminShell(baseURL, "dark");
 
@@ -419,7 +450,11 @@ async function runBrowserScenario(baseURL) {
   await context.clearCookies();
   await signIn(baseURL);
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto(`${baseURL}/account`);
+  const legacyAccountResponse = await page.goto(`${baseURL}/account`);
+  assert.equal(legacyAccountResponse?.status(), 404);
+  assert.equal(new URL(page.url()).pathname, "/account");
+
+  await page.goto(`${baseURL}/admin/account`);
   await page
     .getByRole("heading", { name: "Registered passkeys" })
     .waitFor();
@@ -559,7 +594,7 @@ async function runBrowserScenario(baseURL) {
     "required",
   );
   assert.equal(successfulVerification.ok(), true);
-  await page.waitForURL(`${baseURL}/account`);
+  await page.waitForURL(`${baseURL}/admin/account`);
   await page
     .getByRole("heading", { name: "TOTP enabled", exact: true })
     .waitFor();

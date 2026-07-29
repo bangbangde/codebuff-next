@@ -27,7 +27,9 @@ export function SignInForm() {
   const [pendingEmail, setPendingEmail] = useState("");
 
   function completeSignIn(recoveryCodeUsed = false) {
-    router.replace(recoveryCodeUsed ? "/account?recovery=1" : "/account");
+    router.replace(
+      recoveryCodeUsed ? "/admin/account?recovery=1" : "/admin/account",
+    );
     router.refresh();
   }
 

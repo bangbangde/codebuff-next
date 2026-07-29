@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import {
@@ -70,14 +70,17 @@ describe("Admin shell navigation", () => {
       adminNavigationItems.map(({ href, label }) => ({ href, label })),
       [
         { href: "/admin", label: "Overview" },
-        { href: "/account", label: "Account" },
+        { href: "/admin/account", label: "Account" },
       ],
     );
   });
 
   it("marks only exact current destinations as active", () => {
     assert.equal(isAdminNavigationItemActive("/admin", "/admin"), true);
-    assert.equal(isAdminNavigationItemActive("/account", "/account"), true);
+    assert.equal(
+      isAdminNavigationItemActive("/admin/account", "/admin/account"),
+      true,
+    );
     assert.equal(isAdminNavigationItemActive("/admin/other", "/admin"), false);
     assert.equal(isAdminNavigationItemActive("/", "/admin"), false);
   });
@@ -101,5 +104,42 @@ describe("Admin shell navigation", () => {
     assert.match(shell, /aria-label="Open navigation"[^]*className="size-11/);
     assert.match(shell, /aria-label="Close navigation"[^]*className="size-11/);
     assert.match(shell, /min-h-11 min-w-11/);
+  });
+
+  it("owns Account inside Admin without keeping a Site route alias", async () => {
+    const accountPage = await readFile(
+      "app/(admin)/admin/account/page.tsx",
+      "utf8",
+    );
+    const siteHeader = await readFile(
+      "app/(site)/_components/site-header.tsx",
+      "utf8",
+    );
+    const signInForm = await readFile(
+      "app/(site)/sign-in/_components/sign-in-form.tsx",
+      "utf8",
+    );
+
+    await assert.rejects(
+      readFile("app/(site)/account/page.tsx", "utf8"),
+      /ENOENT/,
+    );
+    assert.match(accountPage, /const session = await requireAdmin\(\)/);
+    assert.doesNotMatch(accountPage, /ContentContainer|requireCurrentSession/);
+    assert.doesNotMatch(siteHeader, /Account navigation|href="\/account"/);
+    assert.match(signInForm, /"\/admin\/account\?recovery=1"/);
+    assert.match(signInForm, /"\/admin\/account"/);
+  });
+
+  it("keeps reusable Account behavior independent from either surface", async () => {
+    const featureFiles = (
+      await readdir("features/account", { recursive: true })
+    ).filter((file) => /\.[cm]?[jt]sx?$/.test(file));
+
+    for (const featureFile of featureFiles) {
+      const source = await readFile(`features/account/${featureFile}`, "utf8");
+
+      assert.doesNotMatch(source, /@\/app\/\(admin\)|@\/app\/\(site\)/);
+    }
   });
 });

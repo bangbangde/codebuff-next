@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from "react";
 import {
   authInputClassName,
   authPrimaryButtonClassName,
-} from "@/app/(site)/_components/auth-form-styles";
+} from "@/features/auth/auth-form-styles";
 import { authClient } from "@/lib/auth/client";
 import {
   AUTH_PASSWORD_MAX_LENGTH,
@@ -150,7 +150,7 @@ export function RegenerateRecoveryCodes({
         </button>
 
         <button
-          className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+          className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
           disabled={isPending}
           onClick={() => {
             setStep("idle");

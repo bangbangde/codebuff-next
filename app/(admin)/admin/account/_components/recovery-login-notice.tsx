@@ -1,7 +1,7 @@
 export function RecoveryLoginNotice() {
   return (
     <div
-      className="mb-10 rounded-lg border border-brand-accent/30 bg-brand-accent/10 p-[clamp(1.25rem,3vw,2rem)]"
+      className="mb-8 rounded-lg border border-brand-accent/30 bg-brand-accent/10 p-5 sm:p-6"
       role="alert"
     >
       <div className="flex items-start gap-3">
@@ -29,7 +29,7 @@ export function RecoveryLoginNotice() {
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <a
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 py-2 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-brand-accent focus-visible:bg-brand-accent focus-visible:outline-none motion-reduce:transition-none"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-4 py-2 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-brand-accent focus-visible:bg-brand-accent focus-visible:outline-none motion-reduce:transition-none"
               href="#security-title"
             >
               管理两步验证
