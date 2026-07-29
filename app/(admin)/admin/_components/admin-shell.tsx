@@ -2,6 +2,7 @@
 
 import {
   ExternalLinkIcon,
+  FileTextIcon,
   LayoutDashboardIcon,
   MenuIcon,
   PanelLeftCloseIcon,
@@ -34,6 +35,7 @@ import {
 
 const navigationIcons = {
   account: UserRoundIcon,
+  articles: FileTextIcon,
   overview: LayoutDashboardIcon,
 } as const;
 

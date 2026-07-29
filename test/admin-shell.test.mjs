@@ -65,20 +65,28 @@ describe("Admin authorization policy", () => {
 });
 
 describe("Admin shell navigation", () => {
-  it("contains only the real Overview and Account destinations", () => {
+  it("contains only the real Overview, Articles, and Account destinations", () => {
     assert.deepEqual(
       adminNavigationItems.map(({ href, label }) => ({ href, label })),
       [
         { href: "/admin", label: "Overview" },
+        { href: "/admin/articles", label: "Articles" },
         { href: "/admin/account", label: "Account" },
       ],
     );
   });
 
-  it("marks only exact current destinations as active", () => {
+  it("keeps Overview exact while matching nested product destinations", () => {
     assert.equal(isAdminNavigationItemActive("/admin", "/admin"), true);
     assert.equal(
       isAdminNavigationItemActive("/admin/account", "/admin/account"),
+      true,
+    );
+    assert.equal(
+      isAdminNavigationItemActive(
+        "/admin/articles/8db0fca3",
+        "/admin/articles",
+      ),
       true,
     );
     assert.equal(isAdminNavigationItemActive("/admin/other", "/admin"), false);

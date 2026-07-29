@@ -15,6 +15,13 @@
       "when": 1785306985918,
       "tag": "0001_nebulous_fabian_cortez",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785325417998,
+      "tag": "0002_article-persistence",
+      "breakpoints": true
     }
   ]
 }
