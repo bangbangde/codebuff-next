@@ -23,7 +23,7 @@ export function RemovePasskeyConfirmation({
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <button
-          className="min-h-10 rounded-md bg-brand-accent px-4 py-2 font-mono text-xs font-medium text-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent disabled:cursor-wait disabled:opacity-50"
+          className="min-h-11 rounded-md bg-brand-accent px-4 py-2 font-mono text-xs font-medium text-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent disabled:cursor-wait disabled:opacity-50"
           disabled={disabled}
           onClick={onRemove}
           type="button"
@@ -31,7 +31,7 @@ export function RemovePasskeyConfirmation({
           {pending ? "Removing…" : "Remove passkey"}
         </button>
         <button
-          className="min-h-10 rounded-md px-3 py-2 font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+          className="min-h-11 rounded-md px-3 py-2 font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
           disabled={disabled}
           onClick={onCancel}
           type="button"

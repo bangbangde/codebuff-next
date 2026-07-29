@@ -3,7 +3,7 @@ import type { FormEventHandler } from "react";
 import {
   authInputClassName,
   authPrimaryButtonClassName,
-} from "@/app/(site)/_components/auth-form-styles";
+} from "@/features/auth/auth-form-styles";
 
 type TotpStepProps = {
   email: string;

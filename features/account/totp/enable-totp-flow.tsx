@@ -12,7 +12,7 @@ import {
 import {
   authInputClassName,
   authPrimaryButtonClassName,
-} from "@/app/(site)/_components/auth-form-styles";
+} from "@/features/auth/auth-form-styles";
 import { RecoveryCodePanel } from "./recovery-code-panel";
 
 type EnableStep = "idle" | "setup";

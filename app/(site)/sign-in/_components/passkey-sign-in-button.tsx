@@ -1,4 +1,4 @@
-import { authSecondaryButtonClassName } from "@/app/(site)/_components/auth-form-styles";
+import { authSecondaryButtonClassName } from "@/features/auth/auth-form-styles";
 
 type PasskeySignInButtonProps = {
   disabled: boolean;

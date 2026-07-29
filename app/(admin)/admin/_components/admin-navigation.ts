@@ -5,7 +5,7 @@ export const adminNavigationItems = [
     label: "Overview",
   },
   {
-    href: "/account",
+    href: "/admin/account",
     icon: "account",
     label: "Account",
   },

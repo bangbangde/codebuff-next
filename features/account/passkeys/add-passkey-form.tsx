@@ -4,7 +4,7 @@ import {
   authInputClassName,
   authPrimaryButtonClassName,
   authSecondaryButtonClassName,
-} from "@/app/(site)/_components/auth-form-styles";
+} from "@/features/auth/auth-form-styles";
 import { AUTH_PASSKEY_NAME_MAX_LENGTH } from "@/lib/auth/passkey-policy";
 import type { AddPasskeyInput } from "./use-passkeys";
 

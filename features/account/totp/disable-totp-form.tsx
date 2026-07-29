@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   authInputClassName,
   authPrimaryButtonClassName,
-} from "@/app/(site)/_components/auth-form-styles";
+} from "@/features/auth/auth-form-styles";
 import { authClient } from "@/lib/auth/client";
 import {
   AUTH_PASSWORD_MAX_LENGTH,
