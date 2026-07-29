@@ -25,10 +25,7 @@ function GitHubMarkIcon(props: SVGProps<SVGSVGElement>) {
 export function SiteUtilityLinks() {
   return (
     <>
-      <span
-        aria-hidden="true"
-        className="mx-1 h-5 w-px shrink-0 bg-border"
-      />
+      <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-border" />
       <TooltipProvider delay={350}>
         <div className="flex items-center gap-0.5">
           <Tooltip>
@@ -37,17 +34,14 @@ export function SiteUtilityLinks() {
                 <a
                   aria-label="GitHub"
                   className={utilityLinkClassName}
-                  href="https://github.com/bangbangde"
+                  href="https://github.com/bangbangde/codebuff-next"
                   rel="noopener noreferrer"
                   target="_blank"
                   title="GitHub"
                 />
               }
             >
-              <GitHubMarkIcon
-                aria-hidden="true"
-                className="size-[1.125rem]"
-              />
+              <GitHubMarkIcon aria-hidden="true" className="size-[1.125rem]" />
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>
               GitHub
