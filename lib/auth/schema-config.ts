@@ -2,6 +2,7 @@ import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 
 import { AUTH_APP_NAME } from "@/lib/auth/constants";
+import { userRoleField } from "@/lib/auth/admin-policy";
 import {
   createEmailAndPasswordPolicy,
   createTwoFactorPlugin,
@@ -19,6 +20,11 @@ export const auth = betterAuth({
   appName: AUTH_APP_NAME,
   baseURL: "http://localhost:3000",
   emailAndPassword: createEmailAndPasswordPolicy(),
+  user: {
+    additionalFields: {
+      role: userRoleField,
+    },
+  },
   rateLimit: {
     enabled: true,
     storage: "database",

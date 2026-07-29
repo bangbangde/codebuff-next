@@ -1,87 +1,118 @@
-import Link from "next/link";
+import {
+  CircleCheckIcon,
+  KeyRoundIcon,
+  PanelsTopLeftIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 
-import { requireCurrentSession } from "@/lib/auth/session";
-import { FoundationActions } from "./_components/foundation-actions";
+const currentCapabilities = [
+  {
+    description: "Session 与持久化 Admin role 在服务端共同校验。",
+    icon: ShieldCheckIcon,
+    label: "Authorization",
+    value: "Admin boundary active",
+  },
+  {
+    description: "固定 Header、可折叠侧栏与移动端抽屉已组成稳定框架。",
+    icon: PanelsTopLeftIcon,
+    label: "Application frame",
+    value: "Responsive shell active",
+  },
+] as const;
 
-export default async function AdminPage() {
-  const session = await requireCurrentSession();
-
+export default function AdminPage() {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[80rem] flex-col px-5 py-4 sm:px-8 sm:py-6">
-      <header className="flex min-h-12 items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <Link
-            className="shrink-0 text-sm font-semibold tracking-[-0.02em] hover:text-brand-accent focus-visible:text-brand-accent"
-            href="/"
-          >
-            CQ’s Lab
-          </Link>
-          <span className="truncate font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
-            Admin
+    <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:py-12">
+      <section aria-labelledby="admin-title" className="max-w-3xl">
+        <p className="font-mono text-xs tracking-[0.1em] text-brand-accent uppercase">
+          Admin / Overview
+        </p>
+        <h1
+          className="mt-4 max-w-[16ch] text-[clamp(2.25rem,6vw,4.75rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-balance"
+          id="admin-title"
+        >
+          管理工作从这里开始。
+        </h1>
+        <p className="mt-6 max-w-2xl text-[1.0625rem] leading-7 text-muted-foreground">
+          当前阶段提供受独立角色保护的后台框架和清晰导航。账户迁移、内容管理与其他工作流会在各自的工作项中逐步接入。
+        </p>
+      </section>
+
+      <section
+        aria-labelledby="capabilities-title"
+        className="mt-10 border-t border-border pt-7 sm:mt-12 sm:pt-8"
+      >
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <p className="font-mono text-[0.6875rem] tracking-[0.1em] text-muted-foreground uppercase">
+              Current capability
+            </p>
+            <h2
+              className="mt-2 text-xl font-semibold tracking-[-0.025em]"
+              id="capabilities-title"
+            >
+              已接入的基础能力
+            </h2>
+          </div>
+          <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+            <CircleCheckIcon
+              aria-hidden="true"
+              className="size-4 text-brand-accent"
+            />
+            Ready for review
           </span>
         </div>
-        <nav
-          aria-label="Admin shortcuts"
-          className="flex shrink-0 items-center gap-1"
-        >
-          <Link
-            className="inline-flex min-h-9 items-center rounded-md px-3 font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
-            href="/account"
-          >
-            Account
-          </Link>
-          <Link
-            className="inline-flex min-h-9 items-center rounded-md px-3 font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
-            href="/"
-          >
-            View site
-          </Link>
-        </nav>
-      </header>
 
-      <div className="grid flex-1 content-start gap-8 py-[clamp(3rem,8vw,7rem)] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
-        <section aria-labelledby="admin-title" className="max-w-2xl">
-          <p className="mb-4 font-mono text-xs tracking-[0.1em] text-brand-accent uppercase">
-            Authenticated entry
-          </p>
-          <h1
-            className="max-w-[14ch] text-[clamp(2.5rem,7vw,5.5rem)] leading-[0.94] font-semibold tracking-[-0.06em] text-balance"
-            id="admin-title"
-          >
-            管理界面基础已就绪
-          </h1>
-          <p className="mt-7 max-w-[38rem] text-[1.0625rem] leading-7 text-muted-foreground">
-            这里目前只提供受保护的管理入口和共享界面基础验证。内容管理、编辑与发布流程尚未接入。
-          </p>
-          <div className="mt-9">
-            <FoundationActions />
-          </div>
-        </section>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {currentCapabilities.map((capability) => {
+            const Icon = capability.icon;
 
-        <aside
-          aria-labelledby="session-title"
-          className="self-start rounded-lg border border-border bg-card p-5 text-card-foreground shadow-[0_1px_0_rgb(0_0_0/0.04)]"
-        >
-          <p className="font-mono text-[0.6875rem] tracking-[0.1em] text-muted-foreground uppercase">
-            Current state
-          </p>
-          <h2 className="mt-4 text-base font-semibold" id="session-title">
-            Session active
-          </h2>
-          <p className="mt-2 break-all text-sm leading-6 text-muted-foreground">
-            {session.user.email}
-          </p>
-          <div className="mt-5 border-t border-border pt-4">
-            <div className="flex items-center gap-2 text-sm">
-              <span
-                aria-hidden="true"
-                className="size-2 rounded-full bg-brand-accent shadow-[0_0_0_3px_var(--brand-accent-soft)]"
-              />
-              <span>认证边界正常</span>
-            </div>
+            return (
+              <article
+                className="rounded-lg border border-border bg-card p-5 text-card-foreground sm:p-6"
+                key={capability.label}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-mono text-xs tracking-[0.06em] text-muted-foreground uppercase">
+                    {capability.label}
+                  </p>
+                  <Icon
+                    aria-hidden="true"
+                    className="size-5 text-brand-accent"
+                  />
+                </div>
+                <h3 className="mt-8 text-base font-semibold">
+                  {capability.value}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {capability.description}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="boundary-title"
+        className="mt-8 rounded-lg border border-border bg-muted p-5 sm:p-6"
+      >
+        <div className="flex items-start gap-4">
+          <KeyRoundIcon
+            aria-hidden="true"
+            className="mt-0.5 size-5 shrink-0 text-brand-accent"
+          />
+          <div>
+            <h2 className="text-sm font-semibold" id="boundary-title">
+              Account 迁移尚未开始
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              本工作项只建立 Shell 与授权边界。Account
+              仍指向现有页面，后续会在独立工作项中迁入 Admin，并保持既有安全行为。
+            </p>
           </div>
-        </aside>
-      </div>
-    </main>
+        </div>
+      </section>
+    </div>
   );
 }

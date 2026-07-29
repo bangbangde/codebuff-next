@@ -2,8 +2,9 @@ import "server-only";
 
 import { cache } from "react";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 
+import { hasAdminRole } from "./admin-policy";
 import { getRuntimeAuth } from "./runtime";
 
 export const getCurrentSession = cache(async () => {
@@ -22,6 +23,16 @@ export async function requireCurrentSession() {
 
   if (!session) {
     redirect("/sign-in");
+  }
+
+  return session;
+}
+
+export async function requireAdmin() {
+  const session = await requireCurrentSession();
+
+  if (!hasAdminRole(session.user.role)) {
+    forbidden();
   }
 
   return session;
