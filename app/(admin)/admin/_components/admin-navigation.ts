@@ -5,6 +5,11 @@ export const adminNavigationItems = [
     label: "Overview",
   },
   {
+    href: "/admin/articles",
+    icon: "articles",
+    label: "Articles",
+  },
+  {
     href: "/admin/account",
     icon: "account",
     label: "Account",
@@ -15,5 +20,9 @@ export function isAdminNavigationItemActive(
   pathname: string,
   href: (typeof adminNavigationItems)[number]["href"],
 ) {
-  return pathname === href;
+  if (href === "/admin") {
+    return pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

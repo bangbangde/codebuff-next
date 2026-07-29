@@ -14,7 +14,7 @@ import {
   createTwoFactorPlugin,
 } from "@/lib/auth/policy";
 import { getDatabase } from "@/lib/db/client";
-import * as schema from "@/lib/db/schema";
+import * as authSchema from "@/lib/db/schema/auth.generated";
 
 const LOCAL_HOSTNAMES = new Set(["127.0.0.1", "::1", "localhost"]);
 
@@ -108,7 +108,7 @@ function createRuntimeAuth() {
     secrets: getVersionedSecrets(),
     database: drizzleAdapter(getDatabase(), {
       provider: "pg",
-      schema,
+      schema: authSchema,
     }),
     emailAndPassword: createEmailAndPasswordPolicy(),
     user: {
