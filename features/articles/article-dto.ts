@@ -43,3 +43,37 @@ export type ArticleSummary = Readonly<{
   title: string;
   updatedAt: string;
 }>;
+
+export type ArticleDetail = Readonly<{
+  bodyMarkdown: string;
+  createdAt: string;
+  id: string;
+  kind: string;
+  language: ArticleLanguage;
+  revision: number;
+  slug: string;
+  summary: string;
+  title: string;
+  updatedAt: string;
+}>;
+
+export type UpdateArticleInput = CreateArticleInput &
+  Readonly<{
+    expectedRevision: number;
+    id: string;
+  }>;
+
+export type DeleteArticleInput = Readonly<{
+  expectedRevision: number;
+  id: string;
+}>;
+
+export type UpdateArticleResult =
+  | Readonly<{ article: ArticleDetail; status: "updated" }>
+  | Readonly<{ currentRevision: number; status: "conflict" }>
+  | Readonly<{ status: "not_found" }>;
+
+export type DeleteArticleResult =
+  | Readonly<{ status: "deleted" }>
+  | Readonly<{ currentRevision: number; status: "conflict" }>
+  | Readonly<{ status: "not_found" }>;

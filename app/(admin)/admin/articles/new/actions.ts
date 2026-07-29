@@ -3,31 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import type { ArticleCreateFormState } from "@/features/articles/article-create-form-state";
 import { ArticleSlugConflictError } from "@/features/articles/article-errors";
 import {
   articleCreateSchema,
-  normalizeArticleCreateValues,
+  readArticleValues,
 } from "@/features/articles/article-validation";
 import { createArticle } from "@/features/articles/server/article-service";
 import { requireAdmin } from "@/lib/auth/session";
-
-function readText(formData: FormData, field: keyof ArticleCreateValues) {
-  const value = formData.get(field);
-  return typeof value === "string" ? value : "";
-}
-
-function readArticleCreateValues(formData: FormData): ArticleCreateValues {
-  return normalizeArticleCreateValues({
-    bodyMarkdown: readText(formData, "bodyMarkdown"),
-    kind: readText(formData, "kind"),
-    language: readText(formData, "language"),
-    slug: readText(formData, "slug"),
-    summary: readText(formData, "summary"),
-    title: readText(formData, "title"),
-  });
-}
 
 export async function createArticleAction(
   _previousState: ArticleCreateFormState,
@@ -35,7 +18,7 @@ export async function createArticleAction(
 ): Promise<ArticleCreateFormState> {
   await requireAdmin();
 
-  const values = readArticleCreateValues(formData);
+  const values = readArticleValues(formData);
   const parsed = articleCreateSchema.safeParse(values);
 
   if (!parsed.success) {

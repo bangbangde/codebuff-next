@@ -405,6 +405,163 @@ async function assertAdminAccount(baseURL, colorScheme) {
   );
 }
 
+async function createArticleThroughUi(baseURL, article) {
+  await page.goto(`${baseURL}/admin/articles/new`);
+  await page.getByLabel("标题", { exact: true }).fill(article.title);
+  await page.getByLabel("Slug", { exact: true }).fill(article.slug);
+  await page.getByLabel("摘要", { exact: false }).fill(article.summary);
+  await page.getByLabel("类型", { exact: true }).fill(article.kind);
+  await page
+    .getByLabel("Markdown 正文", { exact: false })
+    .fill(article.bodyMarkdown);
+  await page
+    .getByRole("button", { name: "保存未发布文章", exact: true })
+    .click();
+  await page.waitForURL(`${baseURL}/admin/articles?created=1`);
+  await page
+    .getByText("文章已保存到 PostgreSQL，目前仍处于未发布状态。", {
+      exact: true,
+    })
+    .waitFor();
+}
+
+async function deleteCurrentArticle(baseURL, title) {
+  await page
+    .getByRole("button", { name: "删除文章", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor();
+  await dialog.getByText(`你将删除“${title}”`, { exact: false }).waitFor();
+  await dialog
+    .getByRole("button", { name: "永久删除", exact: true })
+    .click();
+  await page.waitForURL(`${baseURL}/admin/articles?deleted=1`);
+}
+
+async function assertArticleManagement(baseURL, context) {
+  const firstArticle = {
+    bodyMarkdown: "# 第一篇\n\n保存在 PostgreSQL 中。",
+    kind: "工程札记",
+    slug: "article-e2e-first",
+    summary: "用于验证文章管理闭环。",
+    title: "Article E2E First",
+  };
+  const secondArticle = {
+    bodyMarkdown: "# 第二篇",
+    kind: "测试记录",
+    slug: "article-e2e-second",
+    summary: "用于验证重复 slug。",
+    title: "Article E2E Second",
+  };
+
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${baseURL}/admin/articles`);
+  await page.getByRole("heading", { name: "文章管理", exact: true }).waitFor();
+  await page.getByText("还没有文章", { exact: true }).waitFor();
+
+  await createArticleThroughUi(baseURL, firstArticle);
+  await createArticleThroughUi(baseURL, secondArticle);
+
+  await page
+    .getByRole("link", { name: secondArticle.title, exact: true })
+    .click();
+  await page.getByRole("heading", { name: "编辑文章", exact: true }).waitFor();
+  await page.getByLabel("Slug", { exact: true }).fill(firstArticle.slug);
+  await page
+    .getByRole("button", { name: "保存更改", exact: true })
+    .click();
+  await page
+    .getByText("这个 slug 已被其他文章使用。", { exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel("Slug", { exact: true }).inputValue(),
+    firstArticle.slug,
+  );
+
+  await deleteCurrentArticle(baseURL, secondArticle.title);
+  await page
+    .getByText("未发布文章已从 PostgreSQL 永久删除。", { exact: true })
+    .waitFor();
+
+  await page
+    .getByRole("link", { name: firstArticle.title, exact: true })
+    .click();
+  const stalePage = await context.newPage();
+  await stalePage.goto(page.url());
+  await stalePage
+    .getByRole("heading", { name: "编辑文章", exact: true })
+    .waitFor();
+
+  const updatedTitle = "Article E2E First Updated";
+  await page.getByLabel("标题", { exact: true }).fill(updatedTitle);
+  await page
+    .getByRole("button", { name: "保存更改", exact: true })
+    .click();
+  await page.waitForURL(/\/admin\/articles\/[^/?]+\?saved=1$/);
+  await page
+    .getByText("更改已保存，文章仍处于未发布状态。", { exact: true })
+    .waitFor();
+
+  const staleSummary = "这个值必须在冲突后继续保留。";
+  await stalePage.getByLabel("摘要", { exact: false }).fill(staleSummary);
+  await stalePage
+    .getByRole("button", { name: "保存更改", exact: true })
+    .click();
+  await stalePage
+    .getByText("数据库中的文章已被其他操作更新。", { exact: false })
+    .waitFor();
+  assert.equal(
+    await stalePage.getByLabel("摘要", { exact: false }).inputValue(),
+    staleSummary,
+  );
+
+  await stalePage
+    .getByRole("button", { name: "删除文章", exact: true })
+    .click();
+  const staleDeleteDialog = stalePage.getByRole("dialog");
+  await staleDeleteDialog
+    .getByRole("button", { name: "永久删除", exact: true })
+    .click();
+  await staleDeleteDialog
+    .getByText("当前删除请求已拒绝", { exact: false })
+    .waitFor();
+  await stalePage.close();
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    true,
+  );
+
+  const deleteTrigger = page.getByRole("button", {
+    name: "删除文章",
+    exact: true,
+  });
+  await deleteTrigger.click();
+  const deleteDialog = page.getByRole("dialog");
+  await deleteDialog.waitFor();
+  assert.equal(
+    await deleteDialog.evaluate((element) =>
+      element.contains(document.activeElement),
+    ),
+    true,
+  );
+  await page.keyboard.press("Escape");
+  await deleteDialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await deleteTrigger.evaluate(
+      (element) => element === document.activeElement,
+    ),
+    true,
+  );
+
+  await deleteCurrentArticle(baseURL, updatedTitle);
+  await page.getByText("还没有文章", { exact: true }).waitFor();
+}
+
 async function runBrowserScenario(baseURL) {
   browser = await chromium.launch({
     channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL?.trim() || "chrome",
@@ -436,6 +593,7 @@ async function runBrowserScenario(baseURL) {
   await assertAdminAccount(baseURL, "dark");
   await assertAdminShell(baseURL, "light");
   await assertAdminShell(baseURL, "dark");
+  await assertArticleManagement(baseURL, context);
 
   await setTestUserRole("user");
   await context.clearCookies();
@@ -636,7 +794,7 @@ async function main() {
   const baseURL = `http://localhost:${port}`;
   const testEnvironment = {
     ...process.env,
-    NODE_ENV: "development",
+    NODE_ENV: "production",
     NEXT_TELEMETRY_DISABLED: "1",
     PG_DB: testDatabaseName,
     BETTER_AUTH_URL: baseURL,
@@ -650,6 +808,11 @@ async function main() {
 
   console.log("Creating isolated PostgreSQL database...");
   await createTestDatabase();
+  await runNode(
+    "Next.js build",
+    [nextCli, "build"],
+    testEnvironment,
+  );
   await runNode(
     "Runtime-tool build",
     ["scripts/build-runtime-tools.mjs"],
@@ -666,12 +829,12 @@ async function main() {
     testEnvironment,
   );
 
-  console.log("Starting isolated Next.js server...");
+  console.log("Starting isolated production server...");
   server = spawn(
     process.execPath,
     [
       nextCli,
-      "dev",
+      "start",
       "--hostname",
       "localhost",
       "--port",

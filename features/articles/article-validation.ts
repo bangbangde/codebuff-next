@@ -48,6 +48,13 @@ export const articleCreateSchema = z.object({
     ),
 });
 
+export const articleIdSchema = z.string().uuid();
+
+export const articleMutationReferenceSchema = z.object({
+  articleId: articleIdSchema,
+  expectedRevision: z.coerce.number().int().positive(),
+});
+
 function normalizeText(value: string) {
   return value.trim();
 }
@@ -63,4 +70,20 @@ export function normalizeArticleCreateValues(
     summary: normalizeText(values.summary),
     title: normalizeText(values.title),
   };
+}
+
+function readText(formData: FormData, field: keyof ArticleCreateValues) {
+  const value = formData.get(field);
+  return typeof value === "string" ? value : "";
+}
+
+export function readArticleValues(formData: FormData): ArticleCreateValues {
+  return normalizeArticleCreateValues({
+    bodyMarkdown: readText(formData, "bodyMarkdown"),
+    kind: readText(formData, "kind"),
+    language: readText(formData, "language"),
+    slug: readText(formData, "slug"),
+    summary: readText(formData, "summary"),
+    title: readText(formData, "title"),
+  });
 }

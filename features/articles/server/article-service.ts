@@ -1,6 +1,10 @@
 import "server-only";
 
-import type { CreateArticleInput } from "../article-dto";
+import type {
+  CreateArticleInput,
+  DeleteArticleInput,
+  UpdateArticleInput,
+} from "../article-dto";
 import { drizzleArticleRepository } from "./drizzle-article-repository";
 
 export function createArticle(input: CreateArticleInput) {
@@ -9,4 +13,16 @@ export function createArticle(input: CreateArticleInput) {
 
 export function listArticleSummaries() {
   return drizzleArticleRepository.listSummaries();
+}
+
+export function getArticleById(id: string) {
+  return drizzleArticleRepository.findById(id);
+}
+
+export function updateArticle(input: UpdateArticleInput) {
+  return drizzleArticleRepository.update(input);
+}
+
+export function deleteArticle(input: DeleteArticleInput) {
+  return drizzleArticleRepository.delete(input);
 }

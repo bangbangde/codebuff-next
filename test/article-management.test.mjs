@@ -18,8 +18,12 @@ async function loadArticleValidationModule() {
   return import(moduleUrl);
 }
 
-const { articleCreateSchema, normalizeArticleCreateValues } =
-  await loadArticleValidationModule();
+const {
+  articleCreateSchema,
+  articleIdSchema,
+  articleMutationReferenceSchema,
+  normalizeArticleCreateValues,
+} = await loadArticleValidationModule();
 
 describe("Article schema ownership", () => {
   it("isolates generated Auth schema from project-owned tables", async () => {
@@ -178,6 +182,10 @@ describe("Admin article creation slice", () => {
       "app/(admin)/admin/articles/new/_components/article-create-form.tsx",
       "utf8",
     );
+    const fields = await readFile(
+      "app/(admin)/admin/articles/_components/article-fields.tsx",
+      "utf8",
+    );
     const newPage = await readFile(
       "app/(admin)/admin/articles/new/page.tsx",
       "utf8",
@@ -188,8 +196,9 @@ describe("Admin article creation slice", () => {
     );
 
     assert.match(form, /useActionState\(/);
-    assert.match(form, /aria-invalid=/);
-    assert.match(form, /aria-describedby=/);
+    assert.match(form, /<ArticleFields/);
+    assert.match(fields, /aria-invalid=/);
+    assert.match(fields, /aria-describedby=/);
     assert.match(form, /aria-live="polite"/);
     assert.match(form, /保存未发布文章/);
     assert.match(newPage, /await requireAdmin\(\)/);
@@ -197,5 +206,119 @@ describe("Admin article creation slice", () => {
     assert.match(listPage, /href="\/admin\/articles\/new"/);
     assert.match(listPage, /articleCreated/);
     assert.match(listPage, /目前仍处于未发布状态/);
+  });
+});
+
+describe("Admin article detail and mutation slice", () => {
+  it("validates stable article IDs and positive expected revisions", () => {
+    assert.equal(
+      articleIdSchema.safeParse("8e6e377f-76be-4a53-bf95-cd1f68f2660f")
+        .success,
+      true,
+    );
+    assert.equal(articleIdSchema.safeParse("first-article").success, false);
+    assert.equal(
+      articleMutationReferenceSchema.safeParse({
+        articleId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+        expectedRevision: "3",
+      }).success,
+      true,
+    );
+    assert.equal(
+      articleMutationReferenceSchema.safeParse({
+        articleId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+        expectedRevision: "0",
+      }).success,
+      false,
+    );
+  });
+
+  it("reads details and performs conditional update and delete mutations", async () => {
+    const repository = await readFile(
+      "features/articles/server/drizzle-article-repository.ts",
+      "utf8",
+    );
+    const service = await readFile(
+      "features/articles/server/article-service.ts",
+      "utf8",
+    );
+
+    assert.match(repository, /async findById\(id: string\)/);
+    assert.match(repository, /\.where\(eq\(article\.id, id\)\)/);
+    assert.match(repository, /async update\(input: UpdateArticleInput\)/);
+    assert.match(repository, /\.update\(article\)/);
+    assert.match(repository, /sql`\$\{article\.revision\} \+ 1`/);
+    assert.match(
+      repository,
+      /eq\(article\.revision, input\.expectedRevision\)/,
+    );
+    assert.match(repository, /async delete\(input: DeleteArticleInput\)/);
+    assert.match(repository, /\.delete\(article\)/);
+    assert.match(repository, /status: "conflict"/);
+    assert.match(repository, /status: "not_found"/);
+    assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
+    assert.match(service, /drizzleArticleRepository\.update\(input\)/);
+    assert.match(service, /drizzleArticleRepository\.delete\(input\)/);
+  });
+
+  it("protects and validates both mutation actions before writing", async () => {
+    const actions = await readFile(
+      "app/(admin)/admin/articles/[articleId]/actions.ts",
+      "utf8",
+    );
+
+    const firstAuthorization = actions.indexOf("await requireAdmin()");
+    const firstValidation = actions.indexOf(
+      "articleMutationReferenceSchema.safeParse",
+    );
+
+    assert.ok(firstAuthorization >= 0);
+    assert.ok(firstAuthorization < firstValidation);
+    assert.equal(actions.match(/await requireAdmin\(\)/g)?.length, 2);
+    assert.equal(
+      actions.match(/articleMutationReferenceSchema\.safeParse/g)?.length,
+      2,
+    );
+    assert.match(actions, /error instanceof ArticleSlugConflictError/);
+    assert.match(actions, /result\.status === "conflict"/);
+    assert.match(actions, /result\.status === "not_found"/);
+    assert.match(actions, /redirect\(`\/admin\/articles\/\$\{/);
+    assert.match(actions, /redirect\("\/admin\/articles\?deleted=1"\)/);
+  });
+
+  it("links stable detail routes and renders explicit conflict and delete UI", async () => {
+    const listPage = await readFile(
+      "app/(admin)/admin/articles/page.tsx",
+      "utf8",
+    );
+    const detailPage = await readFile(
+      "app/(admin)/admin/articles/[articleId]/page.tsx",
+      "utf8",
+    );
+    const editForm = await readFile(
+      "app/(admin)/admin/articles/[articleId]/_components/article-edit-form.tsx",
+      "utf8",
+    );
+    const actions = await readFile(
+      "app/(admin)/admin/articles/[articleId]/actions.ts",
+      "utf8",
+    );
+    const deleteDialog = await readFile(
+      "app/(admin)/admin/articles/[articleId]/_components/article-delete-dialog.tsx",
+      "utf8",
+    );
+
+    assert.match(listPage, /href={`\/admin\/articles\/\$\{article\.id\}`}/);
+    assert.match(listPage, /articleDeleted/);
+    assert.match(detailPage, /await requireAdmin\(\)/);
+    assert.match(detailPage, /articleIdSchema\.safeParse/);
+    assert.match(detailPage, /notFound\(\)/);
+    assert.match(detailPage, /key={article\.revision}/);
+    assert.match(editForm, /name="expectedRevision"/);
+    assert.match(editForm, /state\.conflictRevision/);
+    assert.match(actions, /你的输入仍保留/);
+    assert.match(deleteDialog, /<DialogTitle>永久删除未发布文章？/);
+    assert.match(deleteDialog, /你将删除“{title}”/);
+    assert.match(deleteDialog, /name="expectedRevision"/);
   });
 });
