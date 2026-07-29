@@ -26,7 +26,10 @@ describe("Site header navigation", () => {
     assert.match(utilities, /function GitHubMarkIcon/);
     assert.match(utilities, /fill="currentColor"/);
     assert.match(utilities, /LayoutDashboardIcon/);
-    assert.match(utilities, /href="https:\/\/github\.com\/bangbangde"/);
+    assert.match(
+      utilities,
+      /href="https:\/\/github\.com\/bangbangde\/codebuff-next"/,
+    );
     assert.match(utilities, /target="_blank"/);
     assert.match(utilities, /rel="noopener noreferrer"/);
     assert.match(utilities, /href="\/admin"/);
