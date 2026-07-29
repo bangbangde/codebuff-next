@@ -36,6 +36,10 @@ function getRuleBlock(css, selectorEnd) {
   return css.slice(openingBrace + 1, closingBrace);
 }
 
+function getRoleValue(block, role) {
+  return block.match(new RegExp(`--${role}:\\s*([^;]+);`))?.[1];
+}
+
 describe("shared UI semantics", () => {
   it("pins the approved shadcn generation baseline", async () => {
     const config = JSON.parse(await readFile("components.json", "utf8"));
@@ -61,6 +65,55 @@ describe("shared UI semantics", () => {
         assert.match(block, new RegExp(`--${role}:`));
       }
     }
+  });
+
+  it("gives Admin a GitHub-inspired tool palette without leaking into Site", async () => {
+    const css = await readFile("app/globals.css", "utf8");
+    const siteLight = getRuleBlock(css, ".surface-site {");
+    const siteDark = getRuleBlock(css, ".surface-site.dark {");
+    const adminLight = getRuleBlock(css, ".surface-admin {");
+    const adminDark = getRuleBlock(css, ".surface-admin.dark {");
+
+    assert.deepEqual(
+      {
+        background: getRoleValue(adminLight, "background"),
+        card: getRoleValue(adminLight, "card"),
+        muted: getRoleValue(adminLight, "muted"),
+        accent: getRoleValue(adminLight, "accent"),
+        border: getRoleValue(adminLight, "border"),
+        brandAccent: getRoleValue(adminLight, "brand-accent"),
+      },
+      {
+        background: "#ffffff",
+        card: "#ffffff",
+        muted: "#f6f8fa",
+        accent: "#e6eaef",
+        border: "#d1d9e0",
+        brandAccent: "#0969da",
+      },
+    );
+    assert.deepEqual(
+      {
+        background: getRoleValue(adminDark, "background"),
+        card: getRoleValue(adminDark, "card"),
+        muted: getRoleValue(adminDark, "muted"),
+        accent: getRoleValue(adminDark, "accent"),
+        border: getRoleValue(adminDark, "border"),
+        brandAccent: getRoleValue(adminDark, "brand-accent"),
+      },
+      {
+        background: "#0d1117",
+        card: "#161b22",
+        muted: "#161b22",
+        accent: "#21262d",
+        border: "#30363d",
+        brandAccent: "#58a6ff",
+      },
+    );
+    assert.equal(getRoleValue(siteLight, "background"), "#ffffff");
+    assert.equal(getRoleValue(siteLight, "brand-accent"), "#b85d16");
+    assert.equal(getRoleValue(siteDark, "background"), "#151310");
+    assert.equal(getRoleValue(siteDark, "brand-accent"), "#ffad57");
   });
 
   it("propagates the active surface through portal-based UI", async () => {
