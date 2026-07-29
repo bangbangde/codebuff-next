@@ -78,17 +78,10 @@ function AdminNavigation({
                   />
                 }
               >
-                <Icon
-                  aria-hidden="true"
-                  className="size-[1.125rem] shrink-0"
-                />
-                <span className={cn(collapsed && "sr-only")}>
-                  {item.label}
-                </span>
+                <Icon aria-hidden="true" className="size-[1.125rem] shrink-0" />
+                <span className={cn(collapsed && "sr-only")}>{item.label}</span>
               </TooltipTrigger>
-              {collapsed ? (
-                <TooltipContent>{item.label}</TooltipContent>
-              ) : null}
+              {collapsed ? <TooltipContent>{item.label}</TooltipContent> : null}
             </Tooltip>
           );
         })}
@@ -219,12 +212,6 @@ export function AdminShell({
         </div>
 
         <div className="flex min-w-0 items-center gap-2">
-          <div className="hidden min-w-0 text-right md:block">
-            <p className="truncate text-xs font-medium">{identity.name}</p>
-            <p className="mt-0.5 max-w-56 truncate text-[0.6875rem] text-muted-foreground">
-              {identity.email}
-            </p>
-          </div>
           <Link
             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground no-underline transition-colors duration-(--motion-duration) ease-(--motion-easing) hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground motion-reduce:transition-none sm:min-w-0"
             href="/"
@@ -233,6 +220,12 @@ export function AdminShell({
             <ExternalLinkIcon aria-hidden="true" className="size-4" />
             <span className="sr-only sm:hidden">View site</span>
           </Link>
+          <div className="hidden min-w-0 text-right md:block">
+            <p className="truncate text-xs font-medium">{identity.name}</p>
+            <p className="mt-0.5 max-w-56 truncate text-[0.6875rem] text-muted-foreground">
+              {identity.email}
+            </p>
+          </div>
         </div>
       </header>
 
