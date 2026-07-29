@@ -487,6 +487,8 @@ async function assertArticleManagement(baseURL, context) {
   await page
     .getByRole("link", { name: firstArticle.title, exact: true })
     .click();
+  await page.waitForURL(/\/admin\/articles\/[^/?]+$/);
+  await page.getByRole("heading", { name: "编辑文章", exact: true }).waitFor();
   const stalePage = await context.newPage();
   await stalePage.goto(page.url());
   await stalePage
