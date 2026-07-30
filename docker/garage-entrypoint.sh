@@ -76,7 +76,7 @@ if /garage -c "$config_file" key info "$article_access_key_id" >/dev/null 2>&1; 
 else
   /garage -c "$config_file" key import \
     --yes \
-    -n codebuff-next-article \
+    -n "$article_bucket" \
     "$article_access_key_id" \
     "$article_secret_access_key"
   echo "Garage article application key imported"
