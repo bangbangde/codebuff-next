@@ -1,9 +1,13 @@
 import "server-only";
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
-import { article } from "@/lib/db/schema";
+import {
+  article,
+  articleMediaReference,
+  mediaAsset,
+} from "@/lib/db/schema";
 import type {
   ArticleDetail,
   ArticleSummary,
@@ -14,7 +18,10 @@ import type {
   UpdateArticleInput,
   UpdateArticleResult,
 } from "../article-dto";
-import { ArticleSlugConflictError } from "../article-errors";
+import {
+  ArticleMediaUnavailableError,
+  ArticleSlugConflictError,
+} from "../article-errors";
 import type { ArticleRepository } from "../article-repository";
 
 function isDuplicateSlugError(error: unknown) {
@@ -79,21 +86,52 @@ async function readCurrentRevision(id: string) {
 }
 
 export const drizzleArticleRepository: ArticleRepository = {
-  async create(input: CreateArticleInput): Promise<CreatedArticle> {
+  async create(
+    input: CreateArticleInput,
+    mediaIds: readonly string[],
+  ): Promise<CreatedArticle> {
     try {
-      const [created] = await getDatabase()
-        .insert(article)
-        .values(input)
-        .returning({
-          id: article.id,
-          slug: article.slug,
-        });
+      return await getDatabase().transaction(async (transaction) => {
+        if (mediaIds.length > 0) {
+          const referencedMedia = await transaction
+            .select({
+              id: mediaAsset.id,
+              status: mediaAsset.status,
+            })
+            .from(mediaAsset)
+            .where(inArray(mediaAsset.id, [...mediaIds]));
 
-      if (!created) {
-        throw new Error("Article insert did not return the created record.");
-      }
+          if (
+            referencedMedia.length !== mediaIds.length ||
+            referencedMedia.some((media) => media.status !== "ready")
+          ) {
+            throw new ArticleMediaUnavailableError();
+          }
+        }
 
-      return created;
+        const [created] = await transaction
+          .insert(article)
+          .values(input)
+          .returning({
+            id: article.id,
+            slug: article.slug,
+          });
+
+        if (!created) {
+          throw new Error("Article insert did not return the created record.");
+        }
+
+        if (mediaIds.length > 0) {
+          await transaction.insert(articleMediaReference).values(
+            mediaIds.map((mediaId) => ({
+              articleId: created.id,
+              mediaId,
+            })),
+          );
+        }
+
+        return created;
+      });
     } catch (error) {
       if (isDuplicateSlugError(error)) {
         throw new ArticleSlugConflictError(input.slug);
@@ -157,29 +195,82 @@ export const drizzleArticleRepository: ArticleRepository = {
     }));
   },
 
-  async update(input: UpdateArticleInput): Promise<UpdateArticleResult> {
-    let updated: typeof article.$inferSelect | undefined;
-
+  async update(
+    input: UpdateArticleInput,
+    mediaIds: readonly string[],
+  ): Promise<UpdateArticleResult> {
     try {
-      [updated] = await getDatabase()
-        .update(article)
-        .set({
-          bodyMarkdown: input.bodyMarkdown,
-          kind: input.kind,
-          language: input.language,
-          revision: sql`${article.revision} + 1`,
-          slug: input.slug,
-          summary: input.summary,
-          title: input.title,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(article.id, input.id),
-            eq(article.revision, input.expectedRevision),
-          ),
-        )
-        .returning(articleDetailSelection);
+      return await getDatabase().transaction(async (transaction) => {
+        const [updated] = await transaction
+          .update(article)
+          .set({
+            bodyMarkdown: input.bodyMarkdown,
+            kind: input.kind,
+            language: input.language,
+            revision: sql`${article.revision} + 1`,
+            slug: input.slug,
+            summary: input.summary,
+            title: input.title,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(article.id, input.id),
+              eq(article.revision, input.expectedRevision),
+            ),
+          )
+          .returning(articleDetailSelection);
+
+        if (!updated) {
+          const [current] = await transaction
+            .select({ revision: article.revision })
+            .from(article)
+            .where(eq(article.id, input.id))
+            .limit(1);
+
+          return current
+            ? {
+                currentRevision: current.revision,
+                status: "conflict" as const,
+              }
+            : { status: "not_found" as const };
+        }
+
+        if (mediaIds.length > 0) {
+          const referencedMedia = await transaction
+            .select({
+              id: mediaAsset.id,
+              status: mediaAsset.status,
+            })
+            .from(mediaAsset)
+            .where(inArray(mediaAsset.id, [...mediaIds]));
+
+          if (
+            referencedMedia.length !== mediaIds.length ||
+            referencedMedia.some((media) => media.status !== "ready")
+          ) {
+            throw new ArticleMediaUnavailableError();
+          }
+        }
+
+        await transaction
+          .delete(articleMediaReference)
+          .where(eq(articleMediaReference.articleId, input.id));
+
+        if (mediaIds.length > 0) {
+          await transaction.insert(articleMediaReference).values(
+            mediaIds.map((mediaId) => ({
+              articleId: input.id,
+              mediaId,
+            })),
+          );
+        }
+
+        return {
+          article: toArticleDetail(updated),
+          status: "updated" as const,
+        };
+      });
     } catch (error) {
       if (isDuplicateSlugError(error)) {
         throw new ArticleSlugConflictError(input.slug);
@@ -187,15 +278,5 @@ export const drizzleArticleRepository: ArticleRepository = {
 
       throw error;
     }
-
-    if (updated) {
-      return { article: toArticleDetail(updated), status: "updated" };
-    }
-
-    const currentRevision = await readCurrentRevision(input.id);
-
-    return currentRevision === null
-      ? { status: "not_found" }
-      : { currentRevision, status: "conflict" };
   },
 };

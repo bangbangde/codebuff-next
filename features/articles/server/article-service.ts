@@ -5,10 +5,14 @@ import type {
   DeleteArticleInput,
   UpdateArticleInput,
 } from "../article-dto";
+import { parseCanonicalMediaReferenceIds } from "../article-media-reference";
 import { drizzleArticleRepository } from "./drizzle-article-repository";
 
 export function createArticle(input: CreateArticleInput) {
-  return drizzleArticleRepository.create(input);
+  return drizzleArticleRepository.create(
+    input,
+    parseCanonicalMediaReferenceIds(input.bodyMarkdown),
+  );
 }
 
 export function listArticleSummaries() {
@@ -20,7 +24,10 @@ export function getArticleById(id: string) {
 }
 
 export function updateArticle(input: UpdateArticleInput) {
-  return drizzleArticleRepository.update(input);
+  return drizzleArticleRepository.update(
+    input,
+    parseCanonicalMediaReferenceIds(input.bodyMarkdown),
+  );
 }
 
 export function deleteArticle(input: DeleteArticleInput) {

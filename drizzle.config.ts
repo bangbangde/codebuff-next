@@ -5,6 +5,7 @@ export default defineConfig({
   schema: [
     "./lib/db/schema/auth.generated.ts",
     "./lib/db/schema/article.ts",
+    "./lib/db/schema/article-media-reference.ts",
     "./lib/db/schema/media.ts",
   ],
   out: "./drizzle",

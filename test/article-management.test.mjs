@@ -25,6 +25,22 @@ const {
   normalizeArticleCreateValues,
 } = await loadArticleValidationModule();
 
+async function loadArticleMediaReferenceModule() {
+  const result = await build({
+    bundle: true,
+    entryPoints: ["features/articles/article-media-reference.ts"],
+    format: "esm",
+    platform: "node",
+    write: false,
+  });
+  const source = result.outputFiles[0].text;
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+
+  return import(moduleUrl);
+}
+
+const mediaReferences = await loadArticleMediaReferenceModule();
+
 describe("Article schema ownership", () => {
   it("isolates generated Auth schema from project-owned tables", async () => {
     const packageJson = await readFile("package.json", "utf8");
@@ -171,7 +187,10 @@ describe("Admin article creation slice", () => {
     assert.match(action, /error instanceof ArticleSlugConflictError/);
     assert.match(action, /revalidatePath\("\/admin\/articles"\)/);
     assert.match(action, /redirect\("\/admin\/articles\?created=1"\)/);
-    assert.match(service, /drizzleArticleRepository\.create\(input\)/);
+    assert.match(
+      service,
+      /drizzleArticleRepository\.create\(\s*input,\s*parseCanonicalMediaReferenceIds/,
+    );
     assert.match(repository, /\.insert\(article\)/);
     assert.match(repository, /article_slug_unique/);
     assert.match(repository, /throw new ArticleSlugConflictError\(input\.slug\)/);
@@ -202,7 +221,7 @@ describe("Admin article creation slice", () => {
     assert.match(form, /aria-live="polite"/);
     assert.match(form, /保存未发布文章/);
     assert.match(newPage, /await requireAdmin\(\)/);
-    assert.match(newPage, /<ArticleCreateForm \/>/);
+    assert.match(newPage, /<ArticleCreateForm mediaOptions={mediaOptions} \/>/);
     assert.match(listPage, /href="\/admin\/articles\/new"/);
     assert.match(listPage, /articleCreated/);
     assert.match(listPage, /目前仍处于未发布状态/);
@@ -245,7 +264,10 @@ describe("Admin article detail and mutation slice", () => {
 
     assert.match(repository, /async findById\(id: string\)/);
     assert.match(repository, /\.where\(eq\(article\.id, id\)\)/);
-    assert.match(repository, /async update\(input: UpdateArticleInput\)/);
+    assert.match(
+      repository,
+      /async update\(\s*input: UpdateArticleInput,\s*mediaIds: readonly string\[\]/,
+    );
     assert.match(repository, /\.update\(article\)/);
     assert.match(repository, /sql`\$\{article\.revision\} \+ 1`/);
     assert.match(
@@ -257,7 +279,10 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(repository, /status: "conflict"/);
     assert.match(repository, /status: "not_found"/);
     assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
-    assert.match(service, /drizzleArticleRepository\.update\(input\)/);
+    assert.match(
+      service,
+      /drizzleArticleRepository\.update\(\s*input,\s*parseCanonicalMediaReferenceIds/,
+    );
     assert.match(service, /drizzleArticleRepository\.delete\(input\)/);
   });
 
@@ -320,5 +345,92 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(deleteDialog, /<DialogTitle>永久删除未发布文章？/);
     assert.match(deleteDialog, /你将删除“{title}”/);
     assert.match(deleteDialog, /name="expectedRevision"/);
+  });
+});
+
+describe("Canonical article media references", () => {
+  const firstMediaId = "8e6e377f-76be-4a53-bf95-cd1f68f2660f";
+  const secondMediaId = "b6716c96-bb3f-4f67-a622-1ab8e01a83c1";
+
+  it("extracts unique canonical IDs and ignores ordinary Markdown links", () => {
+    assert.deepEqual(
+      mediaReferences.parseCanonicalMediaReferenceIds(`
+![cover](cq-media://${firstMediaId})
+[download](cq-media://${secondMediaId})
+![repeat](cq-media://${firstMediaId})
+[external](https://example.com/file.pdf)
+![relative](./cover.png)
+      `),
+      [firstMediaId, secondMediaId],
+    );
+  });
+
+  it("rejects malformed managed references", () => {
+    assert.throws(
+      () =>
+        mediaReferences.parseCanonicalMediaReferenceIds(
+          "[broken](cq-media://not-a-uuid)",
+        ),
+      (error) => error.name === "ArticleMediaReferenceSyntaxError",
+    );
+  });
+
+  it("formats image and file references without trusting Markdown labels", () => {
+    assert.equal(
+      mediaReferences.formatCanonicalMediaReference(
+        {
+          id: firstMediaId,
+          mediaType: "image/png",
+          originalFilename: "cover.png",
+        },
+        "cover ] image",
+      ),
+      `![cover \\] image](cq-media://${firstMediaId})`,
+    );
+    assert.equal(
+      mediaReferences.formatCanonicalMediaReference({
+        id: secondMediaId,
+        mediaType: "application/pdf",
+        originalFilename: "notes.pdf",
+      }),
+      `[notes.pdf](cq-media://${secondMediaId})`,
+    );
+  });
+
+  it("owns transaction-safe persistence and bounded editor UI", async () => {
+    const migration = await readFile(
+      "drizzle/0004_bizarre_phalanx.sql",
+      "utf8",
+    );
+    const schema = await readFile(
+      "lib/db/schema/article-media-reference.ts",
+      "utf8",
+    );
+    const repository = await readFile(
+      "features/articles/server/drizzle-article-repository.ts",
+      "utf8",
+    );
+    const picker = await readFile(
+      "app/(admin)/admin/articles/_components/article-media-picker.tsx",
+      "utf8",
+    );
+    const mediaPage = await readFile(
+      "app/(admin)/admin/media/page.tsx",
+      "utf8",
+    );
+
+    assert.match(migration, /CREATE TABLE "article_media_reference"/);
+    assert.match(migration, /ON DELETE cascade/);
+    assert.match(migration, /ON DELETE restrict/);
+    assert.doesNotMatch(migration, /\bDROP\b|\bRENAME\b/);
+    assert.match(schema, /primaryKey/);
+    assert.match(repository, /getDatabase\(\)\.transaction/);
+    assert.match(repository, /media\.status !== "ready"/);
+    assert.match(repository, /\.delete\(articleMediaReference\)/);
+    assert.match(picker, /textarea\.setRangeText/);
+    assert.match(picker, /type="button"/);
+    assert.match(picker, /cq-media:\/\//);
+    assert.match(mediaPage, /asset\.status === "ready"/);
+    assert.match(mediaPage, /<MediaReferenceCopy/);
   });
 });

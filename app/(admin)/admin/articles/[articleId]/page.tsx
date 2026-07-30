@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { articleIdSchema } from "@/features/articles/article-validation";
 import { getArticleById } from "@/features/articles/server/article-service";
+import { listReadyMediaReferenceOptions } from "@/features/media/server/media-service";
 import { requireAdmin } from "@/lib/auth/session";
 import { ArticleDeleteDialog } from "./_components/article-delete-dialog";
 import { ArticleEditForm } from "./_components/article-edit-form";
@@ -41,8 +42,9 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [article, query] = await Promise.all([
+  const [article, mediaOptions, query] = await Promise.all([
     getArticleById(route.data),
+    listReadyMediaReferenceOptions(),
     searchParams,
   ]);
 
@@ -106,6 +108,7 @@ export default async function ArticleDetailPage({
       <ArticleEditForm
         article={article}
         key={article.revision}
+        mediaOptions={mediaOptions}
         values={values}
       />
 
