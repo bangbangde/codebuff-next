@@ -3,11 +3,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
-import {
-  article,
-  articleMediaReference,
-  mediaAsset,
-} from "@/lib/db/schema";
+import { article, articleAsset } from "@/lib/db/schema";
 import type {
   ArticleDetail,
   ArticleSummary,
@@ -19,7 +15,7 @@ import type {
   UpdateArticleResult,
 } from "../article-dto";
 import {
-  ArticleMediaUnavailableError,
+  ArticleAssetUnavailableError,
   ArticleSlugConflictError,
 } from "../article-errors";
 import type { ArticleRepository } from "../article-repository";
@@ -88,50 +84,26 @@ async function readCurrentRevision(id: string) {
 export const drizzleArticleRepository: ArticleRepository = {
   async create(
     input: CreateArticleInput,
-    mediaIds: readonly string[],
+    assetIds: readonly string[],
   ): Promise<CreatedArticle> {
+    if (assetIds.length > 0) {
+      throw new ArticleAssetUnavailableError();
+    }
+
     try {
-      return await getDatabase().transaction(async (transaction) => {
-        if (mediaIds.length > 0) {
-          const referencedMedia = await transaction
-            .select({
-              id: mediaAsset.id,
-              status: mediaAsset.status,
-            })
-            .from(mediaAsset)
-            .where(inArray(mediaAsset.id, [...mediaIds]));
+      const [created] = await getDatabase()
+        .insert(article)
+        .values(input)
+        .returning({
+          id: article.id,
+          slug: article.slug,
+        });
 
-          if (
-            referencedMedia.length !== mediaIds.length ||
-            referencedMedia.some((media) => media.status !== "ready")
-          ) {
-            throw new ArticleMediaUnavailableError();
-          }
-        }
+      if (!created) {
+        throw new Error("Article insert did not return the created record.");
+      }
 
-        const [created] = await transaction
-          .insert(article)
-          .values(input)
-          .returning({
-            id: article.id,
-            slug: article.slug,
-          });
-
-        if (!created) {
-          throw new Error("Article insert did not return the created record.");
-        }
-
-        if (mediaIds.length > 0) {
-          await transaction.insert(articleMediaReference).values(
-            mediaIds.map((mediaId) => ({
-              articleId: created.id,
-              mediaId,
-            })),
-          );
-        }
-
-        return created;
-      });
+      return created;
     } catch (error) {
       if (isDuplicateSlugError(error)) {
         throw new ArticleSlugConflictError(input.slug);
@@ -197,10 +169,27 @@ export const drizzleArticleRepository: ArticleRepository = {
 
   async update(
     input: UpdateArticleInput,
-    mediaIds: readonly string[],
+    assetIds: readonly string[],
   ): Promise<UpdateArticleResult> {
     try {
       return await getDatabase().transaction(async (transaction) => {
+        if (assetIds.length > 0) {
+          const referencedAssets = await transaction
+            .select({
+              articleId: articleAsset.articleId,
+              id: articleAsset.id,
+            })
+            .from(articleAsset)
+            .where(inArray(articleAsset.id, [...assetIds]));
+
+          if (
+            referencedAssets.length !== assetIds.length ||
+            referencedAssets.some((asset) => asset.articleId !== input.id)
+          ) {
+            throw new ArticleAssetUnavailableError();
+          }
+        }
+
         const [updated] = await transaction
           .update(article)
           .set({
@@ -234,36 +223,6 @@ export const drizzleArticleRepository: ArticleRepository = {
                 status: "conflict" as const,
               }
             : { status: "not_found" as const };
-        }
-
-        if (mediaIds.length > 0) {
-          const referencedMedia = await transaction
-            .select({
-              id: mediaAsset.id,
-              status: mediaAsset.status,
-            })
-            .from(mediaAsset)
-            .where(inArray(mediaAsset.id, [...mediaIds]));
-
-          if (
-            referencedMedia.length !== mediaIds.length ||
-            referencedMedia.some((media) => media.status !== "ready")
-          ) {
-            throw new ArticleMediaUnavailableError();
-          }
-        }
-
-        await transaction
-          .delete(articleMediaReference)
-          .where(eq(articleMediaReference.articleId, input.id));
-
-        if (mediaIds.length > 0) {
-          await transaction.insert(articleMediaReference).values(
-            mediaIds.map((mediaId) => ({
-              articleId: input.id,
-              mediaId,
-            })),
-          );
         }
 
         return {

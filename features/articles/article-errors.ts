@@ -5,9 +5,9 @@ export class ArticleSlugConflictError extends Error {
   }
 }
 
-export class ArticleMediaUnavailableError extends Error {
+export class ArticleAssetUnavailableError extends Error {
   constructor() {
-    super("Article references media that is unavailable.");
-    this.name = "ArticleMediaUnavailableError";
+    super("Article references an asset that is unavailable.");
+    this.name = "ArticleAssetUnavailableError";
   }
 }

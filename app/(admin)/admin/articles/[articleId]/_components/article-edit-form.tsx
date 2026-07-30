@@ -5,22 +5,23 @@ import { useActionState } from "react";
 
 import { ArticleFields } from "@/app/(admin)/admin/articles/_components/article-fields";
 import { Button, buttonVariants } from "@/components/ui/button";
+import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
 import type {
   ArticleCreateValues,
   ArticleDetail,
 } from "@/features/articles/article-dto";
 import type { ArticleEditFormState } from "@/features/articles/article-edit-form-state";
-import type { MediaReferenceOption } from "@/features/articles/article-media-reference";
 import { cn } from "@/lib/utils";
+import { ArticleAssetPanel } from "../../_components/article-asset-panel";
 import { updateArticleAction } from "../actions";
 
 export function ArticleEditForm({
   article,
-  mediaOptions,
+  assets,
   values,
 }: {
   article: ArticleDetail;
-  mediaOptions: readonly MediaReferenceOption[];
+  assets: readonly ArticleAsset[];
   values: ArticleCreateValues;
 }) {
   const initialState: ArticleEditFormState = {
@@ -44,8 +45,8 @@ export function ArticleEditForm({
       />
 
       <ArticleFields
+        assetPanel={<ArticleAssetPanel articleId={article.id} assets={assets} />}
         fieldErrors={state.fieldErrors}
-        mediaOptions={mediaOptions}
         values={state.values}
       />
 

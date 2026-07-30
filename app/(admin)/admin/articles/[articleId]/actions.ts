@@ -8,10 +8,10 @@ import type {
   ArticleEditFormState,
 } from "@/features/articles/article-edit-form-state";
 import {
-  ArticleMediaUnavailableError,
+  ArticleAssetUnavailableError,
   ArticleSlugConflictError,
 } from "@/features/articles/article-errors";
-import { ArticleMediaReferenceSyntaxError } from "@/features/articles/article-media-reference";
+import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
   articleMutationReferenceSchema,
@@ -21,6 +21,24 @@ import {
   deleteArticle,
   updateArticle,
 } from "@/features/articles/server/article-service";
+import type {
+  ArticleAssetDeleteFormState,
+  ArticleAssetUploadFormState,
+} from "@/features/article-assets/article-asset-form-state";
+import {
+  ArticleNotFoundError,
+  AssetNotFoundError,
+  AssetStorageError,
+  AssetValidationError,
+} from "@/features/article-assets/article-asset-errors";
+import {
+  assetIdParamSchema,
+  articleIdParamSchema,
+} from "@/features/article-assets/article-asset-validation";
+import {
+  deleteArticleAsset,
+  uploadArticleAsset,
+} from "@/features/article-assets/server/article-asset-service";
 import { requireAdmin } from "@/lib/auth/session";
 
 export async function updateArticleAction(
@@ -63,24 +81,24 @@ export async function updateArticleAction(
       id: reference.data.articleId,
     });
   } catch (error) {
-    if (error instanceof ArticleMediaReferenceSyntaxError) {
+    if (error instanceof ArticleAssetReferenceSyntaxError) {
       return {
         conflictRevision: null,
         fieldErrors: {
-          bodyMarkdown: ["托管媒体引用格式无效，请重新从媒体选择器插入。"],
+          bodyMarkdown: ["托管资产引用格式无效，请重新从资产插入。"],
         },
         formError: "文章尚未保存，请检查 Markdown 正文。",
         values: fields.data,
       };
     }
 
-    if (error instanceof ArticleMediaUnavailableError) {
+    if (error instanceof ArticleAssetUnavailableError) {
       return {
         conflictRevision: null,
         fieldErrors: {
-          bodyMarkdown: ["正文引用了不存在或尚未可用的媒体。"],
+          bodyMarkdown: ["正文引用了不属于本文或不存在的资产。"],
         },
-        formError: "文章尚未保存，请移除无效媒体引用。",
+        formError: "文章尚未保存，请移除无效资产引用。",
         values: fields.data,
       };
     }
@@ -181,4 +199,108 @@ export async function deleteArticleAction(
 
   revalidatePath("/admin/articles");
   redirect("/admin/articles?deleted=1");
+}
+
+export async function uploadArticleAssetAction(
+  _previousState: ArticleAssetUploadFormState,
+  formData: FormData,
+): Promise<ArticleAssetUploadFormState> {
+  await requireAdmin();
+
+  const route = articleIdParamSchema.safeParse(formData.get("articleId"));
+
+  if (!route.success) {
+    return {
+      formError: "文章标识无效，请重新载入后再试。",
+      uploadedId: null,
+    };
+  }
+
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return {
+      formError: "请选择要上传的文件。",
+      uploadedId: null,
+    };
+  }
+
+  try {
+    const asset = await uploadArticleAsset(route.data, file);
+
+    revalidatePath(`/admin/articles/${route.data}`);
+
+    return {
+      formError: null,
+      uploadedId: asset.id,
+    };
+  } catch (error) {
+    if (error instanceof AssetValidationError) {
+      return {
+        formError: error.message,
+        uploadedId: null,
+      };
+    }
+
+    if (error instanceof ArticleNotFoundError) {
+      return {
+        formError: "这篇文章已不存在，无法上传资产。",
+        uploadedId: null,
+      };
+    }
+
+    if (error instanceof AssetStorageError) {
+      return {
+        formError: "资产存储暂时不可用，请稍后重试。",
+        uploadedId: null,
+      };
+    }
+
+    console.error("Failed to upload article asset.", error);
+
+    return {
+      formError: "资产暂时无法上传，请稍后重试。",
+      uploadedId: null,
+    };
+  }
+}
+
+export async function deleteArticleAssetAction(
+  _previousState: ArticleAssetDeleteFormState,
+  formData: FormData,
+): Promise<ArticleAssetDeleteFormState> {
+  await requireAdmin();
+
+  const articleRoute = articleIdParamSchema.safeParse(
+    formData.get("articleId"),
+  );
+  const assetRoute = assetIdParamSchema.safeParse(formData.get("assetId"));
+
+  if (!articleRoute.success || !assetRoute.success) {
+    return {
+      formError: "资产标识无效，删除已拒绝。",
+    };
+  }
+
+  try {
+    await deleteArticleAsset(articleRoute.data, assetRoute.data);
+
+    revalidatePath(`/admin/articles/${articleRoute.data}`);
+
+    return {
+      formError: null,
+    };
+  } catch (error) {
+    if (error instanceof AssetNotFoundError) {
+      return {
+        formError: "这个资产已不存在，没有执行删除。",
+      };
+    }
+
+    console.error("Failed to delete article asset.", error);
+
+    return {
+      formError: "资产暂时无法删除，请稍后重试。",
+    };
+  }
 }

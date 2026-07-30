@@ -25,10 +25,10 @@ const {
   normalizeArticleCreateValues,
 } = await loadArticleValidationModule();
 
-async function loadArticleMediaReferenceModule() {
+async function loadArticleAssetReferenceModule() {
   const result = await build({
     bundle: true,
-    entryPoints: ["features/articles/article-media-reference.ts"],
+    entryPoints: ["features/articles/article-asset-reference.ts"],
     format: "esm",
     platform: "node",
     write: false,
@@ -39,7 +39,7 @@ async function loadArticleMediaReferenceModule() {
   return import(moduleUrl);
 }
 
-const mediaReferences = await loadArticleMediaReferenceModule();
+const assetReferences = await loadArticleAssetReferenceModule();
 
 describe("Article schema ownership", () => {
   it("isolates generated Auth schema from project-owned tables", async () => {
@@ -189,7 +189,7 @@ describe("Admin article creation slice", () => {
     assert.match(action, /redirect\("\/admin\/articles\?created=1"\)/);
     assert.match(
       service,
-      /drizzleArticleRepository\.create\(\s*input,\s*parseCanonicalMediaReferenceIds/,
+      /drizzleArticleRepository\.create\(\s*input,\s*parseCanonicalAssetReferenceIds/,
     );
     assert.match(repository, /\.insert\(article\)/);
     assert.match(repository, /article_slug_unique/);
@@ -221,7 +221,7 @@ describe("Admin article creation slice", () => {
     assert.match(form, /aria-live="polite"/);
     assert.match(form, /保存未发布文章/);
     assert.match(newPage, /await requireAdmin\(\)/);
-    assert.match(newPage, /<ArticleCreateForm mediaOptions={mediaOptions} \/>/);
+    assert.match(newPage, /<ArticleCreateForm \/>/);
     assert.match(listPage, /href="\/admin\/articles\/new"/);
     assert.match(listPage, /articleCreated/);
     assert.match(listPage, /目前仍处于未发布状态/);
@@ -266,7 +266,7 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(repository, /\.where\(eq\(article\.id, id\)\)/);
     assert.match(
       repository,
-      /async update\(\s*input: UpdateArticleInput,\s*mediaIds: readonly string\[\]/,
+      /async update\(\s*input: UpdateArticleInput,\s*assetIds: readonly string\[\]/,
     );
     assert.match(repository, /\.update\(article\)/);
     assert.match(repository, /sql`\$\{article\.revision\} \+ 1`/);
@@ -281,7 +281,7 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
     assert.match(
       service,
-      /drizzleArticleRepository\.update\(\s*input,\s*parseCanonicalMediaReferenceIds/,
+      /drizzleArticleRepository\.update\(\s*input,\s*parseCanonicalAssetReferenceIds/,
     );
     assert.match(service, /drizzleArticleRepository\.delete\(input\)/);
   });
@@ -299,7 +299,7 @@ describe("Admin article detail and mutation slice", () => {
 
     assert.ok(firstAuthorization >= 0);
     assert.ok(firstAuthorization < firstValidation);
-    assert.equal(actions.match(/await requireAdmin\(\)/g)?.length, 2);
+    assert.equal(actions.match(/await requireAdmin\(\)/g)?.length, 4);
     assert.equal(
       actions.match(/articleMutationReferenceSchema\.safeParse/g)?.length,
       2,
@@ -346,91 +346,110 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(deleteDialog, /你将删除“{title}”/);
     assert.match(deleteDialog, /name="expectedRevision"/);
   });
+
+  it("captures object keys before deletion to clean up Garage objects", async () => {
+    const service = await readFile(
+      "features/articles/server/article-service.ts",
+      "utf8",
+    );
+
+    // deleteArticle 必须先抓取 keys 再删除文章，否则 ON DELETE cascade
+    // 会立即移除 article_asset 行，导致后续查 keys 返回空数组。
+    assert.match(service, /listArticleAssetObjectKeys\(input\.id\)/);
+    assert.match(service, /drizzleArticleRepository\.delete\(input\)/);
+    assert.match(service, /deleteArticleAssetObjectsByKeys\(objectKeys\)/);
+
+    // 验证调用顺序：先 listArticleAssetObjectKeys，再 delete，再 deleteArticleAssetObjectsByKeys
+    const listIndex = service.indexOf("listArticleAssetObjectKeys(input.id)");
+    const deleteIndex = service.indexOf(
+      "drizzleArticleRepository.delete(input)",
+    );
+    const cleanupIndex = service.indexOf(
+      "deleteArticleAssetObjectsByKeys(objectKeys)",
+    );
+
+    assert.ok(listIndex >= 0);
+    assert.ok(deleteIndex > listIndex);
+    assert.ok(cleanupIndex > deleteIndex);
+  });
 });
 
-describe("Canonical article media references", () => {
-  const firstMediaId = "8e6e377f-76be-4a53-bf95-cd1f68f2660f";
-  const secondMediaId = "b6716c96-bb3f-4f67-a622-1ab8e01a83c1";
+describe("Canonical article asset references", () => {
+  const firstAssetId = "8e6e377f-76be-4a53-bf95-cd1f68f2660f";
+  const secondAssetId = "b6716c96-bb3f-4f67-a622-1ab8e01a83c1";
 
   it("extracts unique canonical IDs and ignores ordinary Markdown links", () => {
     assert.deepEqual(
-      mediaReferences.parseCanonicalMediaReferenceIds(`
-![cover](cq-media://${firstMediaId})
-[download](cq-media://${secondMediaId})
-![repeat](cq-media://${firstMediaId})
+      assetReferences.parseCanonicalAssetReferenceIds(`
+![cover](cq-asset://${firstAssetId})
+[download](cq-asset://${secondAssetId})
+![repeat](cq-asset://${firstAssetId})
 [external](https://example.com/file.pdf)
 ![relative](./cover.png)
       `),
-      [firstMediaId, secondMediaId],
+      [firstAssetId, secondAssetId],
     );
   });
 
   it("rejects malformed managed references", () => {
     assert.throws(
       () =>
-        mediaReferences.parseCanonicalMediaReferenceIds(
-          "[broken](cq-media://not-a-uuid)",
+        assetReferences.parseCanonicalAssetReferenceIds(
+          "[broken](cq-asset://not-a-uuid)",
         ),
-      (error) => error.name === "ArticleMediaReferenceSyntaxError",
+      (error) => error.name === "ArticleAssetReferenceSyntaxError",
     );
   });
 
   it("formats image and file references without trusting Markdown labels", () => {
     assert.equal(
-      mediaReferences.formatCanonicalMediaReference(
+      assetReferences.formatCanonicalAssetReference(
         {
-          id: firstMediaId,
+          id: firstAssetId,
           mediaType: "image/png",
           originalFilename: "cover.png",
         },
         "cover ] image",
       ),
-      `![cover \\] image](cq-media://${firstMediaId})`,
+      `![cover \\] image](cq-asset://${firstAssetId})`,
     );
     assert.equal(
-      mediaReferences.formatCanonicalMediaReference({
-        id: secondMediaId,
+      assetReferences.formatCanonicalAssetReference({
+        id: secondAssetId,
         mediaType: "application/pdf",
         originalFilename: "notes.pdf",
       }),
-      `[notes.pdf](cq-media://${secondMediaId})`,
+      `[notes.pdf](cq-asset://${secondAssetId})`,
     );
   });
 
-  it("owns transaction-safe persistence and bounded editor UI", async () => {
+  it("owns article-asset persistence and the editor asset panel", async () => {
     const migration = await readFile(
-      "drizzle/0004_bizarre_phalanx.sql",
+      "drizzle/0005_tiresome_hellcat.sql",
       "utf8",
     );
     const schema = await readFile(
-      "lib/db/schema/article-media-reference.ts",
+      "lib/db/schema/article-asset.ts",
       "utf8",
     );
     const repository = await readFile(
       "features/articles/server/drizzle-article-repository.ts",
       "utf8",
     );
-    const picker = await readFile(
-      "app/(admin)/admin/articles/_components/article-media-picker.tsx",
-      "utf8",
-    );
-    const mediaPage = await readFile(
-      "app/(admin)/admin/media/page.tsx",
+    const panel = await readFile(
+      "app/(admin)/admin/articles/_components/article-asset-panel.tsx",
       "utf8",
     );
 
-    assert.match(migration, /CREATE TABLE "article_media_reference"/);
+    assert.match(migration, /CREATE TABLE "article_asset"/);
     assert.match(migration, /ON DELETE cascade/);
-    assert.match(migration, /ON DELETE restrict/);
-    assert.doesNotMatch(migration, /\bDROP\b|\bRENAME\b/);
-    assert.match(schema, /primaryKey/);
-    assert.match(repository, /getDatabase\(\)\.transaction/);
-    assert.match(repository, /media\.status !== "ready"/);
-    assert.match(repository, /\.delete\(articleMediaReference\)/);
-    assert.match(picker, /textarea\.setRangeText/);
-    assert.match(picker, /type="button"/);
-    assert.match(picker, /cq-media:\/\//);
-    assert.match(mediaPage, /asset\.status === "ready"/);
-    assert.match(mediaPage, /<MediaReferenceCopy/);
+    assert.match(migration, /DROP TABLE "media_asset"/);
+    assert.match(migration, /DROP TABLE "article_media_reference"/);
+    assert.match(schema, /onDelete: "cascade"/);
+    assert.match(schema, /objectKey/);
+    assert.match(repository, /\.articleId !== input\.id/);
+    assert.match(panel, /textarea\.setRangeText/);
+    assert.match(panel, /type="button"/);
+    assert.match(panel, /cq-asset:\/\//);
   });
 });

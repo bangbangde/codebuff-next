@@ -19,7 +19,6 @@ const testEmail = "passkey-e2e@codebuff.local";
 const testPassword = "Passkey-E2E-Local-Password-2026!";
 const initialPasskeyName = "E2E platform passkey";
 const renamedPasskeyName = "Renamed E2E passkey";
-const articleMediaId = "76be4a53-bf95-4d1f-a8f2-cd1f68f2660f";
 const authenticationOptionsPath =
   "/api/auth/passkey/generate-authenticate-options";
 const authenticationVerificationPath =
@@ -240,33 +239,6 @@ async function passkeyRowCount() {
   });
 }
 
-async function seedReadyArticleMedia() {
-  await usingDatabase(testDatabaseName, (client) =>
-    client.query(
-      `INSERT INTO "media_asset"
-        ("id", "object_key", "original_filename", "media_type", "byte_size", "sha256", "status")
-       VALUES ($1, $2, $3, $4, $5, $6, 'ready')`,
-      [
-        articleMediaId,
-        `passkey-e2e/${articleMediaId}`,
-        "article-e2e-cover.png",
-        "image/png",
-        68,
-        "c".repeat(64),
-      ],
-    ),
-  );
-}
-
-async function articleMediaReferenceCount() {
-  return usingDatabase(testDatabaseName, async (client) => {
-    const result = await client.query(
-      'SELECT COUNT(*)::integer AS "count" FROM "article_media_reference"',
-    );
-    return result.rows[0].count;
-  });
-}
-
 async function assertMinimumTouchTarget(locator, label) {
   const box = await locator.boundingBox();
 
@@ -442,14 +414,6 @@ async function createArticleThroughUi(baseURL, article) {
   const body = page.getByLabel("Markdown 正文", { exact: false });
   await body.fill(article.bodyMarkdown);
 
-  if (article.mediaLabel) {
-    await body.press("End");
-    await page.getByLabel("Alt / 链接文字").fill(article.mediaLabel);
-    await page
-      .getByRole("button", { name: "插入到当前选区", exact: true })
-      .click();
-    await expectValueContains(body, `cq-media://${articleMediaId}`);
-  }
   await page
     .getByRole("button", { name: "保存未发布文章", exact: true })
     .click();
@@ -459,10 +423,6 @@ async function createArticleThroughUi(baseURL, article) {
       exact: true,
     })
     .waitFor();
-}
-
-async function expectValueContains(locator, expected) {
-  assert.match(await locator.inputValue(), new RegExp(expected));
 }
 
 async function deleteCurrentArticle(baseURL, title) {
@@ -482,7 +442,6 @@ async function assertArticleManagement(baseURL, context) {
   const firstArticle = {
     bodyMarkdown: "# 第一篇\n\n保存在 PostgreSQL 中。",
     kind: "工程札记",
-    mediaLabel: "E2E 封面",
     slug: "article-e2e-first",
     summary: "用于验证文章管理闭环。",
     title: "Article E2E First",
@@ -500,10 +459,8 @@ async function assertArticleManagement(baseURL, context) {
   await page.goto(`${baseURL}/admin/articles`);
   await page.getByRole("heading", { name: "文章管理", exact: true }).waitFor();
   await page.getByText("还没有文章", { exact: true }).waitFor();
-  await seedReadyArticleMedia();
 
   await createArticleThroughUi(baseURL, firstArticle);
-  assert.equal(await articleMediaReferenceCount(), 1);
   await createArticleThroughUi(baseURL, secondArticle);
 
   await page
@@ -578,9 +535,7 @@ async function assertArticleManagement(baseURL, context) {
   await page.waitForFunction(
     () => document.documentElement.classList.contains("dark"),
   );
-  await page
-    .getByRole("button", { name: "插入到当前选区", exact: true })
-    .waitFor();
+  await page.getByRole("heading", { name: "编辑文章", exact: true }).waitFor();
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -615,7 +570,6 @@ async function assertArticleManagement(baseURL, context) {
   );
 
   await deleteCurrentArticle(baseURL, updatedTitle);
-  assert.equal(await articleMediaReferenceCount(), 0);
   await page.getByText("还没有文章", { exact: true }).waitFor();
 }
 
