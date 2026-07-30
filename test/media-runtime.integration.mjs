@@ -109,25 +109,39 @@ async function buildRunner() {
       contents: `
         import assert from "node:assert/strict";
         import { File } from "node:buffer";
+        import { randomUUID } from "node:crypto";
         import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
         import { eq } from "drizzle-orm";
 
-        import { uploadMediaAsset } from "./features/media/server/media-service";
+        import {
+          deleteMediaAsset,
+          readMediaAsset,
+          retryMediaAsset,
+          uploadMediaAsset,
+        } from "./features/media/server/media-service";
         import { getMediaStorageConfig } from "./features/media/server/media-storage-config";
         import { getDatabase, getPostgresPool } from "./lib/db/client";
-        import { mediaAsset } from "./lib/db/schema";
+        import {
+          article,
+          articleMediaReference,
+          mediaAsset,
+        } from "./lib/db/schema";
 
         const png = Buffer.from(
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlRrGQAAAAASUVORK5CYII=",
           "base64",
         );
         let asset;
+        let articleId;
         let cleanupClient;
+        let retryAssetId;
+        const cleanupObjectKeys = new Set();
 
         try {
           asset = await uploadMediaAsset(
             new File([png], "media-runtime-proof.png", { type: "image/png" }),
           );
+          cleanupObjectKeys.add(asset.objectKey);
           assert.equal(asset.status, "ready");
 
           const [persisted] = await getDatabase()
@@ -137,9 +151,89 @@ async function buildRunner() {
           assert.equal(persisted?.status, "ready");
           assert.equal(persisted?.sha256, asset.sha256);
 
-          console.log("Media runtime integration passed:", asset.id);
+          const read = await readMediaAsset(asset.id);
+          assert.deepEqual(Buffer.from(read.body), png);
+
+          const [createdArticle] = await getDatabase()
+            .insert(article)
+            .values({
+              bodyMarkdown: \`![proof](cq-media://\${asset.id})\`,
+              kind: "note",
+              language: "zh-CN",
+              slug: \`media-runtime-\${process.pid}-\${Date.now()}\`,
+              summary: "",
+              title: "Media runtime proof",
+            })
+            .returning({ id: article.id });
+          articleId = createdArticle.id;
+          await getDatabase().insert(articleMediaReference).values({
+            articleId,
+            mediaId: asset.id,
+          });
+
+          await assert.rejects(
+            deleteMediaAsset(asset.id),
+            (error) => error.name === "MediaReferencedError",
+          );
+          assert.equal((await readMediaAsset(asset.id)).asset.id, asset.id);
+
+          await getDatabase().delete(article).where(eq(article.id, articleId));
+          articleId = undefined;
+          await deleteMediaAsset(asset.id);
+          cleanupObjectKeys.delete(asset.objectKey);
+          asset = undefined;
+
+          retryAssetId = randomUUID();
+          const retryObjectKey = \`media/\${retryAssetId}\`;
+          cleanupObjectKeys.add(retryObjectKey);
+          await getDatabase().insert(mediaAsset).values({
+            byteSize: png.byteLength,
+            failureCode: "storage_unavailable",
+            id: retryAssetId,
+            mediaType: "image/png",
+            objectKey: retryObjectKey,
+            originalFilename: "media-runtime-retry.png",
+            sha256: persisted.sha256,
+            status: "failed",
+          });
+
+          const retried = await retryMediaAsset(
+            retryAssetId,
+            new File([png], "media-runtime-retry.png", { type: "image/png" }),
+          );
+          assert.equal(retried.status, "ready");
+          assert.deepEqual(
+            Buffer.from((await readMediaAsset(retryAssetId)).body),
+            png,
+          );
+          await deleteMediaAsset(retryAssetId);
+          cleanupObjectKeys.delete(retryObjectKey);
+          retryAssetId = undefined;
+
+          console.log("Media lifecycle runtime integration passed");
         } finally {
+          if (articleId) {
+            await getDatabase()
+              .delete(article)
+              .where(eq(article.id, articleId))
+              .catch(() => undefined);
+          }
+
+          if (retryAssetId) {
+            await getDatabase()
+              .delete(mediaAsset)
+              .where(eq(mediaAsset.id, retryAssetId))
+              .catch(() => undefined);
+          }
+
           if (asset) {
+            await getDatabase()
+              .delete(mediaAsset)
+              .where(eq(mediaAsset.id, asset.id))
+              .catch(() => undefined);
+          }
+
+          if (cleanupObjectKeys.size > 0) {
             const config = getMediaStorageConfig();
             cleanupClient = new S3Client({
               credentials: {
@@ -150,15 +244,14 @@ async function buildRunner() {
               forcePathStyle: true,
               region: config.region,
             });
-            await cleanupClient.send(
-              new DeleteObjectCommand({
-                Bucket: config.bucket,
-                Key: asset.objectKey,
-              }),
-            );
-            await getDatabase()
-              .delete(mediaAsset)
-              .where(eq(mediaAsset.id, asset.id));
+            for (const objectKey of cleanupObjectKeys) {
+              await cleanupClient.send(
+                new DeleteObjectCommand({
+                  Bucket: config.bucket,
+                  Key: objectKey,
+                }),
+              ).catch(() => undefined);
+            }
           }
 
           cleanupClient?.destroy();

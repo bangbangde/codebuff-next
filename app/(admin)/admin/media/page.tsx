@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import type { MediaAsset } from "@/features/media/media-dto";
 import { listMediaAssets } from "@/features/media/server/media-service";
 import { requireAdmin } from "@/lib/auth/session";
+import { MediaItemActions } from "./_components/media-item-actions";
 import { MediaReferenceCopy } from "./_components/media-reference-copy";
 import { MediaUploadForm } from "./_components/media-upload-form";
 
@@ -176,6 +177,11 @@ export default async function MediaPage() {
                         资产变为 ready 后才能复制或插入引用。
                       </p>
                     )}
+                    <MediaItemActions
+                      id={asset.id}
+                      originalFilename={asset.originalFilename}
+                      status={asset.status}
+                    />
                   </div>
                   <time
                     className="text-xs text-muted-foreground"

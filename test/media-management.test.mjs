@@ -49,6 +49,9 @@ const validation = await loadMediaModule(
 const uploadService = await loadMediaModule(
   "features/media/server/media-upload-service.ts",
 );
+const lifecycleService = await loadMediaModule(
+  "features/media/server/media-lifecycle-service.ts",
+);
 
 const onePixelPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlRrGQAAAAASUVORK5CYII=",
@@ -64,9 +67,11 @@ function pngFile(
 
 function createFakeRepository() {
   const records = new Map();
+  const referencedIds = new Set();
 
   return {
     records,
+    referencedIds,
     async createPending(input) {
       const now = new Date().toISOString();
       const asset = {
@@ -79,6 +84,28 @@ function createFakeRepository() {
       records.set(input.id, asset);
       return asset;
     },
+    async deleteUnreferenced(id, deleteObject) {
+      const asset = records.get(id);
+
+      if (!asset) {
+        return "not_found";
+      }
+
+      if (asset.status === "pending") {
+        return "state_conflict";
+      }
+
+      if (referencedIds.has(id)) {
+        return "referenced";
+      }
+
+      await deleteObject(asset);
+      records.delete(id);
+      return "deleted";
+    },
+    async findById(id) {
+      return records.get(id) ?? null;
+    },
     async list() {
       return [...records.values()];
     },
@@ -87,6 +114,22 @@ function createFakeRepository() {
         ...records.get(id),
         failureCode,
         status: "failed",
+        updatedAt: new Date().toISOString(),
+      };
+      records.set(id, asset);
+      return asset;
+    },
+    async markPendingForRetry(id) {
+      const current = records.get(id);
+
+      if (current?.status !== "failed") {
+        return null;
+      }
+
+      const asset = {
+        ...current,
+        failureCode: null,
+        status: "pending",
         updatedAt: new Date().toISOString(),
       };
       records.set(id, asset);
@@ -151,8 +194,7 @@ describe("Media persistence contract", () => {
     assert.match(entrypoint, /key import/);
     assert.match(entrypoint, /bucket info "\$media_bucket"/);
     assert.match(entrypoint, /bucket create "\$media_bucket"/);
-    assert.match(entrypoint, /bucket allow \\\n  --write/);
-    assert.doesNotMatch(entrypoint, /bucket allow[\s\S]*--read/);
+    assert.match(entrypoint, /bucket allow \\\n  --read \\\n  --write/);
     assert.doesNotMatch(entrypoint, /bucket allow[\s\S]*--owner/);
     assert.match(environmentExample, /loopback-only local Garage/);
     assert.match(
@@ -264,6 +306,127 @@ describe("Media upload lifecycle", () => {
   });
 });
 
+describe("Media read, retry, and delete lifecycle", () => {
+  it("reads only ready bytes and retries the exact failed file", async () => {
+    const repository = createFakeRepository();
+    const objects = new Map();
+    let rejectWrites = true;
+    const storage = {
+      async delete(objectKey) {
+        objects.delete(objectKey);
+      },
+      async get(objectKey) {
+        const body = objects.get(objectKey);
+
+        if (!body) {
+          throw new Error("Missing object");
+        }
+
+        return body;
+      },
+      async put(input) {
+        if (rejectWrites) {
+          throw new Error("Garage unavailable");
+        }
+
+        objects.set(input.objectKey, input.body);
+      },
+    };
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+
+    try {
+      await assert.rejects(
+        uploadService.uploadMediaAssetWithDependencies(pngFile(), {
+          repository,
+          storage,
+        }),
+        (error) => error.name === "MediaStorageError",
+      );
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    const [failed] = [...repository.records.values()];
+    assert.equal(failed.status, "failed");
+
+    await assert.rejects(
+      lifecycleService.retryMediaAssetWithDependencies(
+        failed.id,
+        new File(
+          [Buffer.concat([onePixelPng, Buffer.from([0])])],
+          "pixel.png",
+          { type: "image/png" },
+        ),
+        { repository, storage },
+      ),
+      (error) => error.name === "MediaRetryMismatchError",
+    );
+    assert.equal(repository.records.get(failed.id).status, "failed");
+
+    rejectWrites = false;
+    const ready =
+      await lifecycleService.retryMediaAssetWithDependencies(
+        failed.id,
+        pngFile(),
+        { repository, storage },
+      );
+    assert.equal(ready.status, "ready");
+
+    const read =
+      await lifecycleService.readMediaAssetWithDependencies(
+        ready.id,
+        { repository, storage },
+      );
+    assert.equal(read.asset.id, ready.id);
+    assert.deepEqual(Buffer.from(read.body), onePixelPng);
+  });
+
+  it("protects references and preserves metadata when object deletion fails", async () => {
+    const repository = createFakeRepository();
+    const storage = {
+      async delete() {
+        throw new Error("Garage unavailable");
+      },
+      async get() {
+        return onePixelPng;
+      },
+      async put() {},
+    };
+    const asset = await uploadService.uploadMediaAssetWithDependencies(
+      pngFile(),
+      { repository, storage },
+    );
+
+    repository.referencedIds.add(asset.id);
+    await assert.rejects(
+      lifecycleService.deleteMediaAssetWithDependencies(asset.id, {
+        repository,
+        storage,
+      }),
+      (error) => error.name === "MediaReferencedError",
+    );
+    assert.ok(repository.records.has(asset.id));
+
+    repository.referencedIds.delete(asset.id);
+    await assert.rejects(
+      lifecycleService.deleteMediaAssetWithDependencies(asset.id, {
+        repository,
+        storage,
+      }),
+      (error) => error.name === "MediaStorageError",
+    );
+    assert.ok(repository.records.has(asset.id));
+
+    storage.delete = async () => undefined;
+    await lifecycleService.deleteMediaAssetWithDependencies(asset.id, {
+      repository,
+      storage,
+    });
+    assert.equal(repository.records.has(asset.id), false);
+  });
+});
+
 describe("Admin media product slice", () => {
   it("protects the upload boundary before parsing multipart input", async () => {
     const route = await readFile("app/api/admin/media/route.ts", "utf8");
@@ -303,5 +466,39 @@ describe("Admin media product slice", () => {
     assert.match(form, /role="progressbar"/);
     assert.match(form, /router\.refresh\(\)/);
     assert.match(navigation, /href: "\/admin\/media"/);
+  });
+
+  it("protects authenticated reads, exact-file retry, and deletion", async () => {
+    const contentRoute = await readFile(
+      "app/api/admin/media/[mediaId]/content/route.ts",
+      "utf8",
+    );
+    const retryRoute = await readFile(
+      "app/api/admin/media/[mediaId]/retry/route.ts",
+      "utf8",
+    );
+    const deleteRoute = await readFile(
+      "app/api/admin/media/[mediaId]/route.ts",
+      "utf8",
+    );
+    const actions = await readFile(
+      "app/(admin)/admin/media/_components/media-item-actions.tsx",
+      "utf8",
+    );
+
+    for (const route of [contentRoute, retryRoute, deleteRoute]) {
+      assert.ok(route.indexOf("await requireAdmin()") >= 0);
+    }
+
+    assert.match(contentRoute, /readMediaAsset/);
+    assert.match(contentRoute, /Cache-Control": "private, no-store"/);
+    assert.match(contentRoute, /X-Content-Type-Options": "nosniff"/);
+    assert.match(retryRoute, /retryMediaAsset/);
+    assert.match(retryRoute, /file instanceof File/);
+    assert.match(deleteRoute, /deleteMediaAsset/);
+    assert.match(deleteRoute, /MediaReferencedError/);
+    assert.match(actions, /重新选择原始文件/);
+    assert.match(actions, /永久删除媒体？/);
+    assert.match(actions, /\/content/);
   });
 });
