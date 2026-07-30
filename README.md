@@ -171,13 +171,6 @@ pnpm build
 git diff --check
 ```
 
-完整 Passkey 浏览器测试还需要本地 PostgreSQL 和系统 Chrome。它会创建并清理独立数据库，
-不会使用 `PG_DB` 指向的应用数据库：
-
-```bash
-pnpm test:e2e:passkey
-```
-
 ## 认证运行时
 
 认证运行时只会在 `/api/auth/*` 请求、`/account` 的 Session 查询和
