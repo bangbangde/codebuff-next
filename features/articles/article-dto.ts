@@ -1,63 +1,22 @@
-export const articleLanguages = ["zh-CN", "en"] as const;
-
 export const articleFieldLimits = {
   bodyMarkdown: 200_000,
-  kind: 50,
-  slug: 160,
-  summary: 500,
+  categoryName: 50,
+  tagName: 50,
   title: 200,
 } as const;
 
-export type ArticleLanguage = (typeof articleLanguages)[number];
-
 export type ArticleCreateValues = Readonly<{
   bodyMarkdown: string;
-  kind: string;
-  language: string;
-  slug: string;
-  summary: string;
   title: string;
-}>;
-
-export type CreateArticleInput = Readonly<{
-  bodyMarkdown: string;
-  kind: string;
-  language: ArticleLanguage;
-  slug: string;
-  summary: string;
-  title: string;
+  categoryName: string;
+  tagNames: readonly string[];
 }>;
 
 export type CreatedArticle = Readonly<{
   id: string;
-  slug: string;
 }>;
 
-export type ArticleSummary = Readonly<{
-  id: string;
-  kind: string;
-  language: ArticleLanguage;
-  revision: number;
-  slug: string;
-  summary: string;
-  title: string;
-  updatedAt: string;
-}>;
-
-export type ArticleDetail = Readonly<{
-  bodyMarkdown: string;
-  createdAt: string;
-  id: string;
-  kind: string;
-  language: ArticleLanguage;
-  revision: number;
-  slug: string;
-  summary: string;
-  title: string;
-  updatedAt: string;
-}>;
-
-export type UpdateArticleInput = CreateArticleInput &
+export type UpdateArticleInput = ArticleCreateValues &
   Readonly<{
     expectedRevision: number;
     id: string;
@@ -66,6 +25,36 @@ export type UpdateArticleInput = CreateArticleInput &
 export type DeleteArticleInput = Readonly<{
   expectedRevision: number;
   id: string;
+}>;
+
+export type CategoryOption = Readonly<{
+  id: string;
+  name: string;
+}>;
+
+export type TagOption = Readonly<{
+  id: string;
+  name: string;
+}>;
+
+export type ArticleSummary = Readonly<{
+  id: string;
+  title: string;
+  revision: number;
+  categoryName: string | null;
+  tagNames: readonly string[];
+  updatedAt: string;
+}>;
+
+export type ArticleDetail = Readonly<{
+  id: string;
+  title: string;
+  bodyMarkdown: string;
+  revision: number;
+  categoryName: string | null;
+  tagNames: readonly string[];
+  createdAt: string;
+  updatedAt: string;
 }>;
 
 export type UpdateArticleResult =

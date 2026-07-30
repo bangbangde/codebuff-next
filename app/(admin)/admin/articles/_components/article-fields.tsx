@@ -1,6 +1,5 @@
 import {
   articleFieldLimits,
-  articleLanguages,
   type ArticleCreateValues,
 } from "@/features/articles/article-dto";
 import type { ArticleFieldErrors } from "@/features/articles/article-create-form-state";
@@ -42,14 +41,16 @@ function describedBy(
 }
 
 export function ArticleFields({
-  assetPanel,
   autoFocusTitle = false,
+  bodyMarkdownRef,
   fieldErrors,
+  taxonomy,
   values,
 }: {
-  assetPanel?: React.ReactNode;
   autoFocusTitle?: boolean;
+  bodyMarkdownRef?: React.RefObject<HTMLTextAreaElement | null>;
   fieldErrors: ArticleFieldErrors;
+  taxonomy?: React.ReactNode;
   values: ArticleCreateValues;
 }) {
   return (
@@ -58,6 +59,7 @@ export function ArticleFields({
         <div>
           <label className={labelClassName} htmlFor="title">
             标题
+            <span className="ml-2 font-normal text-muted-foreground">可选</span>
           </label>
           <input
             aria-describedby={describedBy("title", fieldErrors.title)}
@@ -68,108 +70,12 @@ export function ArticleFields({
             id="title"
             maxLength={articleFieldLimits.title}
             name="title"
-            required
             type="text"
           />
           <FieldError errors={fieldErrors.title} field="title" />
         </div>
 
-        <div>
-          <label className={labelClassName} htmlFor="slug">
-            Slug
-          </label>
-          <input
-            aria-describedby={describedBy(
-              "slug",
-              fieldErrors.slug,
-              "slug-help",
-            )}
-            aria-invalid={Boolean(fieldErrors.slug?.length)}
-            autoCapitalize="none"
-            autoComplete="off"
-            className={cn(inputClassName, "font-mono")}
-            defaultValue={values.slug}
-            id="slug"
-            maxLength={articleFieldLimits.slug}
-            name="slug"
-            placeholder="my-article-slug"
-            required
-            spellCheck={false}
-            type="text"
-          />
-          <p
-            className="mt-2 text-xs leading-5 text-muted-foreground"
-            id="slug-help"
-          >
-            保存时会移除首尾空格并转为小写；仅支持字母、数字和单个连字符。
-          </p>
-          <FieldError errors={fieldErrors.slug} field="slug" />
-        </div>
-
-        <div>
-          <label className={labelClassName} htmlFor="summary">
-            摘要
-            <span className="ml-2 font-normal text-muted-foreground">
-              可选
-            </span>
-          </label>
-          <textarea
-            aria-describedby={describedBy("summary", fieldErrors.summary)}
-            aria-invalid={Boolean(fieldErrors.summary?.length)}
-            className={cn(inputClassName, "min-h-24 resize-y")}
-            defaultValue={values.summary}
-            id="summary"
-            maxLength={articleFieldLimits.summary}
-            name="summary"
-            rows={4}
-          />
-          <FieldError errors={fieldErrors.summary} field="summary" />
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClassName} htmlFor="kind">
-              类型
-            </label>
-            <input
-              aria-describedby={describedBy("kind", fieldErrors.kind)}
-              aria-invalid={Boolean(fieldErrors.kind?.length)}
-              className={inputClassName}
-              defaultValue={values.kind}
-              id="kind"
-              maxLength={articleFieldLimits.kind}
-              name="kind"
-              placeholder="例如：工程札记"
-              required
-              type="text"
-            />
-            <FieldError errors={fieldErrors.kind} field="kind" />
-          </div>
-
-          <div>
-            <label className={labelClassName} htmlFor="language">
-              语言
-            </label>
-            <select
-              aria-describedby={describedBy(
-                "language",
-                fieldErrors.language,
-              )}
-              aria-invalid={Boolean(fieldErrors.language?.length)}
-              className={inputClassName}
-              defaultValue={values.language}
-              id="language"
-              name="language"
-            >
-              {articleLanguages.map((language) => (
-                <option key={language} value={language}>
-                  {language === "zh-CN" ? "简体中文" : "English"}
-                </option>
-              ))}
-            </select>
-            <FieldError errors={fieldErrors.language} field="language" />
-          </div>
-        </div>
+        {taxonomy}
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5 shadow-xs sm:p-7">
@@ -184,7 +90,6 @@ export function ArticleFields({
           当前仅保存原始 Markdown，不提供预览或发布。文章资产使用稳定的{" "}
           <code className="font-mono">cq-asset://</code> 引用。
         </p>
-        {assetPanel}
         <textarea
           aria-describedby={describedBy(
             "bodyMarkdown",
@@ -201,6 +106,7 @@ export function ArticleFields({
           maxLength={articleFieldLimits.bodyMarkdown}
           name="bodyMarkdown"
           placeholder="# 从这里开始"
+          ref={bodyMarkdownRef}
           rows={18}
           spellCheck={false}
         />

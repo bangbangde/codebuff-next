@@ -406,22 +406,22 @@ async function assertAdminAccount(baseURL, colorScheme) {
 }
 
 async function createArticleThroughUi(baseURL, article) {
-  await page.goto(`${baseURL}/admin/articles/new`);
+  await page.goto(`${baseURL}/admin/articles`);
+  await page.getByRole("heading", { name: "文章管理", exact: true }).waitFor();
+  await page.getByRole("button", { name: "创建文章", exact: true }).click();
+  await page.waitForURL(/\/admin\/articles\/[^/?]+$/);
+  await page.getByRole("heading", { name: "编辑文章", exact: true }).waitFor();
+
   await page.getByLabel("标题", { exact: true }).fill(article.title);
-  await page.getByLabel("Slug", { exact: true }).fill(article.slug);
-  await page.getByLabel("摘要", { exact: false }).fill(article.summary);
-  await page.getByLabel("类型", { exact: true }).fill(article.kind);
   const body = page.getByLabel("Markdown 正文", { exact: false });
   await body.fill(article.bodyMarkdown);
 
   await page
-    .getByRole("button", { name: "保存未发布文章", exact: true })
+    .getByRole("button", { name: "保存更改", exact: true })
     .click();
-  await page.waitForURL(`${baseURL}/admin/articles?created=1`);
+  await page.waitForURL(/\/admin\/articles\/[^/?]+\?saved=1$/);
   await page
-    .getByText("文章已保存到 PostgreSQL，目前仍处于未发布状态。", {
-      exact: true,
-    })
+    .getByText("更改已保存，文章仍处于未发布状态。", { exact: true })
     .waitFor();
 }
 
@@ -441,16 +441,10 @@ async function deleteCurrentArticle(baseURL, title) {
 async function assertArticleManagement(baseURL, context) {
   const firstArticle = {
     bodyMarkdown: "# 第一篇\n\n保存在 PostgreSQL 中。",
-    kind: "工程札记",
-    slug: "article-e2e-first",
-    summary: "用于验证文章管理闭环。",
     title: "Article E2E First",
   };
   const secondArticle = {
     bodyMarkdown: "# 第二篇",
-    kind: "测试记录",
-    slug: "article-e2e-second",
-    summary: "用于验证重复 slug。",
     title: "Article E2E Second",
   };
 
@@ -462,22 +456,6 @@ async function assertArticleManagement(baseURL, context) {
 
   await createArticleThroughUi(baseURL, firstArticle);
   await createArticleThroughUi(baseURL, secondArticle);
-
-  await page
-    .getByRole("link", { name: secondArticle.title, exact: true })
-    .click();
-  await page.getByRole("heading", { name: "编辑文章", exact: true }).waitFor();
-  await page.getByLabel("Slug", { exact: true }).fill(firstArticle.slug);
-  await page
-    .getByRole("button", { name: "保存更改", exact: true })
-    .click();
-  await page
-    .getByText("这个 slug 已被其他文章使用。", { exact: true })
-    .waitFor();
-  assert.equal(
-    await page.getByLabel("Slug", { exact: true }).inputValue(),
-    firstArticle.slug,
-  );
 
   await deleteCurrentArticle(baseURL, secondArticle.title);
   await page
@@ -505,8 +483,8 @@ async function assertArticleManagement(baseURL, context) {
     .getByText("更改已保存，文章仍处于未发布状态。", { exact: true })
     .waitFor();
 
-  const staleSummary = "这个值必须在冲突后继续保留。";
-  await stalePage.getByLabel("摘要", { exact: false }).fill(staleSummary);
+  const staleTitle = "Stale Title Must Persist";
+  await stalePage.getByLabel("标题", { exact: true }).fill(staleTitle);
   await stalePage
     .getByRole("button", { name: "保存更改", exact: true })
     .click();
@@ -514,8 +492,8 @@ async function assertArticleManagement(baseURL, context) {
     .getByText("数据库中的文章已被其他操作更新。", { exact: false })
     .waitFor();
   assert.equal(
-    await stalePage.getByLabel("摘要", { exact: false }).inputValue(),
-    staleSummary,
+    await stalePage.getByLabel("标题", { exact: true }).inputValue(),
+    staleTitle,
   );
 
   await stalePage

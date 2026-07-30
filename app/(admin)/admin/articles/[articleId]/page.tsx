@@ -9,7 +9,11 @@ import { notFound } from "next/navigation";
 
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { articleIdSchema } from "@/features/articles/article-validation";
-import { getArticleById } from "@/features/articles/server/article-service";
+import {
+  getArticleById,
+  listCategories,
+  listTags,
+} from "@/features/articles/server/article-service";
 import { listArticleAssets } from "@/features/article-assets/server/article-asset-service";
 import { requireAdmin } from "@/lib/auth/session";
 import { ArticleDeleteDialog } from "./_components/article-delete-dialog";
@@ -19,13 +23,6 @@ export const metadata: Metadata = {
   title: "Edit article",
   description: "Edit an unpublished PostgreSQL-backed article.",
 };
-
-function formatDate(value: string, language: string) {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export default async function ArticleDetailPage({
   params,
@@ -42,9 +39,11 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [article, assets, query] = await Promise.all([
+  const [article, assets, categories, tags, query] = await Promise.all([
     getArticleById(route.data),
     listArticleAssets(route.data),
+    listCategories(),
+    listTags(),
     searchParams,
   ]);
 
@@ -54,10 +53,8 @@ export default async function ArticleDetailPage({
 
   const values: ArticleCreateValues = {
     bodyMarkdown: article.bodyMarkdown,
-    kind: article.kind,
-    language: article.language,
-    slug: article.slug,
-    summary: article.summary,
+    categoryName: article.categoryName ?? "",
+    tagNames: article.tagNames,
     title: article.title,
   };
 
@@ -86,9 +83,6 @@ export default async function ArticleDetailPage({
             <DatabaseIcon aria-hidden="true" className="size-3.5" />
             修订 {article.revision}
           </span>
-          <time dateTime={article.updatedAt}>
-            更新于 {formatDate(article.updatedAt, article.language)}
-          </time>
         </div>
       </header>
 
@@ -106,9 +100,11 @@ export default async function ArticleDetailPage({
       ) : null}
 
       <ArticleEditForm
-        article={article}
+        article={{ id: article.id, revision: article.revision }}
         assets={assets}
+        categories={categories}
         key={article.revision}
+        tags={tags}
         values={values}
       />
 

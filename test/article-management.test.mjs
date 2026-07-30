@@ -80,19 +80,70 @@ describe("Article schema ownership", () => {
 
     assert.match(migration, /CREATE TABLE "article"/);
     assert.match(migration, /"id" uuid PRIMARY KEY DEFAULT gen_random_uuid\(\)/);
-    assert.match(migration, /"slug" text NOT NULL/);
     assert.match(migration, /"body_markdown" text DEFAULT '' NOT NULL/);
     assert.match(migration, /"revision" integer DEFAULT 1 NOT NULL/);
-    assert.match(migration, /article_slug_format_check/);
-    assert.match(migration, /article_language_check/);
     assert.match(migration, /article_revision_check/);
-    assert.match(migration, /CREATE UNIQUE INDEX "article_slug_unique"/);
     assert.match(migration, /CREATE INDEX "article_updated_at_idx"/);
     assert.doesNotMatch(
       migration,
       /ALTER TABLE "(user|account|session|verification|two_factor|passkey|rate_limit)"/,
     );
     assert.doesNotMatch(migration, /\bDROP\b|\bRENAME\b/);
+  });
+
+  it("drops legacy article fields in migration 0006 and adds taxonomy in 0007", async () => {
+    const dropMigration = await readFile(
+      "drizzle/0006_drop_legacy_article_fields.sql",
+      "utf8",
+    );
+    const taxonomyMigration = await readFile(
+      "drizzle/0007_add_article_taxonomy.sql",
+      "utf8",
+    );
+
+    // 0006: 纯删除，无新增列，避免 drizzle-kit 交互确认
+    assert.match(dropMigration, /DROP CONSTRAINT "article_slug_format_check"/);
+    assert.match(dropMigration, /DROP CONSTRAINT "article_language_check"/);
+    assert.match(dropMigration, /DROP INDEX "article_slug_unique"/);
+    assert.match(dropMigration, /ALTER TABLE "article" DROP COLUMN "slug"/);
+    assert.match(dropMigration, /ALTER TABLE "article" DROP COLUMN "summary"/);
+    assert.match(dropMigration, /ALTER TABLE "article" DROP COLUMN "kind"/);
+    assert.match(dropMigration, /ALTER TABLE "article" DROP COLUMN "language"/);
+
+    // 0007: 新增分类/标签结构与 article.category_id
+    assert.match(taxonomyMigration, /CREATE TABLE "category"/);
+    assert.match(taxonomyMigration, /CREATE TABLE "tag"/);
+    assert.match(taxonomyMigration, /CREATE TABLE "article_tag"/);
+    assert.match(
+      taxonomyMigration,
+      /"id" uuid PRIMARY KEY DEFAULT gen_random_uuid\(\) NOT NULL/,
+    );
+    assert.match(taxonomyMigration, /CREATE UNIQUE INDEX "category_name_unique"/);
+    assert.match(taxonomyMigration, /CREATE UNIQUE INDEX "tag_name_unique"/);
+    assert.match(
+      taxonomyMigration,
+      /ALTER TABLE "article" ADD COLUMN "category_id"/,
+    );
+    assert.match(taxonomyMigration, /article_category_id_category_id_fk/);
+    assert.match(taxonomyMigration, /ON DELETE set null/);
+  });
+
+  it("rebuilds taxonomy name indexes as case-insensitive in migration 0008", async () => {
+    const migration = await readFile(
+      "drizzle/0008_case_insensitive_taxonomy_names.sql",
+      "utf8",
+    );
+
+    assert.match(migration, /DROP INDEX "category_name_unique"/);
+    assert.match(migration, /DROP INDEX "tag_name_unique"/);
+    assert.match(
+      migration,
+      /CREATE UNIQUE INDEX "category_name_unique" ON "category" USING btree \(lower\("name"\)\)/,
+    );
+    assert.match(
+      migration,
+      /CREATE UNIQUE INDEX "tag_name_unique" ON "tag" USING btree \(lower\("name"\)\)/,
+    );
   });
 });
 
@@ -117,7 +168,7 @@ describe("Admin article list slice", () => {
     assert.match(repository, /from\(article\)/);
     assert.match(
       repository,
-      /orderBy\(desc\(article\.updatedAt\), asc\(article\.slug\)\)/,
+      /orderBy\(desc\(article\.updatedAt\), asc\(article\.title\)\)/,
     );
     assert.match(service, /drizzleArticleRepository\.listSummaries\(\)/);
     assert.doesNotMatch(page, /fetch\(|\/api\/admin\/articles/);
@@ -125,13 +176,11 @@ describe("Admin article list slice", () => {
 });
 
 describe("Admin article creation slice", () => {
-  it("normalizes and validates the unpublished article input", () => {
+  it("normalizes taxonomy input, merges whitespace, and dedupes tags case-insensitively", () => {
     const normalized = normalizeArticleCreateValues({
       bodyMarkdown: "# Hello\n",
-      kind: "  工程札记 ",
-      language: " zh-CN ",
-      slug: "  First-ARTICLE ",
-      summary: "  A summary. ",
+      categoryName: "  工程   札记 ",
+      tagNames: ["  React ", " react ", "", "  TypeScript  "],
       title: "  First article ",
     });
     const parsed = articleCreateSchema.safeParse(normalized);
@@ -139,36 +188,41 @@ describe("Admin article creation slice", () => {
     assert.equal(parsed.success, true);
     assert.deepEqual(normalized, {
       bodyMarkdown: "# Hello\n",
-      kind: "工程札记",
-      language: "zh-CN",
-      slug: "first-article",
-      summary: "A summary.",
+      categoryName: "工程 札记",
+      tagNames: ["React", "TypeScript"],
       title: "First article",
     });
   });
 
-  it("rejects invalid slugs, unsupported languages, and missing fields", () => {
+  it("accepts empty drafts with no required fields", () => {
     const parsed = articleCreateSchema.safeParse({
       bodyMarkdown: "",
-      kind: "",
-      language: "fr",
-      slug: "not_a_slug",
-      summary: "",
+      categoryName: "",
+      tagNames: [],
       title: "",
     });
 
-    assert.equal(parsed.success, false);
-    assert.deepEqual(Object.keys(parsed.error.flatten().fieldErrors).sort(), [
-      "kind",
-      "language",
-      "slug",
-      "title",
-    ]);
+    assert.equal(parsed.success, true);
   });
 
-  it("protects the Server Action and maps expected create failures", async () => {
+  it("rejects oversized titles, categories, and tags", () => {
+    const parsed = articleCreateSchema.safeParse({
+      bodyMarkdown: "",
+      categoryName: "x".repeat(51),
+      tagNames: ["x".repeat(51)],
+      title: "x".repeat(201),
+    });
+
+    assert.equal(parsed.success, false);
+    assert.deepEqual(
+      Object.keys(parsed.error.flatten().fieldErrors).sort(),
+      ["categoryName", "tagNames", "title"],
+    );
+  });
+
+  it("protects the draft Server Action and redirects to the edit page", async () => {
     const action = await readFile(
-      "app/(admin)/admin/articles/new/actions.ts",
+      "app/(admin)/admin/articles/actions.ts",
       "utf8",
     );
     const repository = await readFile(
@@ -180,33 +234,17 @@ describe("Admin article creation slice", () => {
       "utf8",
     );
 
-    assert.ok(
-      action.indexOf("await requireAdmin()") <
-        action.indexOf("articleCreateSchema.safeParse"),
-    );
-    assert.match(action, /error instanceof ArticleSlugConflictError/);
+    assert.ok(action.indexOf("await requireAdmin()") < action.indexOf("createDraft("));
     assert.match(action, /revalidatePath\("\/admin\/articles"\)/);
-    assert.match(action, /redirect\("\/admin\/articles\?created=1"\)/);
-    assert.match(
-      service,
-      /drizzleArticleRepository\.create\(\s*input,\s*parseCanonicalAssetReferenceIds/,
-    );
-    assert.match(repository, /\.insert\(article\)/);
-    assert.match(repository, /article_slug_unique/);
-    assert.match(repository, /throw new ArticleSlugConflictError\(input\.slug\)/);
+    assert.match(action, /redirect\(`\/admin\/articles\/\$\{created\.id\}`\)/);
+    assert.match(service, /drizzleArticleRepository\.createDraft\(\)/);
+    assert.match(repository, /async createDraft/);
+    assert.match(repository, /未命名文章/);
   });
 
-  it("renders accessible create controls and honest success feedback", async () => {
-    const form = await readFile(
-      "app/(admin)/admin/articles/new/_components/article-create-form.tsx",
-      "utf8",
-    );
+  it("renders a draft-first create entry and accessible edit fields", async () => {
     const fields = await readFile(
       "app/(admin)/admin/articles/_components/article-fields.tsx",
-      "utf8",
-    );
-    const newPage = await readFile(
-      "app/(admin)/admin/articles/new/page.tsx",
       "utf8",
     );
     const listPage = await readFile(
@@ -214,17 +252,12 @@ describe("Admin article creation slice", () => {
       "utf8",
     );
 
-    assert.match(form, /useActionState\(/);
-    assert.match(form, /<ArticleFields/);
+    // 列表页直接触发草稿创建，无中间页
+    assert.match(listPage, /createDraftAction/);
+    assert.match(listPage, /创建文章/);
+    assert.doesNotMatch(listPage, /\/admin\/articles\/new/);
     assert.match(fields, /aria-invalid=/);
     assert.match(fields, /aria-describedby=/);
-    assert.match(form, /aria-live="polite"/);
-    assert.match(form, /保存未发布文章/);
-    assert.match(newPage, /await requireAdmin\(\)/);
-    assert.match(newPage, /<ArticleCreateForm \/>/);
-    assert.match(listPage, /href="\/admin\/articles\/new"/);
-    assert.match(listPage, /articleCreated/);
-    assert.match(listPage, /目前仍处于未发布状态/);
   });
 });
 
@@ -278,6 +311,10 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(repository, /\.delete\(article\)/);
     assert.match(repository, /status: "conflict"/);
     assert.match(repository, /status: "not_found"/);
+    // 分类/标签大小写不敏感查找 + ON CONFLICT 并发处理
+    assert.match(repository, /lower\(\$\{category\.name\}\) = \$\{lowerName\}/);
+    assert.match(repository, /onConflictDoNothing\(\)/);
+    assert.match(repository, /inArray\(sql`lower\(\$\{tag\.name\}\)`, lowerNames\)/);
     assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
     assert.match(
       service,
@@ -304,7 +341,7 @@ describe("Admin article detail and mutation slice", () => {
       actions.match(/articleMutationReferenceSchema\.safeParse/g)?.length,
       2,
     );
-    assert.match(actions, /error instanceof ArticleSlugConflictError/);
+    assert.match(actions, /error instanceof ArticleAssetUnavailableError/);
     assert.match(actions, /result\.status === "conflict"/);
     assert.match(actions, /result\.status === "not_found"/);
     assert.match(actions, /redirect\(`\/admin\/articles\/\$\{/);
@@ -440,6 +477,10 @@ describe("Canonical article asset references", () => {
       "app/(admin)/admin/articles/_components/article-asset-panel.tsx",
       "utf8",
     );
+    const editForm = await readFile(
+      "app/(admin)/admin/articles/[articleId]/_components/article-edit-form.tsx",
+      "utf8",
+    );
 
     assert.match(migration, /CREATE TABLE "article_asset"/);
     assert.match(migration, /ON DELETE cascade/);
@@ -448,7 +489,10 @@ describe("Canonical article asset references", () => {
     assert.match(schema, /onDelete: "cascade"/);
     assert.match(schema, /objectKey/);
     assert.match(repository, /\.articleId !== input\.id/);
-    assert.match(panel, /textarea\.setRangeText/);
+    // #96: DOM 操作解耦到 edit-form，panel 通过 callback 回调
+    assert.match(editForm, /textarea\.setRangeText/);
+    assert.match(panel, /onInsertReference/);
+    assert.doesNotMatch(panel, /document\.getElementById/);
     assert.match(panel, /type="button"/);
     assert.match(panel, /cq-asset:\/\//);
   });

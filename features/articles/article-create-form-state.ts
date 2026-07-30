@@ -17,10 +17,8 @@ export const initialArticleCreateFormState: ArticleCreateFormState = {
   formError: null,
   values: {
     bodyMarkdown: "",
-    kind: "",
-    language: "zh-CN",
-    slug: "",
-    summary: "",
+    categoryName: "",
+    tagNames: [],
     title: "",
   },
 };

@@ -5,22 +5,28 @@ import {
   listArticleAssetObjectKeys,
 } from "@/features/article-assets/server/article-asset-service";
 import type {
-  CreateArticleInput,
+  CategoryOption,
   DeleteArticleInput,
+  TagOption,
   UpdateArticleInput,
 } from "../article-dto";
 import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import { drizzleArticleRepository } from "./drizzle-article-repository";
 
-export function createArticle(input: CreateArticleInput) {
-  return drizzleArticleRepository.create(
-    input,
-    parseCanonicalAssetReferenceIds(input.bodyMarkdown),
-  );
+export function createDraft() {
+  return drizzleArticleRepository.createDraft();
 }
 
 export function listArticleSummaries() {
   return drizzleArticleRepository.listSummaries();
+}
+
+export function listCategories(): Promise<readonly CategoryOption[]> {
+  return drizzleArticleRepository.listCategories();
+}
+
+export function listTags(): Promise<readonly TagOption[]> {
+  return drizzleArticleRepository.listTags();
 }
 
 export function getArticleById(id: string) {

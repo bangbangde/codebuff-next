@@ -1,12 +1,14 @@
 import { z } from "zod";
 
-import {
-  articleFieldLimits,
-  articleLanguages,
-  type ArticleCreateValues,
-} from "./article-dto";
+import { articleFieldLimits, type ArticleCreateValues } from "./article-dto";
 
-const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const tagNameSchema = z
+  .string()
+  .min(1, "标签不能为空。")
+  .max(
+    articleFieldLimits.tagName,
+    `标签不能超过 ${articleFieldLimits.tagName} 个字符。`,
+  );
 
 export const articleCreateSchema = z.object({
   bodyMarkdown: z
@@ -15,33 +17,15 @@ export const articleCreateSchema = z.object({
       articleFieldLimits.bodyMarkdown,
       `Markdown 正文不能超过 ${articleFieldLimits.bodyMarkdown} 个字符。`,
     ),
-  kind: z
+  categoryName: z
     .string()
-    .min(1, "请输入文章类型。")
     .max(
-      articleFieldLimits.kind,
-      `文章类型不能超过 ${articleFieldLimits.kind} 个字符。`,
+      articleFieldLimits.categoryName,
+      `分类不能超过 ${articleFieldLimits.categoryName} 个字符。`,
     ),
-  language: z.enum(articleLanguages, {
-    error: "请选择支持的文章语言。",
-  }),
-  slug: z
-    .string()
-    .min(1, "请输入 slug。")
-    .max(
-      articleFieldLimits.slug,
-      `Slug 不能超过 ${articleFieldLimits.slug} 个字符。`,
-    )
-    .regex(slugPattern, "Slug 只能使用小写字母、数字和单个连字符。"),
-  summary: z
-    .string()
-    .max(
-      articleFieldLimits.summary,
-      `摘要不能超过 ${articleFieldLimits.summary} 个字符。`,
-    ),
+  tagNames: z.array(tagNameSchema).max(20, "单篇文章最多 20 个标签。"),
   title: z
     .string()
-    .min(1, "请输入文章标题。")
     .max(
       articleFieldLimits.title,
       `标题不能超过 ${articleFieldLimits.title} 个字符。`,
@@ -56,34 +40,58 @@ export const articleMutationReferenceSchema = z.object({
 });
 
 function normalizeText(value: string) {
-  return value.trim();
+  return value.trim().replace(/\s+/g, " ");
 }
 
 export function normalizeArticleCreateValues(
   values: ArticleCreateValues,
 ): ArticleCreateValues {
+  const seen = new Set<string>();
+  const tagNames: string[] = [];
+
+  for (const name of values.tagNames) {
+    const trimmed = normalizeText(name);
+
+    if (trimmed.length === 0) {
+      continue;
+    }
+
+    const key = trimmed.toLowerCase();
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    tagNames.push(trimmed);
+  }
+
   return {
     bodyMarkdown: values.bodyMarkdown,
-    kind: normalizeText(values.kind),
-    language: normalizeText(values.language),
-    slug: normalizeText(values.slug).toLowerCase(),
-    summary: normalizeText(values.summary),
+    categoryName: normalizeText(values.categoryName),
+    tagNames,
     title: normalizeText(values.title),
   };
 }
 
-function readText(formData: FormData, field: keyof ArticleCreateValues) {
+function readText(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === "string" ? value : "";
+}
+
+function readTextList(formData: FormData, field: string) {
+  const values = formData.getAll(field);
+  return values
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 }
 
 export function readArticleValues(formData: FormData): ArticleCreateValues {
   return normalizeArticleCreateValues({
     bodyMarkdown: readText(formData, "bodyMarkdown"),
-    kind: readText(formData, "kind"),
-    language: readText(formData, "language"),
-    slug: readText(formData, "slug"),
-    summary: readText(formData, "summary"),
+    categoryName: readText(formData, "categoryName"),
+    tagNames: readTextList(formData, "tagNames"),
     title: readText(formData, "title"),
   });
 }

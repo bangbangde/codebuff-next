@@ -7,10 +7,7 @@ import type {
   ArticleDeleteFormState,
   ArticleEditFormState,
 } from "@/features/articles/article-edit-form-state";
-import {
-  ArticleAssetUnavailableError,
-  ArticleSlugConflictError,
-} from "@/features/articles/article-errors";
+import { ArticleAssetUnavailableError } from "@/features/articles/article-errors";
 import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
@@ -99,17 +96,6 @@ export async function updateArticleAction(
           bodyMarkdown: ["正文引用了不属于本文或不存在的资产。"],
         },
         formError: "文章尚未保存，请移除无效资产引用。",
-        values: fields.data,
-      };
-    }
-
-    if (error instanceof ArticleSlugConflictError) {
-      return {
-        conflictRevision: null,
-        fieldErrors: {
-          slug: ["这个 slug 已被其他文章使用。"],
-        },
-        formError: "文章尚未保存，请更换 slug。",
         values: fields.data,
       };
     }

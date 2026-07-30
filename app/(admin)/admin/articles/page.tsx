@@ -2,10 +2,11 @@ import { CheckCircle2Icon, FileTextIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import type { ArticleSummary } from "@/features/articles/article-dto";
 import { listArticleSummaries } from "@/features/articles/server/article-service";
 import { requireAdmin } from "@/lib/auth/session";
+import { createDraftAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Articles",
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 function formatUpdatedAt(article: ArticleSummary) {
-  return new Intl.DateTimeFormat(article.language, {
+  return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(article.updatedAt));
@@ -23,14 +24,12 @@ export default async function ArticlesPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    created?: string | string[];
     deleted?: string | string[];
   }>;
 }) {
   await requireAdmin();
   const query = await searchParams;
   const articles = await listArticleSummaries();
-  const articleCreated = query.created === "1";
   const articleDeleted = query.deleted === "1";
 
   return (
@@ -48,29 +47,16 @@ export default async function ArticlesPage({
             中的未发布文章。创建内容不会同步到公开站点，也不会自动发布。
           </p>
         </div>
-        <Link
-          className={buttonVariants({
-            className: "w-full sm:mt-7 sm:w-auto",
-          })}
-          href="/admin/articles/new"
+        <form
+          action={createDraftAction}
+          className="w-full sm:mt-7 sm:w-auto"
         >
-          <PlusIcon aria-hidden="true" />
-          创建文章
-        </Link>
+          <Button className="w-full sm:w-auto" type="submit">
+            <PlusIcon aria-hidden="true" />
+            创建文章
+          </Button>
+        </form>
       </header>
-
-      {articleCreated ? (
-        <div
-          className="mt-8 flex items-start gap-3 rounded-lg border border-brand-accent/35 bg-brand-accent-soft px-4 py-3 text-sm text-foreground"
-          role="status"
-        >
-          <CheckCircle2Icon
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-brand-accent"
-          />
-          <p>文章已保存到 PostgreSQL，目前仍处于未发布状态。</p>
-        </div>
-      ) : null}
 
       {articleDeleted ? (
         <div
@@ -116,17 +102,12 @@ export default async function ArticlesPage({
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
               数据库中暂无文章记录。创建第一篇未发布文章，开始建立后续管理内容。
             </p>
-            <Link
-              className={buttonVariants({
-                className: "mt-6",
-                size: "sm",
-                variant: "outline",
-              })}
-              href="/admin/articles/new"
-            >
-              <PlusIcon aria-hidden="true" />
-              创建第一篇文章
-            </Link>
+            <form action={createDraftAction} className="mt-6">
+              <Button size="sm" type="submit" variant="outline">
+                <PlusIcon aria-hidden="true" />
+                创建第一篇文章
+              </Button>
+            </form>
           </div>
         ) : (
           <ol className="mt-6 divide-y divide-border border-y border-border">
@@ -145,21 +126,26 @@ export default async function ArticlesPage({
                         {article.title}
                       </Link>
                     </h3>
-                    <span className="font-mono text-[0.6875rem] tracking-[0.06em] text-muted-foreground uppercase">
-                      {article.language}
-                    </span>
+                    {article.categoryName ? (
+                      <span className="font-mono text-[0.6875rem] tracking-[0.06em] text-muted-foreground uppercase">
+                        {article.categoryName}
+                      </span>
+                    ) : null}
                   </div>
-                  <p className="mt-2 truncate font-mono text-xs text-muted-foreground">
-                    /{article.slug}
-                  </p>
-                  {article.summary ? (
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-                      {article.summary}
-                    </p>
+                  {article.tagNames.length > 0 ? (
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      {article.tagNames.map((tagName) => (
+                        <li
+                          className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
+                          key={tagName}
+                        >
+                          {tagName}
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground sm:flex-col sm:items-end sm:gap-1">
-                  <span>{article.kind}</span>
                   <time dateTime={article.updatedAt}>
                     {formatUpdatedAt(article)}
                   </time>

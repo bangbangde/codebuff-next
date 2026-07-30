@@ -6,6 +6,7 @@ export default defineConfig({
     "./lib/db/schema/auth.generated.ts",
     "./lib/db/schema/article.ts",
     "./lib/db/schema/article-asset.ts",
+    "./lib/db/schema/article-taxonomy.ts",
   ],
   out: "./drizzle",
 });
