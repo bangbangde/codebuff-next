@@ -26,9 +26,11 @@ function formatBytes(value: number) {
 export function ArticleAssetPanel({
   articleId,
   assets,
+  onInsertReference,
 }: {
   articleId: string;
   assets: readonly ArticleAsset[];
+  onInsertReference: (reference: string) => boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [insertStatus, setInsertStatus] = useState<string | null>(null);
@@ -42,28 +44,18 @@ export function ArticleAssetPanel({
   );
 
   function insertReference(asset: ArticleAsset) {
-    const textarea = document.getElementById("bodyMarkdown");
-
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      setInsertStatus("无法插入资产引用，请重新载入页面后再试。");
-      return;
-    }
-
     const reference = formatCanonicalAssetReference(asset);
-    const selectionStart = textarea.selectionStart;
-    const needsLeadingBreak =
-      selectionStart > 0 && textarea.value[selectionStart - 1] !== "\n";
-    const insertion = `${needsLeadingBreak ? "\n\n" : ""}${reference}\n\n`;
+    const success = onInsertReference(reference);
 
-    textarea.setRangeText(
-      insertion,
-      selectionStart,
-      textarea.selectionEnd,
-      "end",
+    setInsertStatus(
+      success
+        ? `已插入 ${asset.originalFilename} 的稳定引用。`
+        : "无法插入资产引用，请重新载入页面后再试。",
     );
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    textarea.focus();
-    setInsertStatus(`已插入 ${asset.originalFilename} 的稳定引用。`);
+  }
+
+  function handleActionSubmit() {
+    setInsertStatus(null);
   }
 
   return (
@@ -77,7 +69,7 @@ export function ArticleAssetPanel({
         </p>
       </div>
 
-      <form action={uploadAction} className="grid gap-3">
+      <form action={uploadAction} className="grid gap-3" onSubmit={handleActionSubmit}>
         <input name="articleId" type="hidden" value={articleId} />
         <div>
           <label
@@ -146,7 +138,7 @@ export function ArticleAssetPanel({
                 >
                   插入引用
                 </Button>
-                <form action={deleteAction}>
+                <form action={deleteAction} onSubmit={handleActionSubmit}>
                   <input name="articleId" type="hidden" value={articleId} />
                   <input name="assetId" type="hidden" value={asset.id} />
                   <Button

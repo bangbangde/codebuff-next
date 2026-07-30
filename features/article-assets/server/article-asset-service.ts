@@ -21,6 +21,17 @@ function defaultDependencies(): ArticleAssetServiceDependencies {
   return { store: getArticleObjectStore() };
 }
 
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === "23503"
+  );
+}
+
+const DELETE_BATCH_SIZE = 10;
+
 export async function uploadArticleAsset(
   articleId: string,
   file: File,
@@ -63,6 +74,25 @@ export async function uploadArticleAsset(
       sha256: verified.sha256,
     });
   } catch (error) {
+    // 文章在上传过程中被删除（TOCTOU）：FK violation → 准确的错误反馈
+    if (isForeignKeyViolation(error)) {
+      try {
+        await dependencies.store.delete(objectKey);
+      } catch (rollbackError) {
+        console.error("Failed to roll back orphaned article asset object.", {
+          articleId,
+          assetId: id,
+          objectKey,
+          cause:
+            rollbackError instanceof Error
+              ? rollbackError.name
+              : "UnknownError",
+        });
+      }
+
+      throw new ArticleNotFoundError();
+    }
+
     console.error("Failed to persist article asset after object upload.", {
       articleId,
       assetId: id,
@@ -144,16 +174,20 @@ export async function deleteArticleAssetObjectsByKeys(
   objectKeys: readonly string[],
   dependencies: ArticleAssetServiceDependencies = defaultDependencies(),
 ): Promise<void> {
-  await Promise.all(
-    objectKeys.map(async (objectKey) => {
-      try {
-        await dependencies.store.delete(objectKey);
-      } catch (error) {
-        console.error("Failed to delete article asset object during article cleanup.", {
-          objectKey,
-          cause: error instanceof Error ? error.name : "UnknownError",
-        });
-      }
-    }),
-  );
+  for (let i = 0; i < objectKeys.length; i += DELETE_BATCH_SIZE) {
+    const batch = objectKeys.slice(i, i + DELETE_BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (objectKey) => {
+        try {
+          await dependencies.store.delete(objectKey);
+        } catch (error) {
+          console.error("Failed to delete article asset object during article cleanup.", {
+            objectKey,
+            cause: error instanceof Error ? error.name : "UnknownError",
+          });
+        }
+      }),
+    );
+  }
 }

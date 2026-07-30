@@ -24,6 +24,15 @@ const extensionsByMediaType: Record<AcceptedAssetType, readonly string[]> = {
   "image/webp": [".webp"],
 };
 
+// 浏览器偶尔发送非标准 MIME 类型（如 image/jpg），归一化后再比较
+const mimeTypeAliases: Record<string, string> = {
+  "image/jpg": "image/jpeg",
+};
+
+function normalizeMimeType(type: string): string {
+  return mimeTypeAliases[type] ?? type;
+}
+
 function validateFilename(filename: string) {
   const normalized = filename.normalize("NFC");
 
@@ -64,7 +73,7 @@ export async function verifyAssetFile(
   const extension = path.extname(originalFilename).toLowerCase();
 
   if (
-    file.type !== mediaType ||
+    normalizeMimeType(file.type) !== mediaType ||
     !extensionsByMediaType[mediaType].includes(extension)
   ) {
     throw new AssetValidationError("signature_mismatch");

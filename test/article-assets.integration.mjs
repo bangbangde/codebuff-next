@@ -97,16 +97,12 @@ async function seedArticle(client, overrides = {}) {
   const id = overrides.id ?? randomUUID();
   await client.query(
     `INSERT INTO "article"
-      ("id", "slug", "title", "summary", "body_markdown", "kind", "language", "revision")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 1)`,
+      ("id", "title", "body_markdown", "revision")
+     VALUES ($1, $2, $3, 1)`,
     [
       id,
-      overrides.slug ?? `article-${id.slice(0, 8)}`,
       overrides.title ?? "Test article",
-      overrides.summary ?? "A test article.",
       overrides.bodyMarkdown ?? "# Hello",
-      overrides.kind ?? "工程札记",
-      overrides.language ?? "zh-CN",
     ],
   );
   return id;
@@ -230,7 +226,7 @@ describe("Article assets integration", () => {
 
     await withTestDatabase(async (client) => {
       const articleId = await seedArticle(client, {
-        slug: "cascade-test-article",
+        title: "Cascade test article",
       });
       const { id: assetId, objectKey } = await seedArticleAsset(
         client,
@@ -261,7 +257,7 @@ describe("Article assets integration", () => {
 
     await withTestDatabase(async (client) => {
       const articleId = await seedArticle(client, {
-        slug: "service-cleanup-test-article",
+        title: "Service cleanup test article",
       });
       const { objectKey } = await seedArticleAsset(client, articleId);
 
@@ -327,7 +323,7 @@ describe("Article assets integration", () => {
   it("rejects invalid media types and oversized files at the database level", async () => {
     await withTestDatabase(async (client) => {
       const articleId = await seedArticle(client, {
-        slug: "constraint-test-article",
+        title: "Constraint test article",
       });
 
       await assert.rejects(
