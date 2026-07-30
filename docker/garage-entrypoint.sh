@@ -3,9 +3,9 @@ set -eu
 
 config_file="${GARAGE_CONFIG_FILE:-/etc/garage/garage.toml}"
 ready_file="/tmp/garage-layout-ready"
-media_bucket="${MEDIA_S3_BUCKET:-codebuff-next-media}"
-media_access_key_id="${MEDIA_S3_ACCESS_KEY_ID:-GK0123456789abcdef01234567}"
-media_secret_access_key="${MEDIA_S3_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+media_bucket="$MEDIA_S3_BUCKET"
+media_access_key_id="$MEDIA_S3_ACCESS_KEY_ID"
+media_secret_access_key="$MEDIA_S3_SECRET_ACCESS_KEY"
 
 rm -f "$ready_file"
 
