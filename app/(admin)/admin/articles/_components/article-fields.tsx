@@ -3,7 +3,9 @@ import {
   type ArticleCreateValues,
 } from "@/features/articles/article-dto";
 import type { ArticleFieldErrors } from "@/features/articles/article-create-form-state";
-import { cn } from "@/lib/utils";
+
+import { ArticleBodyEditor } from "./article-body-editor";
+import type { MarkdownEditorHandle } from "./markdown-editor";
 
 const inputClassName =
   "mt-2 block min-h-(--control-height) w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] duration-(--motion-duration) ease-(--motion-easing) placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/15 motion-reduce:transition-none";
@@ -41,14 +43,16 @@ function describedBy(
 }
 
 export function ArticleFields({
+  articleId,
   autoFocusTitle = false,
-  bodyMarkdownRef,
+  editorRef,
   fieldErrors,
   taxonomy,
   values,
 }: {
+  articleId: string;
   autoFocusTitle?: boolean;
-  bodyMarkdownRef?: React.RefObject<HTMLTextAreaElement | null>;
+  editorRef: React.Ref<MarkdownEditorHandle>;
   fieldErrors: ArticleFieldErrors;
   taxonomy?: React.ReactNode;
   values: ArticleCreateValues;
@@ -79,37 +83,26 @@ export function ArticleFields({
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5 shadow-xs sm:p-7">
-        <label className={labelClassName} htmlFor="bodyMarkdown">
-          Markdown 正文
-          <span className="ml-2 font-normal text-muted-foreground">可选</span>
-        </label>
+        <div className="flex items-center justify-between">
+          <label className={labelClassName} htmlFor="bodyMarkdown">
+            Markdown 正文
+            <span className="ml-2 font-normal text-muted-foreground">可选</span>
+          </label>
+        </div>
         <p
           className="mt-2 text-xs leading-5 text-muted-foreground"
           id="bodyMarkdown-help"
         >
-          当前仅保存原始 Markdown，不提供预览或发布。文章资产使用稳定的{" "}
+          支持 Markdown 语法，可在编辑、分屏、预览模式间切换。文章资产使用稳定的{" "}
           <code className="font-mono">cq-asset://</code> 引用。
         </p>
-        <textarea
-          aria-describedby={describedBy(
-            "bodyMarkdown",
-            fieldErrors.bodyMarkdown,
-            "bodyMarkdown-help",
-          )}
-          aria-invalid={Boolean(fieldErrors.bodyMarkdown?.length)}
-          className={cn(
-            inputClassName,
-            "min-h-80 resize-y font-mono leading-6 sm:min-h-96",
-          )}
-          defaultValue={values.bodyMarkdown}
-          id="bodyMarkdown"
-          maxLength={articleFieldLimits.bodyMarkdown}
-          name="bodyMarkdown"
-          placeholder="# 从这里开始"
-          ref={bodyMarkdownRef}
-          rows={18}
-          spellCheck={false}
-        />
+        <div className="mt-3">
+          <ArticleBodyEditor
+            articleId={articleId}
+            defaultValue={values.bodyMarkdown}
+            editorRef={editorRef}
+          />
+        </div>
         <FieldError errors={fieldErrors.bodyMarkdown} field="bodyMarkdown" />
       </div>
     </>

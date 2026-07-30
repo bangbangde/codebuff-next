@@ -5,6 +5,7 @@ import { useActionState, useRef } from "react";
 
 import { ArticleFields } from "@/app/(admin)/admin/articles/_components/article-fields";
 import { ArticleTaxonomyFields } from "@/app/(admin)/admin/articles/_components/article-taxonomy-fields";
+import type { MarkdownEditorHandle } from "@/app/(admin)/admin/articles/_components/markdown-editor";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
 import type {
@@ -43,28 +44,16 @@ export function ArticleEditForm({
     updateArticleAction,
     initialState,
   );
-  const bodyMarkdownRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<MarkdownEditorHandle>(null);
 
   function handleInsertReference(reference: string) {
-    const textarea = bodyMarkdownRef.current;
+    const editor = editorRef.current;
 
-    if (!textarea) {
+    if (!editor) {
       return false;
     }
 
-    const selectionStart = textarea.selectionStart;
-    const needsLeadingBreak =
-      selectionStart > 0 && textarea.value[selectionStart - 1] !== "\n";
-    const insertion = `${needsLeadingBreak ? "\n\n" : ""}${reference}\n\n`;
-
-    textarea.setRangeText(
-      insertion,
-      selectionStart,
-      textarea.selectionEnd,
-      "end",
-    );
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    textarea.focus();
+    editor.insertText(reference);
 
     return true;
   }
@@ -80,7 +69,8 @@ export function ArticleEditForm({
         />
 
         <ArticleFields
-          bodyMarkdownRef={bodyMarkdownRef}
+          articleId={article.id}
+          editorRef={editorRef}
           fieldErrors={state.fieldErrors}
           taxonomy={
             <ArticleTaxonomyFields

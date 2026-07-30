@@ -489,8 +489,10 @@ describe("Canonical article asset references", () => {
     assert.match(schema, /onDelete: "cascade"/);
     assert.match(schema, /objectKey/);
     assert.match(repository, /\.articleId !== input\.id/);
-    // #96: DOM 操作解耦到 edit-form，panel 通过 callback 回调
-    assert.match(editForm, /textarea\.setRangeText/);
+    // #96/#104: DOM 操作解耦到 edit-form，panel 通过 callback 回调；
+    // CodeMirror 编辑器通过 MarkdownEditorHandle.insertText 插入引用
+    assert.match(editForm, /editor\.insertText/);
+    assert.match(editForm, /MarkdownEditorHandle/);
     assert.match(panel, /onInsertReference/);
     assert.doesNotMatch(panel, /document\.getElementById/);
     assert.match(panel, /type="button"/);
