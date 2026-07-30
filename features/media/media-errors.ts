@@ -30,3 +30,31 @@ export class MediaStorageError extends Error {
     this.name = "MediaStorageError";
   }
 }
+
+export class MediaNotFoundError extends Error {
+  constructor() {
+    super("Media asset was not found.");
+    this.name = "MediaNotFoundError";
+  }
+}
+
+export class MediaStateConflictError extends Error {
+  constructor() {
+    super("Media asset is not in the required lifecycle state.");
+    this.name = "MediaStateConflictError";
+  }
+}
+
+export class MediaRetryMismatchError extends Error {
+  constructor() {
+    super("Retry file does not match the failed media asset.");
+    this.name = "MediaRetryMismatchError";
+  }
+}
+
+export class MediaReferencedError extends Error {
+  constructor() {
+    super("Referenced media cannot be deleted.");
+    this.name = "MediaReferencedError";
+  }
+}

@@ -90,6 +90,7 @@ else
 fi
 
 /garage -c "$config_file" bucket allow \
+  --read \
   --write \
   "$media_bucket" \
   --key "$media_access_key_id"
