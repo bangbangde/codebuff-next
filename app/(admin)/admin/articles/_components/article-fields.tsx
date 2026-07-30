@@ -4,7 +4,9 @@ import {
   type ArticleCreateValues,
 } from "@/features/articles/article-dto";
 import type { ArticleFieldErrors } from "@/features/articles/article-create-form-state";
+import type { MediaReferenceOption } from "@/features/articles/article-media-reference";
 import { cn } from "@/lib/utils";
+import { ArticleMediaPicker } from "./article-media-picker";
 
 const inputClassName =
   "mt-2 block min-h-(--control-height) w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] duration-(--motion-duration) ease-(--motion-easing) placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/15 motion-reduce:transition-none";
@@ -44,10 +46,12 @@ function describedBy(
 export function ArticleFields({
   autoFocusTitle = false,
   fieldErrors,
+  mediaOptions,
   values,
 }: {
   autoFocusTitle?: boolean;
   fieldErrors: ArticleFieldErrors;
+  mediaOptions: readonly MediaReferenceOption[];
   values: ArticleCreateValues;
 }) {
   return (
@@ -179,8 +183,10 @@ export function ArticleFields({
           className="mt-2 text-xs leading-5 text-muted-foreground"
           id="bodyMarkdown-help"
         >
-          当前仅保存原始 Markdown，不提供预览或发布。
+          当前仅保存原始 Markdown，不提供预览或发布。托管媒体使用稳定的{" "}
+          <code className="font-mono">cq-media://</code> 引用。
         </p>
+        <ArticleMediaPicker mediaOptions={mediaOptions} />
         <textarea
           aria-describedby={describedBy(
             "bodyMarkdown",

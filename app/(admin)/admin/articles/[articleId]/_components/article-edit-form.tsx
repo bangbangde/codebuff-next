@@ -10,14 +10,17 @@ import type {
   ArticleDetail,
 } from "@/features/articles/article-dto";
 import type { ArticleEditFormState } from "@/features/articles/article-edit-form-state";
+import type { MediaReferenceOption } from "@/features/articles/article-media-reference";
 import { cn } from "@/lib/utils";
 import { updateArticleAction } from "../actions";
 
 export function ArticleEditForm({
   article,
+  mediaOptions,
   values,
 }: {
   article: ArticleDetail;
+  mediaOptions: readonly MediaReferenceOption[];
   values: ArticleCreateValues;
 }) {
   const initialState: ArticleEditFormState = {
@@ -40,7 +43,11 @@ export function ArticleEditForm({
         value={article.revision}
       />
 
-      <ArticleFields fieldErrors={state.fieldErrors} values={state.values} />
+      <ArticleFields
+        fieldErrors={state.fieldErrors}
+        mediaOptions={mediaOptions}
+        values={state.values}
+      />
 
       <div className="sticky bottom-0 -mx-5 grid gap-3 border-t border-border bg-background/95 px-5 py-4 backdrop-blur-sm supports-backdrop-filter:bg-background/85 sm:-mx-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-8">
         <div>

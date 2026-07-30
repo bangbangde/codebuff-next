@@ -113,6 +113,13 @@ pnpm db:migrate
 `failed` 记录。单文件上限为 10 MiB，当前接受 JPEG、PNG、WebP、GIF、AVIF
 与 PDF。对象键由服务端生成，不使用原始文件名。
 
+文章正文通过稳定媒体 UUID 使用 canonical Markdown 引用：图片为
+`![alt](cq-media://<media-id>)`，PDF/文件为
+`[label](cq-media://<media-id>)`。创建和更新文章时，应用会在同一 PostgreSQL
+事务中校验所有引用资产均为 `ready`，并同步唯一的文章—媒体关系；过期 revision、
+无效引用或不可用媒体不会部分更新文章或关系。该引用当前只用于私有 Admin
+写作数据，不代表公开 URL，也不提供公开渲染。
+
 本地 Compose 会从 `.env` 读取 `MEDIA_S3_BUCKET`、
 `MEDIA_S3_ACCESS_KEY_ID` 和 `MEDIA_S3_SECRET_ACCESS_KEY`，并幂等初始化桶与
 写入密钥。`.env.example` 中的固定值仅适用于绑定到 loopback 的本地 Garage；

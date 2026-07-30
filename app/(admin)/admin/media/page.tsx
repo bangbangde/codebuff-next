@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import type { MediaAsset } from "@/features/media/media-dto";
 import { listMediaAssets } from "@/features/media/server/media-service";
 import { requireAdmin } from "@/lib/auth/session";
+import { MediaReferenceCopy } from "./_components/media-reference-copy";
 import { MediaUploadForm } from "./_components/media-upload-form";
 
 export const metadata: Metadata = {
@@ -162,6 +163,19 @@ export default async function MediaPage() {
                         存储暂时不可用；失败状态已保留。
                       </p>
                     ) : null}
+                    {asset.status === "ready" ? (
+                      <MediaReferenceCopy
+                        media={{
+                          id: asset.id,
+                          mediaType: asset.mediaType,
+                          originalFilename: asset.originalFilename,
+                        }}
+                      />
+                    ) : (
+                      <p className="mt-4 text-xs text-muted-foreground">
+                        资产变为 ready 后才能复制或插入引用。
+                      </p>
+                    )}
                   </div>
                   <time
                     className="text-xs text-muted-foreground"

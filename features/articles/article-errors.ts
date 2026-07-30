@@ -4,3 +4,10 @@ export class ArticleSlugConflictError extends Error {
     this.name = "ArticleSlugConflictError";
   }
 }
+
+export class ArticleMediaUnavailableError extends Error {
+  constructor() {
+    super("Article references media that is unavailable.");
+    this.name = "ArticleMediaUnavailableError";
+  }
+}

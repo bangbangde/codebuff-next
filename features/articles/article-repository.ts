@@ -10,9 +10,15 @@ import type {
 } from "./article-dto";
 
 export interface ArticleRepository {
-  create(input: CreateArticleInput): Promise<CreatedArticle>;
+  create(
+    input: CreateArticleInput,
+    mediaIds: readonly string[],
+  ): Promise<CreatedArticle>;
   delete(input: DeleteArticleInput): Promise<DeleteArticleResult>;
   findById(id: string): Promise<ArticleDetail | null>;
   listSummaries(): Promise<readonly ArticleSummary[]>;
-  update(input: UpdateArticleInput): Promise<UpdateArticleResult>;
+  update(
+    input: UpdateArticleInput,
+    mediaIds: readonly string[],
+  ): Promise<UpdateArticleResult>;
 }
