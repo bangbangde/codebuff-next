@@ -12,13 +12,13 @@ import type {
 export interface ArticleRepository {
   create(
     input: CreateArticleInput,
-    mediaIds: readonly string[],
+    assetIds: readonly string[],
   ): Promise<CreatedArticle>;
   delete(input: DeleteArticleInput): Promise<DeleteArticleResult>;
   findById(id: string): Promise<ArticleDetail | null>;
   listSummaries(): Promise<readonly ArticleSummary[]>;
   update(
     input: UpdateArticleInput,
-    mediaIds: readonly string[],
+    assetIds: readonly string[],
   ): Promise<UpdateArticleResult>;
 }

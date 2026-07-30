@@ -5,10 +5,10 @@ import { redirect } from "next/navigation";
 
 import type { ArticleCreateFormState } from "@/features/articles/article-create-form-state";
 import {
-  ArticleMediaUnavailableError,
+  ArticleAssetUnavailableError,
   ArticleSlugConflictError,
 } from "@/features/articles/article-errors";
-import { ArticleMediaReferenceSyntaxError } from "@/features/articles/article-media-reference";
+import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
   readArticleValues,
@@ -36,22 +36,22 @@ export async function createArticleAction(
   try {
     await createArticle(parsed.data);
   } catch (error) {
-    if (error instanceof ArticleMediaReferenceSyntaxError) {
+    if (error instanceof ArticleAssetReferenceSyntaxError) {
       return {
         fieldErrors: {
-          bodyMarkdown: ["托管媒体引用格式无效，请重新从媒体选择器插入。"],
+          bodyMarkdown: ["托管资产引用格式无效，请重新从资产面板插入。"],
         },
         formError: "文章尚未保存，请检查 Markdown 正文。",
         values: parsed.data,
       };
     }
 
-    if (error instanceof ArticleMediaUnavailableError) {
+    if (error instanceof ArticleAssetUnavailableError) {
       return {
         fieldErrors: {
-          bodyMarkdown: ["正文引用了不存在或尚未可用的媒体。"],
+          bodyMarkdown: ["新建文章不能引用资产，请先保存文章再上传资产。"],
         },
-        formError: "文章尚未保存，请移除无效媒体引用。",
+        formError: "文章尚未保存，请移除资产引用。",
         values: parsed.data,
       };
     }

@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/auth/session";
-import { listReadyMediaReferenceOptions } from "@/features/media/server/media-service";
 import { ArticleCreateForm } from "./_components/article-create-form";
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 
 export default async function NewArticlePage() {
   await requireAdmin();
-  const mediaOptions = await listReadyMediaReferenceOptions();
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-10 lg:py-12">
@@ -37,7 +35,7 @@ export default async function NewArticlePage() {
         </p>
       </header>
 
-      <ArticleCreateForm mediaOptions={mediaOptions} />
+      <ArticleCreateForm />
     </div>
   );
 }

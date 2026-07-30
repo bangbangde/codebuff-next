@@ -6,15 +6,10 @@ import { useActionState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ArticleFields } from "@/app/(admin)/admin/articles/_components/article-fields";
 import { initialArticleCreateFormState } from "@/features/articles/article-create-form-state";
-import type { MediaReferenceOption } from "@/features/articles/article-media-reference";
 import { cn } from "@/lib/utils";
 import { createArticleAction } from "../actions";
 
-export function ArticleCreateForm({
-  mediaOptions,
-}: {
-  mediaOptions: readonly MediaReferenceOption[];
-}) {
+export function ArticleCreateForm() {
   const [state, formAction, pending] = useActionState(
     createArticleAction,
     initialArticleCreateFormState,
@@ -25,7 +20,6 @@ export function ArticleCreateForm({
       <ArticleFields
         autoFocusTitle
         fieldErrors={state.fieldErrors}
-        mediaOptions={mediaOptions}
         values={state.values}
       />
 

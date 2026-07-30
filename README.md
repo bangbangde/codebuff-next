@@ -13,10 +13,9 @@ MDX、Better Auth、Drizzle ORM 和 PostgreSQL。
 | `/sign-in` | 邮箱密码、Passkey 登录，以及密码登录后的 TOTP/恢复码验证 |
 | `/account` | 查询当前 Session，并在已登录时显示账户、TOTP 与 Passkey 管理界面 |
 | `/admin` | 需要独立 Admin role 的后台 Overview 与响应式应用框架 |
-| `/admin/media` | 私有媒体上传、签名校验、Garage 写入与 PostgreSQL 生命周期列表 |
 | `/api/auth/*` | Better Auth 的 Node.js API |
 
-公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 为后台媒体库提供私有
+公共的 `/`、`/me` 和静态文章不依赖数据库。Garage 为文章专属资产提供私有
 S3 对象存储；应用只通过服务端上传边界写入，不向浏览器暴露存储凭据。
 
 ## 本地开发
@@ -45,7 +44,7 @@ pnpm dev
 Compose 不启动应用，也不自动执行迁移或账户初始化。PostgreSQL healthcheck
 会通过 TCP 验证 `.env` 凭据，并确认本地账号仍具有 `SUPERUSER`、
 `CREATEDB`、`CREATEROLE` 且拥有目标数据库。Garage 会在自己的容器内配置并复用单节点
-layout，并幂等创建 `.env` 指定的私有媒体桶和仅具写权限的应用密钥。
+layout，并幂等创建 `.env` 指定的私有文章资产桶和仅具写权限的应用密钥。
 从 `.env.example` 新建 `.env` 时，本地 Passkey 配置已经包含
 `BETTER_AUTH_URL=http://localhost:3000` 与 `PASSKEY_RP_ID=localhost`。如果复用旧的
 `.env`，需要手动补齐 `PASSKEY_RP_ID`；它必须与访问应用时使用的 hostname 保持一致。
@@ -106,25 +105,32 @@ pnpm db:migrate
 
 `pnpm db:migrate` 和 `pnpm auth:bootstrap` 会在 `.env` 存在时读取它；当前进程已经提供的变量仍可用于覆盖配置。拉取到新的迁移文件后，需要再次显式执行迁移。
 
-### 私有媒体存储
+### 文章专属资产存储
 
-`/admin/media` 先在 PostgreSQL 创建 `pending` 元数据，再由服务端把经过文件
-签名校验的字节写入 Garage；写入确认后状态变为 `ready`，存储失败则保留
-`failed` 记录。单文件上限为 10 MiB，当前接受 JPEG、PNG、WebP、GIF、AVIF
-与 PDF。对象键由服务端生成，不使用原始文件名。
+每篇文章拥有自己的资产集合，对象由文章生命周期控制。资产元数据保存在
+`article_asset` 表中，通过 `article_id` 外键以 `ON DELETE cascade` 跟随文章
+删除；Garage 中的对象由服务端在删除文章时按已记录的 `object_key` 批量清理。
+当前阶段接受孤儿对象：若 Garage 对象删除失败只记录日志，不阻断数据库清理。
 
-文章正文通过稳定媒体 UUID 使用 canonical Markdown 引用：图片为
-`![alt](cq-media://<media-id>)`，PDF/文件为
-`[label](cq-media://<media-id>)`。创建和更新文章时，应用会在同一 PostgreSQL
-事务中校验所有引用资产均为 `ready`，并同步唯一的文章—媒体关系；过期 revision、
-无效引用或不可用媒体不会部分更新文章或关系。该引用当前只用于私有 Admin
-写作数据，不代表公开 URL，也不提供公开渲染。
+资产通过文章编辑页的资产面板上传，服务端先做文件签名校验（单文件上限
+10 MiB，接受 JPEG、PNG、WebP、GIF、AVIF 与 PDF），再写入 Garage，最后落库；
+对象键由服务端生成 `articles/<articleId>/<assetId>`，不使用原始文件名。
+若 Garage 写入成功但落库失败，服务端会 best-effort 回滚已上传的对象。
 
-本地 Compose 会从 `.env` 读取 `MEDIA_S3_BUCKET`、
-`MEDIA_S3_ACCESS_KEY_ID` 和 `MEDIA_S3_SECRET_ACCESS_KEY`，并幂等初始化桶与
+文章正文通过稳定资产 UUID 使用 canonical Markdown 引用：图片为
+`![alt](cq-asset://<asset-id>)`，PDF/文件为
+`[label](cq-asset://<asset-id>)`。更新文章时，应用会在同一 PostgreSQL
+事务中校验所有引用资产均存在且属于当前文章；过期 revision、无效引用或
+不归属的资产不会部分更新文章。该引用当前只用于私有 Admin 写作数据，
+不代表公开 URL，也不提供公开渲染。
+
+本地 Compose 会从 `.env` 读取 `ARTICLE_S3_BUCKET`、
+`ARTICLE_S3_ACCESS_KEY_ID` 和 `ARTICLE_S3_SECRET_ACCESS_KEY`，并幂等初始化桶与
 写入密钥。`.env.example` 中的固定值仅适用于绑定到 loopback 的本地 Garage；
-生产环境必须注入独立生成且只授权私有媒体桶的凭据。浏览器和 API 响应均不得
+生产环境必须注入独立生成且只授权私有文章资产桶的凭据。浏览器和 API 响应均不得
 暴露访问密钥、Secret 或 Garage endpoint。
+
+> Garage 管理模块（bucket/key/object 的通用管理 UI）暂缓实现。
 
 最终应用镜像包含经过 bundling 的迁移和账户初始化入口，不复制项目完整的 `node_modules`：
 

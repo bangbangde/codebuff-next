@@ -6,16 +6,16 @@ import path from "node:path";
 import { fileTypeFromBuffer } from "file-type";
 
 import {
-  acceptedMediaTypes,
-  maximumMediaBytes,
-  type AcceptedMediaType,
-  type VerifiedMediaFile,
-} from "./media-dto";
-import { MediaValidationError } from "./media-errors";
+  acceptedAssetTypes,
+  maximumAssetBytes,
+  type AcceptedAssetType,
+  type VerifiedAssetFile,
+} from "./article-asset-dto";
+import { AssetValidationError } from "./article-asset-errors";
 
-const acceptedTypeSet = new Set<string>(acceptedMediaTypes);
+const acceptedTypeSet = new Set<string>(acceptedAssetTypes);
 
-const extensionsByMediaType: Record<AcceptedMediaType, readonly string[]> = {
+const extensionsByMediaType: Record<AcceptedAssetType, readonly string[]> = {
   "application/pdf": [".pdf"],
   "image/avif": [".avif"],
   "image/gif": [".gif"],
@@ -35,19 +35,21 @@ function validateFilename(filename: string) {
     normalized.includes("\\") ||
     path.basename(normalized) !== normalized
   ) {
-    throw new MediaValidationError("invalid_filename");
+    throw new AssetValidationError("invalid_filename");
   }
 
   return normalized;
 }
 
-export async function verifyMediaFile(file: File): Promise<VerifiedMediaFile> {
+export async function verifyAssetFile(
+  file: File,
+): Promise<VerifiedAssetFile> {
   if (file.size === 0) {
-    throw new MediaValidationError("empty_file");
+    throw new AssetValidationError("empty_file");
   }
 
-  if (file.size > maximumMediaBytes) {
-    throw new MediaValidationError("file_too_large");
+  if (file.size > maximumAssetBytes) {
+    throw new AssetValidationError("file_too_large");
   }
 
   const originalFilename = validateFilename(file.name);
@@ -55,17 +57,17 @@ export async function verifyMediaFile(file: File): Promise<VerifiedMediaFile> {
   const detected = await fileTypeFromBuffer(body);
 
   if (!detected || !acceptedTypeSet.has(detected.mime)) {
-    throw new MediaValidationError("unsupported_media_type");
+    throw new AssetValidationError("unsupported_media_type");
   }
 
-  const mediaType = detected.mime as AcceptedMediaType;
+  const mediaType = detected.mime as AcceptedAssetType;
   const extension = path.extname(originalFilename).toLowerCase();
 
   if (
     file.type !== mediaType ||
     !extensionsByMediaType[mediaType].includes(extension)
   ) {
-    throw new MediaValidationError("signature_mismatch");
+    throw new AssetValidationError("signature_mismatch");
   }
 
   return {
