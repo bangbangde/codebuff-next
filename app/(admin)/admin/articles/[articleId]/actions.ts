@@ -6,16 +6,20 @@ import { redirect } from "next/navigation";
 import type {
   ArticleDeleteFormState,
   ArticleEditFormState,
+  ArticlePublishFormState,
 } from "@/features/articles/article-edit-form-state";
 import { ArticleAssetUnavailableError } from "@/features/articles/article-errors";
 import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
   articleMutationReferenceSchema,
+  publishArticleSchema,
   readArticleValues,
+  readPublishValues,
 } from "@/features/articles/article-validation";
 import {
   deleteArticle,
+  publishArticle,
   updateArticle,
 } from "@/features/articles/server/article-service";
 import type {
@@ -153,6 +157,102 @@ export async function updateArticleAction(
     savedRevision: result.article.draftRevision,
     status: "saved",
     values: fields.data,
+  };
+}
+
+export async function publishArticleAction(
+  _previousState: ArticlePublishFormState,
+  formData: FormData,
+): Promise<ArticlePublishFormState> {
+  await requireAdmin();
+
+  const values = readPublishValues(formData);
+  const reference = articleMutationReferenceSchema.safeParse({
+    articleId: formData.get("articleId"),
+    expectedRevision: formData.get("expectedRevision"),
+  });
+  const fields = publishArticleSchema.safeParse(values);
+
+  if (!reference.success) {
+    return {
+      conflictRevision: null,
+      fieldErrors: {},
+      formError: "文章标识或版本无效，请重新载入后再试。",
+      values,
+    };
+  }
+
+  if (!fields.success) {
+    return {
+      conflictRevision: null,
+      fieldErrors: fields.error.flatten().fieldErrors,
+      formError: "请检查发布信息后再提交。",
+      values,
+    };
+  }
+
+  let result: Awaited<ReturnType<typeof publishArticle>>;
+
+  try {
+    result = await publishArticle({
+      ...fields.data,
+      expectedRevision: reference.data.expectedRevision,
+      id: reference.data.articleId,
+    });
+  } catch (error) {
+    if (error instanceof ArticleAssetUnavailableError) {
+      return {
+        conflictRevision: null,
+        fieldErrors: {
+          coverAssetId: ["封面图不属于本文或已不存在，请重新选择。"],
+        },
+        formError: "发布未完成，请检查封面图。",
+        values: fields.data,
+      };
+    }
+
+    console.error("Failed to publish article.", error);
+
+    return {
+      conflictRevision: null,
+      fieldErrors: {},
+      formError: "文章暂时无法发布，请稍后重试。",
+      values: fields.data,
+    };
+  }
+
+  if (result.status === "conflict") {
+    return {
+      conflictRevision: result.currentRevision,
+      fieldErrors: {},
+      formError:
+        "数据库中的文章草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
+      values: fields.data,
+    };
+  }
+
+  if (result.status === "not_found") {
+    return {
+      conflictRevision: null,
+      fieldErrors: {},
+      formError: "这篇文章已不存在，无法发布。",
+      values: fields.data,
+    };
+  }
+
+  revalidatePath("/admin/articles");
+  revalidatePath(`/admin/articles/${reference.data.articleId}`);
+
+  return {
+    conflictRevision: null,
+    fieldErrors: {},
+    formError: null,
+    values: {
+      categoryName: fields.data.categoryName,
+      coverAssetId: result.article.coverAssetId ?? "",
+      summary: result.article.summary,
+      tagNames: fields.data.tagNames,
+    },
   };
 }
 

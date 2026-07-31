@@ -5,11 +5,16 @@ import { notFound } from "next/navigation";
 
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { articleIdSchema } from "@/features/articles/article-validation";
-import { getArticleById } from "@/features/articles/server/article-service";
+import {
+  getArticleById,
+  listCategories,
+  listTags,
+} from "@/features/articles/server/article-service";
 import { listArticleAssets } from "@/features/article-assets/server/article-asset-service";
 import { requireAdmin } from "@/lib/auth/session";
 import { ArticleDeleteDialog } from "./_components/article-delete-dialog";
 import { ArticleEditForm } from "./_components/article-edit-form";
+import { ArticlePublishForm } from "./_components/article-publish-form";
 
 export const metadata: Metadata = {
   title: "Edit article",
@@ -29,9 +34,11 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [article, assets] = await Promise.all([
+  const [article, assets, categories, tags] = await Promise.all([
     getArticleById(route.data),
     listArticleAssets(route.data),
+    listCategories(),
+    listTags(),
   ]);
 
   if (!article) {
@@ -42,6 +49,12 @@ export default async function ArticleDetailPage({
     bodyMarkdown: article.draftContent,
     title: article.draftTitle,
   };
+
+  const publishStatus = !article.publishedAt
+    ? "未发布"
+    : article.publishedFromRevision === article.draftRevision
+      ? "已发布 · 线上为最新"
+      : "已发布 · 有未发布修改";
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-10 lg:py-12">
@@ -68,6 +81,10 @@ export default async function ArticleDetailPage({
             <DatabaseIcon aria-hidden="true" className="size-3.5" />
             草稿修订 {article.draftRevision}
           </span>
+          <span className="inline-flex items-center gap-2">
+            <DatabaseIcon aria-hidden="true" className="size-3.5" />
+            {publishStatus}
+          </span>
         </div>
       </header>
 
@@ -76,6 +93,23 @@ export default async function ArticleDetailPage({
         assets={assets}
         values={values}
       />
+
+      <section
+        aria-labelledby="publish-article-title"
+        className="mt-12 border-t border-border pt-8"
+      >
+        <ArticlePublishForm
+          article={{
+            id: article.id,
+            draftRevision: article.draftRevision,
+            publishedAt: article.publishedAt,
+            publishedFromRevision: article.publishedFromRevision,
+          }}
+          assets={assets}
+          categories={categories}
+          tags={tags}
+        />
+      </section>
 
       <section
         aria-labelledby="delete-article-title"
