@@ -105,9 +105,13 @@ export default async function PublishedArticlePage({ params }: ArticlePageProps)
           </header>
 
           <div className="mx-auto max-w-[var(--layout-reading)] py-[clamp(3.5rem,8vw,7rem)]">
-            {/* 公开资产路由（M015-4）尚未实现：cq-asset:// 引用暂时无法解析为可访问 URL。
-                这里不传 resolveAssetUrl，让 MarkdownRenderer 用默认行为渲染纯文本结构。 */}
-            <MarkdownRenderer>{article.content}</MarkdownRenderer>
+            <MarkdownRenderer
+              resolveAssetUrl={(assetId) =>
+                `/api/articles/${article.id}/assets/${assetId}/content`
+              }
+            >
+              {article.content}
+            </MarkdownRenderer>
           </div>
 
           <footer className="border-t border-border py-[clamp(2.5rem,5vw,4rem)]">

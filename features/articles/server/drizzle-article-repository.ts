@@ -485,4 +485,14 @@ export const drizzleArticleRepository: ArticleRepository = {
       };
     });
   },
+
+  async isArticlePublished(id: string): Promise<boolean> {
+    const [row] = await getDatabase()
+      .select({ id: article.id })
+      .from(article)
+      .where(and(eq(article.id, id), isNotNull(article.publishedAt)))
+      .limit(1);
+
+    return row !== undefined;
+  },
 };
