@@ -90,3 +90,26 @@ export type PublishArticleResult =
   | Readonly<{ article: ArticleDetail; status: "published" }>
   | Readonly<{ currentRevision: number; status: "conflict" }>
   | Readonly<{ status: "not_found" }>;
+
+// ─── 公开只读视图（仅线上槽位字段，不暴露草稿） ───────────────────
+
+export type PublishedArticleSummary = Readonly<{
+  id: string;
+  title: string;
+  summary: string;
+  publishedAt: string;
+  publishedUpdatedAt: string;
+  categoryName: string | null;
+}>;
+
+export type PublishedArticleDetail = Readonly<{
+  id: string;
+  title: string;
+  content: string;
+  summary: string;
+  coverAssetId: string | null;
+  publishedAt: string;
+  publishedUpdatedAt: string;
+  categoryName: string | null;
+  tags: readonly string[];
+}>;

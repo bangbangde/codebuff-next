@@ -7,6 +7,8 @@ import type {
   DeleteArticleResult,
   PublishArticleInput,
   PublishArticleResult,
+  PublishedArticleDetail,
+  PublishedArticleSummary,
   TagOption,
   UpdateArticleInput,
   UpdateArticleResult,
@@ -27,4 +29,6 @@ export interface ArticleRepository {
     input: PublishArticleInput,
     assetIds: readonly string[],
   ): Promise<PublishArticleResult>;
+  listPublishedArticles(): Promise<readonly PublishedArticleSummary[]>;
+  getPublishedArticle(id: string): Promise<PublishedArticleDetail | null>;
 }
