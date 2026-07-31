@@ -42,7 +42,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function PublishedArticlePage({ params }: ArticlePageProps) {
+export default async function PublishedArticlePage({
+  params,
+}: ArticlePageProps) {
   const { articleId } = await params;
 
   if (!articleIdSchema.safeParse(articleId).success) {
@@ -59,15 +61,7 @@ export default async function PublishedArticlePage({ params }: ArticlePageProps)
     <main id="main-content">
       <article>
         <ContentContainer>
-          <header className="border-b border-border pt-[clamp(2.5rem,6vw,5rem)] pb-[clamp(3.5rem,8vw,6.5rem)]">
-            <Link
-              className="inline-flex min-h-11 items-center gap-2 font-mono text-xs leading-body tracking-[0.05em] text-muted-foreground transition-colors duration-150 hover:text-brand-accent focus-visible:text-brand-accent motion-reduce:transition-none"
-              href="/articles"
-              lang="en"
-            >
-              <span aria-hidden="true">←</span>
-              All articles
-            </Link>
+          <header className="border-b border-border pb-[clamp(3.5rem,8vw,6.5rem)]">
             <p className="mt-8 mb-0 font-mono text-xs leading-body tracking-label text-brand-accent uppercase">
               <time dateTime={article.publishedAt}>
                 {formatPublishDate(article.publishedAt)}
@@ -82,11 +76,7 @@ export default async function PublishedArticlePage({ params }: ArticlePageProps)
             <h1 className="mt-5 mb-0 max-w-[18ch] text-[clamp(2.35rem,6.2vw,5.25rem)] leading-[1.04] font-[550] tracking-[-0.055em] text-balance">
               {article.title}
             </h1>
-            {article.summary.length > 0 ? (
-              <p className="mt-7 mb-0 max-w-[42rem] text-[clamp(1.08rem,2vw,1.3rem)] leading-[1.75] text-muted-foreground">
-                {article.summary}
-              </p>
-            ) : null}
+
             {article.tags.length > 0 ? (
               <ul
                 aria-label="标签"
@@ -113,17 +103,6 @@ export default async function PublishedArticlePage({ params }: ArticlePageProps)
               {article.content}
             </MarkdownRenderer>
           </div>
-
-          <footer className="border-t border-border py-[clamp(2.5rem,5vw,4rem)]">
-            <Link
-              className="inline-flex min-h-11 items-center gap-3 border-b border-[color-mix(in_srgb,var(--brand-accent)_42%,transparent)] font-mono text-sm text-brand-accent transition-colors duration-150 hover:border-brand-accent focus-visible:border-brand-accent motion-reduce:transition-none"
-              href="/articles"
-              lang="en"
-            >
-              Browse all articles
-              <span aria-hidden="true">→</span>
-            </Link>
-          </footer>
         </ContentContainer>
       </article>
     </main>

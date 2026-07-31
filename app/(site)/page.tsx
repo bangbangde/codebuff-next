@@ -1,6 +1,22 @@
-import { ContentContainer } from "./_components/content-container";
+import Link from "next/link";
 
-export default function Home() {
+import { ContentContainer } from "./_components/content-container";
+import { SectionLabel } from "./_components/section-label";
+import { listPublishedArticles } from "@/features/articles/server/article-service";
+
+export const dynamic = "force-dynamic";
+
+function formatPublishDate(date: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(date));
+}
+
+export default async function Home() {
+  const articles = await listPublishedArticles();
+
   return (
     <main className="flex flex-1 flex-col" id="main-content">
       <section
@@ -36,14 +52,50 @@ export default function Home() {
         </ContentContainer>
       </section>
 
-      <ContentContainer className="flex-1 flex justify-center items-center">
-        <section aria-labelledby="articles-title">
-          <h2
-            className="text-2xl font-bold tracking-tight text-balance"
-            id="articles-title"
-          >
-            Coming Soon...
-          </h2>
+      <ContentContainer className="flex-1">
+        <section id="articles" aria-labelledby="articles-title">
+          {articles.length === 0 ? (
+            <p className="mt-6 mb-0 text-sm leading-7 text-muted-foreground">
+              COMING SOON...
+            </p>
+          ) : (
+            <ol className="mt-8 mb-0 divide-y divide-border border-y border-border">
+              {articles.map((article) => (
+                <li className="py-7" key={article.id}>
+                  <article className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-8">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[0.6875rem] tracking-[0.1em] text-muted-foreground uppercase">
+                        <time dateTime={article.publishedAt}>
+                          {formatPublishDate(article.publishedAt)}
+                        </time>
+                        {article.categoryName ? (
+                          <>
+                            {" · "}
+                            <span>{article.categoryName}</span>
+                          </>
+                        ) : null}
+                      </p>
+                      <h3 className="mt-2 text-xl font-semibold tracking-tight">
+                        <Link
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                          href={`/article/${article.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {article.title}
+                        </Link>
+                      </h3>
+                      {article.summary.length > 0 ? (
+                        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                          {article.summary}
+                        </p>
+                      ) : null}
+                    </div>
+                  </article>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
       </ContentContainer>
     </main>

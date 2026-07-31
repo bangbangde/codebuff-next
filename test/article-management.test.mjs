@@ -795,8 +795,8 @@ describe("Public article page slice", () => {
     );
   });
 
-  it("renders the public list page without admin authorization", async () => {
-    const page = await readFile("app/(site)/articles/page.tsx", "utf8");
+  it("renders the public article list on the home page without admin authorization", async () => {
+    const page = await readFile("app/(site)/page.tsx", "utf8");
 
     // 不调用 requireAdmin
     assert.doesNotMatch(page, /requireAdmin/);
@@ -843,7 +843,8 @@ describe("Public article page slice", () => {
       "utf8",
     );
 
-    assert.match(header, /href="\/articles"/);
+    // 文章列表已合并到首页，导航锚点到首页的文章区
+    assert.match(header, /href="\/#articles"/);
     assert.match(header, /Articles/);
   });
 });

@@ -40,9 +40,6 @@ export function SiteHeader() {
             className="flex items-center gap-1"
             aria-label="Primary navigation"
           >
-            <Link className={navigationLinkClassName} href="/articles">
-              Articles
-            </Link>
             <Link className={navigationLinkClassName} href="/me">
               Me
             </Link>
