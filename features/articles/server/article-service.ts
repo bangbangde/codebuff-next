@@ -7,6 +7,8 @@ import {
 import type {
   CategoryOption,
   DeleteArticleInput,
+  PublishArticleInput,
+  PublishArticleResult,
   TagOption,
   UpdateArticleInput,
 } from "../article-dto";
@@ -38,6 +40,12 @@ export function updateArticle(input: UpdateArticleInput) {
     input,
     parseCanonicalAssetReferenceIds(input.bodyMarkdown),
   );
+}
+
+export function publishArticle(
+  input: PublishArticleInput,
+): Promise<PublishArticleResult> {
+  return drizzleArticleRepository.publish(input, [input.coverAssetId]);
 }
 
 export async function deleteArticle(input: DeleteArticleInput) {

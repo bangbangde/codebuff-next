@@ -6,6 +6,7 @@ import { getDatabase } from "@/lib/db/client";
 import {
   article,
   articleAsset,
+  articleTag,
   category,
   tag,
 } from "@/lib/db/schema";
@@ -16,6 +17,8 @@ import type {
   CreatedArticle,
   DeleteArticleInput,
   DeleteArticleResult,
+  PublishArticleInput,
+  PublishArticleResult,
   TagOption,
   UpdateArticleInput,
   UpdateArticleResult,
@@ -31,6 +34,106 @@ async function readCurrentRevision(id: string) {
     .limit(1);
 
   return current?.revision ?? null;
+}
+
+async function resolveCategoryId(
+  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  categoryName: string,
+): Promise<string> {
+  const lowerName = categoryName.toLowerCase();
+
+  const [existing] = await transaction
+    .select({ id: category.id })
+    .from(category)
+    .where(sql`lower(${category.name}) = ${lowerName}`)
+    .limit(1);
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const [created] = await transaction
+    .insert(category)
+    .values({ name: categoryName })
+    .onConflictDoNothing()
+    .returning({ id: category.id });
+
+  if (created) {
+    return created.id;
+  }
+
+  // 并发创建：另一事务已插入同名分类，复用现有记录
+  const [retry] = await transaction
+    .select({ id: category.id })
+    .from(category)
+    .where(sql`lower(${category.name}) = ${lowerName}`)
+    .limit(1);
+
+  if (!retry) {
+    throw new Error("Category insert did not return the created record.");
+  }
+
+  return retry.id;
+}
+
+async function resolveTagIds(
+  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  tagNames: readonly string[],
+): Promise<readonly string[]> {
+  if (tagNames.length === 0) {
+    return [];
+  }
+
+  const lowerNames = tagNames.map((name) => name.toLowerCase());
+
+  const existing = await transaction
+    .select({ id: tag.id, name: tag.name })
+    .from(tag)
+    .where(inArray(sql`lower(${tag.name})`, lowerNames));
+
+  const existingByLowerName = new Map(
+    existing.map((row) => [row.name.toLowerCase(), row.id]),
+  );
+  const missing = tagNames.filter(
+    (name) => !existingByLowerName.has(name.toLowerCase()),
+  );
+
+  if (missing.length > 0) {
+    const created = await transaction
+      .insert(tag)
+      .values(missing.map((name) => ({ name })))
+      .onConflictDoNothing()
+      .returning({ id: tag.id, name: tag.name });
+
+    for (const row of created) {
+      existingByLowerName.set(row.name.toLowerCase(), row.id);
+    }
+
+    // 并发创建：为 onConflictDoNothing 跳过的标签复用现有记录
+    const stillMissing = missing.filter(
+      (name) => !existingByLowerName.has(name.toLowerCase()),
+    );
+
+    if (stillMissing.length > 0) {
+      const retry = await transaction
+        .select({ id: tag.id, name: tag.name })
+        .from(tag)
+        .where(
+          inArray(
+            sql`lower(${tag.name})`,
+            stillMissing.map((n) => n.toLowerCase()),
+          ),
+        );
+
+      for (const row of retry) {
+        existingByLowerName.set(row.name.toLowerCase(), row.id);
+      }
+    }
+  }
+
+  return tagNames.map(
+    (name) => existingByLowerName.get(name.toLowerCase()) as string,
+  );
 }
 
 async function readArticleDetail(
@@ -223,6 +326,90 @@ export const drizzleArticleRepository: ArticleRepository = {
       return {
         article: detail,
         status: "updated" as const,
+      };
+    });
+  },
+
+  async publish(
+    input: PublishArticleInput,
+    assetIds: readonly string[],
+  ): Promise<PublishArticleResult> {
+    return getDatabase().transaction(async (transaction) => {
+      if (assetIds.length > 0) {
+        const referencedAssets = await transaction
+          .select({
+            articleId: articleAsset.articleId,
+            id: articleAsset.id,
+          })
+          .from(articleAsset)
+          .where(inArray(articleAsset.id, [...assetIds]));
+
+        if (
+          referencedAssets.length !== assetIds.length ||
+          referencedAssets.some((asset) => asset.articleId !== input.id)
+        ) {
+          throw new ArticleAssetUnavailableError();
+        }
+      }
+
+      const categoryId = await resolveCategoryId(
+        transaction,
+        input.categoryName,
+      );
+      const tagIds = await resolveTagIds(transaction, input.tagNames);
+
+      // 将当前草稿复制到线上槽位，publishedAt 仅在首次发布时写入。
+      // publishedFromRevision 记录发布时的草稿修订（与 draftRevision 相等）。
+      const [updated] = await transaction
+        .update(article)
+        .set({
+          content: sql`${article.draftContent}`,
+          coverAssetId: input.coverAssetId,
+          publishedAt: sql`coalesce(${article.publishedAt}, now())`,
+          publishedFromRevision: sql`${article.draftRevision}`,
+          publishedUpdatedAt: new Date(),
+          summary: input.summary,
+          title: sql`${article.draftTitle}`,
+          categoryId,
+        })
+        .where(
+          and(
+            eq(article.id, input.id),
+            eq(article.draftRevision, input.expectedRevision),
+          ),
+        )
+        .returning({ id: article.id });
+
+      if (!updated) {
+        const currentRevision = await readCurrentRevision(input.id);
+
+        return currentRevision === null
+          ? { status: "not_found" as const }
+          : {
+              currentRevision,
+              status: "conflict" as const,
+            };
+      }
+
+      await transaction
+        .delete(articleTag)
+        .where(eq(articleTag.articleId, input.id));
+
+      if (tagIds.length > 0) {
+        await transaction.insert(articleTag).values(
+          tagIds.map((tagId) => ({ articleId: input.id, tagId })),
+        );
+      }
+
+      const detail = await readArticleDetail(transaction, input.id);
+
+      if (!detail) {
+        throw new Error("Published article could not be reloaded.");
+      }
+
+      return {
+        article: detail,
+        status: "published" as const,
       };
     });
   },

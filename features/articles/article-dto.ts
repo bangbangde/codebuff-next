@@ -1,5 +1,8 @@
 export const articleFieldLimits = {
   bodyMarkdown: 200_000,
+  categoryName: 50,
+  summary: 500,
+  tagName: 50,
   title: 200,
 } as const;
 
@@ -67,5 +70,23 @@ export type UpdateArticleResult =
 
 export type DeleteArticleResult =
   | Readonly<{ status: "deleted" }>
+  | Readonly<{ currentRevision: number; status: "conflict" }>
+  | Readonly<{ status: "not_found" }>;
+
+export type PublishArticleValues = Readonly<{
+  summary: string;
+  categoryName: string;
+  tagNames: readonly string[];
+  coverAssetId: string;
+}>;
+
+export type PublishArticleInput = PublishArticleValues &
+  Readonly<{
+    id: string;
+    expectedRevision: number; // draftRevision，用于乐观锁
+  }>;
+
+export type PublishArticleResult =
+  | Readonly<{ article: ArticleDetail; status: "published" }>
   | Readonly<{ currentRevision: number; status: "conflict" }>
   | Readonly<{ status: "not_found" }>;

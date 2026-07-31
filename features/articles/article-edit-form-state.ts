@@ -1,4 +1,7 @@
-import type { ArticleCreateValues } from "./article-dto";
+import type {
+  ArticleCreateValues,
+  PublishArticleValues,
+} from "./article-dto";
 import type { ArticleFieldErrors } from "./article-create-form-state";
 
 export type ArticleEditFormState = Readonly<{
@@ -18,4 +21,25 @@ export type ArticleDeleteFormState = Readonly<{
 export const initialArticleDeleteFormState: ArticleDeleteFormState = {
   conflictRevision: null,
   formError: null,
+};
+
+export type ArticlePublishFormState = Readonly<{
+  conflictRevision: number | null;
+  fieldErrors: Partial<
+    Record<keyof PublishArticleValues, readonly string[]>
+  >;
+  formError: string | null;
+  values: PublishArticleValues;
+}>;
+
+export const initialArticlePublishFormState: ArticlePublishFormState = {
+  conflictRevision: null,
+  fieldErrors: {},
+  formError: null,
+  values: {
+    categoryName: "",
+    coverAssetId: "",
+    summary: "",
+    tagNames: [],
+  },
 };

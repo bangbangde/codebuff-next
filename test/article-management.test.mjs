@@ -23,6 +23,8 @@ const {
   articleIdSchema,
   articleMutationReferenceSchema,
   normalizeArticleCreateValues,
+  normalizePublishValues,
+  publishArticleSchema,
 } = await loadArticleValidationModule();
 
 async function loadArticleAssetReferenceModule() {
@@ -345,10 +347,11 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(repository, /\.delete\(article\)/);
     assert.match(repository, /status: "conflict"/);
     assert.match(repository, /status: "not_found"/);
-    // M015-1: 草稿编辑不再处理 taxonomy（category/tags 移到发布工作项）
-    assert.doesNotMatch(repository, /resolveCategoryId/);
-    assert.doesNotMatch(repository, /resolveTagIds/);
-    assert.doesNotMatch(repository, /articleTag/);
+    // M015-2: 发布流程恢复 taxonomy 处理；草稿编辑(update) 仍只写草稿槽位
+    assert.match(repository, /async publish\(/);
+    assert.match(repository, /resolveCategoryId/);
+    assert.match(repository, /resolveTagIds/);
+    assert.match(repository, /articleTag/);
     assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
     assert.match(
       service,
@@ -370,10 +373,10 @@ describe("Admin article detail and mutation slice", () => {
 
     assert.ok(firstAuthorization >= 0);
     assert.ok(firstAuthorization < firstValidation);
-    assert.equal(actions.match(/await requireAdmin\(\)/g)?.length, 4);
+    assert.equal(actions.match(/await requireAdmin\(\)/g)?.length, 5);
     assert.equal(
       actions.match(/articleMutationReferenceSchema\.safeParse/g)?.length,
-      2,
+      3,
     );
     assert.match(actions, /error instanceof ArticleAssetUnavailableError/);
     assert.match(actions, /result\.status === "conflict"/);
@@ -448,6 +451,195 @@ describe("Admin article detail and mutation slice", () => {
     assert.ok(listIndex >= 0);
     assert.ok(deleteIndex > listIndex);
     assert.ok(cleanupIndex > deleteIndex);
+  });
+});
+
+describe("Admin article publish slice", () => {
+  it("exposes publish DTO types, limits, and an empty publish form state", async () => {
+    const dto = await readFile("features/articles/article-dto.ts", "utf8");
+    const formState = await readFile(
+      "features/articles/article-edit-form-state.ts",
+      "utf8",
+    );
+
+    assert.match(dto, /export type PublishArticleValues = Readonly</);
+    assert.match(dto, /export type PublishArticleInput = PublishArticleValues/);
+    assert.match(dto, /expectedRevision: number;/);
+    assert.match(dto, /status: "published"/);
+    assert.match(dto, /summary: 500,/);
+    assert.match(dto, /categoryName: 50,/);
+    assert.match(dto, /tagName: 50,/);
+    assert.match(formState, /export type ArticlePublishFormState/);
+    assert.match(formState, /export const initialArticlePublishFormState/);
+    assert.match(formState, /coverAssetId: "",/);
+    assert.match(formState, /tagNames: \[\],/);
+  });
+
+  it("validates publish values and rejects incomplete publish input", () => {
+    const valid = publishArticleSchema.safeParse({
+      categoryName: "工程",
+      coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+      summary: "摘要内容",
+      tagNames: ["a", "b"],
+    });
+    assert.equal(valid.success, true);
+
+    assert.equal(
+      publishArticleSchema.safeParse({
+        categoryName: "",
+        coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+        summary: "x",
+        tagNames: ["a"],
+      }).success,
+      false,
+    );
+
+    assert.equal(
+      publishArticleSchema.safeParse({
+        categoryName: "工程",
+        coverAssetId: "not-a-uuid",
+        summary: "x",
+        tagNames: ["a"],
+      }).success,
+      false,
+    );
+
+    assert.equal(
+      publishArticleSchema.safeParse({
+        categoryName: "工程",
+        coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+        summary: "x",
+        tagNames: [],
+      }).success,
+      false,
+    );
+
+    assert.equal(
+      publishArticleSchema.safeParse({
+        categoryName: "工程",
+        coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+        summary: "x",
+        tagNames: Array.from({ length: 21 }, (_, i) => `t${i}`),
+      }).success,
+      false,
+    );
+  });
+
+  it("normalizes publish values, trimming fields and dropping empty tags", () => {
+    const normalized = normalizePublishValues({
+      categoryName: "  工程  ",
+      coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+      summary: "  摘要  ",
+      tagNames: [" A ", "", "  ", "B"],
+    });
+
+    assert.deepEqual(normalized, {
+      categoryName: "工程",
+      coverAssetId: "8e6e377f-76be-4a53-bf95-cd1f68f2660f",
+      summary: "摘要",
+      tagNames: ["A", "B"],
+    });
+  });
+
+  it("publishes by copying the draft slot to live and syncing taxonomy", async () => {
+    const repository = await readFile(
+      "features/articles/server/drizzle-article-repository.ts",
+      "utf8",
+    );
+    const service = await readFile(
+      "features/articles/server/article-service.ts",
+      "utf8",
+    );
+
+    // 签名：传入 coverAssetId 用于归属校验
+    assert.match(
+      repository,
+      /async publish\(\s*input: PublishArticleInput,\s*assetIds: readonly string\[\]/,
+    );
+    // 将草稿槽位复制到线上槽位
+    assert.match(repository, /content: sql`\$\{article\.draftContent\}`/);
+    assert.match(repository, /title: sql`\$\{article\.draftTitle\}`/);
+    // publishedAt 仅首次发布写入；publishedFromRevision 记录发布时草稿修订
+    assert.match(repository, /publishedAt: sql`coalesce/);
+    assert.match(repository, /publishedFromRevision: sql`\$\{article\.draftRevision\}`/);
+    // 乐观锁基于草稿修订
+    assert.match(
+      repository,
+      /eq\(article\.draftRevision, input\.expectedRevision\)/,
+    );
+    // 同步 article_tag：先删后插
+    assert.match(
+      repository,
+      /\.delete\(articleTag\)\s*\.where\(eq\(articleTag\.articleId/,
+    );
+    assert.match(repository, /\.insert\(articleTag\)\.values/);
+    assert.match(repository, /status: "published"/);
+    assert.match(repository, /status: "conflict"/);
+    assert.match(repository, /status: "not_found"/);
+
+    assert.match(service, /export function publishArticle/);
+    assert.match(
+      service,
+      /drizzleArticleRepository\.publish\(input, \[input\.coverAssetId\]\)/,
+    );
+  });
+
+  it("protects and validates the publish action before writing", async () => {
+    const actions = await readFile(
+      "app/(admin)/admin/articles/[articleId]/actions.ts",
+      "utf8",
+    );
+
+    const firstAuthorization = actions.indexOf("await requireAdmin()");
+    const publishActionIndex = actions.indexOf("publishArticleAction");
+    const publishValidation = actions.indexOf("publishArticleSchema.safeParse");
+
+    assert.ok(publishActionIndex >= 0);
+    assert.ok(firstAuthorization >= 0);
+    assert.ok(
+      actions.indexOf("await requireAdmin()", firstAuthorization + 1) <
+        publishValidation,
+      "publishArticleAction must authorize before validating",
+    );
+    assert.match(actions, /readPublishValues\(formData\)/);
+    assert.match(actions, /await publishArticle\(/);
+    assert.match(actions, /error instanceof ArticleAssetUnavailableError/);
+    assert.match(actions, /result\.status === "conflict"/);
+    assert.match(actions, /result\.status === "not_found"/);
+    assert.match(
+      actions,
+      /revalidatePath\(`\/admin\/articles\/\$\{reference\.data\.articleId\}`\)/,
+    );
+  });
+
+  it("renders the publish form with taxonomy, cover, and live status on the edit page", async () => {
+    const page = await readFile(
+      "app/(admin)/admin/articles/[articleId]/page.tsx",
+      "utf8",
+    );
+    const form = await readFile(
+      "app/(admin)/admin/articles/[articleId]/_components/article-publish-form.tsx",
+      "utf8",
+    );
+
+    // 页面恢复 taxonomy 查询并下发给发布表单
+    assert.match(page, /listCategories\(\)/);
+    assert.match(page, /listTags\(\)/);
+    assert.match(page, /<ArticlePublishForm/);
+    assert.match(page, /categories=\{categories\}/);
+    assert.match(page, /tags=\{tags\}/);
+    assert.match(page, /publishedFromRevision: article\.publishedFromRevision/);
+    // 发布状态文案
+    assert.match(page, /有未发布修改/);
+    assert.match(page, /线上为最新/);
+
+    // 表单复用 taxonomy 字段，封面仅展示图片资产
+    assert.match(form, /useActionState\(\s*publishArticleAction/);
+    assert.match(form, /ArticleTaxonomyFields/);
+    assert.match(form, /name="coverAssetId"/);
+    assert.match(form, /asset\.mediaType\.startsWith\("image\/"\)/);
+    assert.match(form, /更新线上版本/);
+    assert.match(form, /发布中…/);
   });
 });
 
