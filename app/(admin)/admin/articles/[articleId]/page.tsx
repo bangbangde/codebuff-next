@@ -5,11 +5,7 @@ import { notFound } from "next/navigation";
 
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { articleIdSchema } from "@/features/articles/article-validation";
-import {
-  getArticleById,
-  listCategories,
-  listTags,
-} from "@/features/articles/server/article-service";
+import { getArticleById } from "@/features/articles/server/article-service";
 import { listArticleAssets } from "@/features/article-assets/server/article-asset-service";
 import { requireAdmin } from "@/lib/auth/session";
 import { ArticleDeleteDialog } from "./_components/article-delete-dialog";
@@ -33,11 +29,9 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [article, assets, categories, tags] = await Promise.all([
+  const [article, assets] = await Promise.all([
     getArticleById(route.data),
     listArticleAssets(route.data),
-    listCategories(),
-    listTags(),
   ]);
 
   if (!article) {
@@ -45,10 +39,8 @@ export default async function ArticleDetailPage({
   }
 
   const values: ArticleCreateValues = {
-    bodyMarkdown: article.bodyMarkdown,
-    categoryName: article.categoryName ?? "",
-    tagNames: article.tagNames,
-    title: article.title,
+    bodyMarkdown: article.draftContent,
+    title: article.draftTitle,
   };
 
   return (
@@ -69,21 +61,19 @@ export default async function ArticleDetailPage({
           编辑文章
         </h1>
         <p className="mt-4 max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground sm:text-base">
-          更改会自动保存到 PostgreSQL。保存时会校验当前修订，过期页面不会覆盖更新后的内容。
+          更改会自动保存到 PostgreSQL。保存时会校验当前草稿修订，过期页面不会覆盖更新后的内容。
         </p>
         <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
             <DatabaseIcon aria-hidden="true" className="size-3.5" />
-            修订 {article.revision}
+            草稿修订 {article.draftRevision}
           </span>
         </div>
       </header>
 
       <ArticleEditForm
-        article={{ id: article.id, revision: article.revision }}
+        article={{ id: article.id, revision: article.draftRevision }}
         assets={assets}
-        categories={categories}
-        tags={tags}
         values={values}
       />
 
@@ -97,13 +87,13 @@ export default async function ArticleDetailPage({
               删除未发布文章
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              删除会永久移除 PostgreSQL 中的这条记录。确认前请核对文章名称与最新修订。
+              删除会永久移除 PostgreSQL 中的这条记录。确认前请核对文章名称与最新草稿修订。
             </p>
           </div>
           <ArticleDeleteDialog
             articleId={article.id}
-            revision={article.revision}
-            title={article.title}
+            revision={article.draftRevision}
+            title={article.draftTitle}
           />
         </div>
       </section>

@@ -145,6 +145,45 @@ describe("Article schema ownership", () => {
       /CREATE UNIQUE INDEX "tag_name_unique" ON "tag" USING btree \(lower\("name"\)\)/,
     );
   });
+
+  it("refactors article to double-slot draft/published model in migration 0009", async () => {
+    const migration = await readFile(
+      "drizzle/0009_double_slot_article.sql",
+      "utf8",
+    );
+    const schema = await readFile("lib/db/schema/article.ts", "utf8");
+
+    // 草稿槽位：重命名旧字段
+    assert.match(migration, /RENAME COLUMN "title" TO "draft_title"/);
+    assert.match(migration, /RENAME COLUMN "body_markdown" TO "draft_content"/);
+    assert.match(migration, /RENAME COLUMN "revision" TO "draft_revision"/);
+    assert.match(migration, /RENAME COLUMN "updated_at" TO "draft_updated_at"/);
+    // 线上槽位：新增可空字段
+    assert.match(migration, /ADD COLUMN "title" text/);
+    assert.match(migration, /ADD COLUMN "content" text/);
+    assert.match(migration, /ADD COLUMN "summary" text DEFAULT '' NOT NULL/);
+    assert.match(migration, /ADD COLUMN "cover_asset_id" uuid/);
+    // 发布元数据
+    assert.match(migration, /ADD COLUMN "published_at" timestamp with time zone/);
+    assert.match(
+      migration,
+      /ADD COLUMN "published_updated_at" timestamp with time zone/,
+    );
+    assert.match(migration, /ADD COLUMN "published_from_revision" integer/);
+    // 修订约束重命名
+    assert.match(migration, /DROP CONSTRAINT "article_revision_check"/);
+    assert.match(
+      migration,
+      /ADD CONSTRAINT "article_draft_revision_check" CHECK \("article"\."draft_revision" >= 1\)/,
+    );
+    assert.match(migration, /ALTER INDEX "article_updated_at_idx" RENAME TO "article_draft_updated_at_idx"/);
+    // schema 文件包含双槽位字段
+    assert.match(schema, /draftTitle: text\("draft_title"\)/);
+    assert.match(schema, /draftContent: text\("draft_content"\)/);
+    assert.match(schema, /draftRevision: integer\("draft_revision"\)/);
+    assert.match(schema, /publishedAt: timestamp\("published_at"/);
+    assert.match(schema, /publishedFromRevision: integer\("published_from_revision"\)/);
+  });
 });
 
 describe("Admin article list slice", () => {
@@ -168,7 +207,7 @@ describe("Admin article list slice", () => {
     assert.match(repository, /from\(article\)/);
     assert.match(
       repository,
-      /orderBy\(desc\(article\.updatedAt\), asc\(article\.title\)\)/,
+      /orderBy\(\s*desc\(article\.draftUpdatedAt\),\s*asc\(article\.draftTitle\),?\s*\)/,
     );
     assert.match(service, /drizzleArticleRepository\.listSummaries\(\)/);
     assert.doesNotMatch(page, /fetch\(|\/api\/admin\/articles/);
@@ -176,11 +215,9 @@ describe("Admin article list slice", () => {
 });
 
 describe("Admin article creation slice", () => {
-  it("normalizes taxonomy input, merges whitespace, and dedupes tags case-insensitively", () => {
+  it("normalizes draft input and merges whitespace in title", () => {
     const normalized = normalizeArticleCreateValues({
       bodyMarkdown: "# Hello\n",
-      categoryName: "  工程   札记 ",
-      tagNames: ["  React ", " react ", "", "  TypeScript  "],
       title: "  First article ",
     });
     const parsed = articleCreateSchema.safeParse(normalized);
@@ -188,8 +225,6 @@ describe("Admin article creation slice", () => {
     assert.equal(parsed.success, true);
     assert.deepEqual(normalized, {
       bodyMarkdown: "# Hello\n",
-      categoryName: "工程 札记",
-      tagNames: ["React", "TypeScript"],
       title: "First article",
     });
   });
@@ -197,26 +232,22 @@ describe("Admin article creation slice", () => {
   it("accepts empty drafts with no required fields", () => {
     const parsed = articleCreateSchema.safeParse({
       bodyMarkdown: "",
-      categoryName: "",
-      tagNames: [],
       title: "",
     });
 
     assert.equal(parsed.success, true);
   });
 
-  it("rejects oversized titles, categories, and tags", () => {
+  it("rejects oversized titles", () => {
     const parsed = articleCreateSchema.safeParse({
       bodyMarkdown: "",
-      categoryName: "x".repeat(51),
-      tagNames: ["x".repeat(51)],
       title: "x".repeat(201),
     });
 
     assert.equal(parsed.success, false);
     assert.deepEqual(
       Object.keys(parsed.error.flatten().fieldErrors).sort(),
-      ["categoryName", "tagNames", "title"],
+      ["title"],
     );
   });
 
@@ -302,19 +333,22 @@ describe("Admin article detail and mutation slice", () => {
       /async update\(\s*input: UpdateArticleInput,\s*assetIds: readonly string\[\]/,
     );
     assert.match(repository, /\.update\(article\)/);
-    assert.match(repository, /sql`\$\{article\.revision\} \+ 1`/);
+    // M015-1: 双槽位模型，草稿编辑只更新草稿槽位，乐观锁基于 draftRevision
+    assert.match(repository, /sql`\$\{article\.draftRevision\} \+ 1`/);
     assert.match(
       repository,
-      /eq\(article\.revision, input\.expectedRevision\)/,
+      /eq\(article\.draftRevision, input\.expectedRevision\)/,
     );
+    assert.match(repository, /draftContent: input\.bodyMarkdown/);
+    assert.match(repository, /draftTitle: input\.title/);
     assert.match(repository, /async delete\(input: DeleteArticleInput\)/);
     assert.match(repository, /\.delete\(article\)/);
     assert.match(repository, /status: "conflict"/);
     assert.match(repository, /status: "not_found"/);
-    // 分类/标签大小写不敏感查找 + ON CONFLICT 并发处理
-    assert.match(repository, /lower\(\$\{category\.name\}\) = \$\{lowerName\}/);
-    assert.match(repository, /onConflictDoNothing\(\)/);
-    assert.match(repository, /inArray\(sql`lower\(\$\{tag\.name\}\)`, lowerNames\)/);
+    // M015-1: 草稿编辑不再处理 taxonomy（category/tags 移到发布工作项）
+    assert.doesNotMatch(repository, /resolveCategoryId/);
+    assert.doesNotMatch(repository, /resolveTagIds/);
+    assert.doesNotMatch(repository, /articleTag/);
     assert.match(service, /drizzleArticleRepository\.findById\(id\)/);
     assert.match(
       service,
@@ -345,8 +379,9 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(actions, /result\.status === "conflict"/);
     assert.match(actions, /result\.status === "not_found"/);
     // #105: updateArticleAction 不再 redirect，返回 saved 状态与修订号供自动保存使用
+    // M015-1: 使用草稿修订号
     assert.match(actions, /status: "saved"/);
-    assert.match(actions, /savedRevision: result\.article\.revision/);
+    assert.match(actions, /savedRevision: result\.article\.draftRevision/);
     assert.match(actions, /redirect\("\/admin\/articles\?deleted=1"\)/);
   });
 

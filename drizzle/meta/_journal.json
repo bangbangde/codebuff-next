@@ -64,6 +64,13 @@
       "when": 1785432674847,
       "tag": "0008_case_insensitive_taxonomy_names",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785484064696,
+      "tag": "0009_double_slot_article",
+      "breakpoints": true
     }
   ]
 }

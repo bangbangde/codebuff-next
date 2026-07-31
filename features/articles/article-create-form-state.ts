@@ -17,8 +17,6 @@ export const initialArticleCreateFormState: ArticleCreateFormState = {
   formError: null,
   values: {
     bodyMarkdown: "",
-    categoryName: "",
-    tagNames: [],
     title: "",
   },
 };

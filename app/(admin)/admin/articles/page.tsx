@@ -17,7 +17,7 @@ function formatUpdatedAt(article: ArticleSummary) {
   return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(article.updatedAt));
+  }).format(new Date(article.draftUpdatedAt));
 }
 
 export default async function ArticlesPage({
@@ -123,30 +123,13 @@ export default async function ArticlesPage({
                         className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                         href={`/admin/articles/${article.id}`}
                       >
-                        {article.title}
+                        {article.draftTitle}
                       </Link>
                     </h3>
-                    {article.categoryName ? (
-                      <span className="font-mono text-[0.6875rem] tracking-[0.06em] text-muted-foreground uppercase">
-                        {article.categoryName}
-                      </span>
-                    ) : null}
                   </div>
-                  {article.tagNames.length > 0 ? (
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      {article.tagNames.map((tagName) => (
-                        <li
-                          className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
-                          key={tagName}
-                        >
-                          {tagName}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground sm:flex-col sm:items-end sm:gap-1">
-                  <time dateTime={article.updatedAt}>
+                  <time dateTime={article.draftUpdatedAt}>
                     {formatUpdatedAt(article)}
                   </time>
                 </div>
