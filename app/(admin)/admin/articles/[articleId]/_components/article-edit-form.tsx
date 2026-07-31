@@ -72,6 +72,7 @@ export function ArticleEditForm({
           articleId={article.id}
           editorRef={editorRef}
           fieldErrors={state.fieldErrors}
+          onInsertReference={handleInsertReference}
           taxonomy={
             <ArticleTaxonomyFields
               categories={categories}

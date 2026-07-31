@@ -47,6 +47,7 @@ export function ArticleFields({
   autoFocusTitle = false,
   editorRef,
   fieldErrors,
+  onInsertReference,
   taxonomy,
   values,
 }: {
@@ -54,6 +55,7 @@ export function ArticleFields({
   autoFocusTitle?: boolean;
   editorRef: React.Ref<MarkdownEditorHandle>;
   fieldErrors: ArticleFieldErrors;
+  onInsertReference: (reference: string) => boolean;
   taxonomy?: React.ReactNode;
   values: ArticleCreateValues;
 }) {
@@ -101,6 +103,7 @@ export function ArticleFields({
             articleId={articleId}
             defaultValue={values.bodyMarkdown}
             editorRef={editorRef}
+            onInsertReference={onInsertReference}
           />
         </div>
         <FieldError errors={fieldErrors.bodyMarkdown} field="bodyMarkdown" />

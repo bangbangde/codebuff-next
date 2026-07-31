@@ -3,12 +3,16 @@
 import { Edit3, Eye, Columns2 } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
+import type { AcceptedAssetType } from "@/features/article-assets/article-asset-dto";
+import { initialArticleAssetUploadFormState } from "@/features/article-assets/article-asset-form-state";
+import { formatCanonicalAssetReference } from "@/features/articles/article-asset-reference";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
 } from "./markdown-editor";
+import { uploadArticleAssetAction } from "../[articleId]/actions";
 
 type EditorMode = "edit" | "split" | "preview";
 
@@ -73,6 +77,8 @@ function getDesktopServerSnapshot(): boolean {
   return true;
 }
 
+type UploadStatus = "idle" | "uploading" | "error";
+
 function resolveAssetUrlFactory(articleId: string) {
   return (assetId: string) =>
     `/api/admin/articles/${articleId}/assets/${assetId}/content`;
@@ -82,10 +88,12 @@ export function ArticleBodyEditor({
   articleId,
   defaultValue,
   editorRef,
+  onInsertReference,
 }: {
   articleId: string;
   defaultValue: string;
   editorRef: React.Ref<MarkdownEditorHandle>;
+  onInsertReference: (reference: string) => boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
   const mode = useSyncExternalStore(
@@ -98,6 +106,9 @@ export function ArticleBodyEditor({
     getDesktopSnapshot,
     getDesktopServerSnapshot,
   );
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   function changeMode(next: EditorMode) {
     persistEditorMode(next);
@@ -111,6 +122,74 @@ export function ArticleBodyEditor({
     () => resolveAssetUrlFactory(articleId),
     [articleId],
   );
+
+  async function handleFilesUpload(files: FileList | File[]) {
+    const fileArray = Array.from(files).filter((f) => f instanceof File);
+    if (fileArray.length === 0) return;
+
+    setUploadStatus("uploading");
+    setUploadError(null);
+
+    for (const file of fileArray) {
+      const formData = new FormData();
+      formData.append("articleId", articleId);
+      formData.append("file", file);
+
+      const result = await uploadArticleAssetAction(
+        initialArticleAssetUploadFormState,
+        formData,
+      );
+
+      if (result.formError) {
+        setUploadStatus("error");
+        setUploadError(`${file.name}：${result.formError}`);
+        return;
+      }
+
+      if (result.uploadedId) {
+        const reference = formatCanonicalAssetReference({
+          id: result.uploadedId,
+          mediaType: file.type as AcceptedAssetType,
+          originalFilename: file.name,
+        });
+        onInsertReference(reference);
+      }
+    }
+
+    setUploadStatus("idle");
+    setUploadError(null);
+  }
+
+  // 捕获阶段拦截文件粘贴，纯文本粘贴放行给 CodeMirror
+  function handlePasteCapture(event: React.ClipboardEvent) {
+    const files = event.clipboardData?.files;
+    if (files && files.length > 0) {
+      event.preventDefault();
+      handleFilesUpload(files);
+    }
+  }
+
+  function handleDragOverCapture(event: React.DragEvent) {
+    if (event.dataTransfer?.types.includes("Files")) {
+      event.preventDefault();
+      setIsDragOver(true);
+    }
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    if (event.relatedTarget === null) {
+      setIsDragOver(false);
+    }
+  }
+
+  function handleDropCapture(event: React.DragEvent) {
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      event.preventDefault();
+      setIsDragOver(false);
+      handleFilesUpload(files);
+    }
+  }
 
   const showEditor = effectiveMode === "edit" || effectiveMode === "split";
   const showPreview =
@@ -157,7 +236,25 @@ export function ArticleBodyEditor({
         )}
       >
         {showEditor ? (
-          <div className="overflow-hidden rounded-md border border-border bg-background">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-md border bg-background transition-colors",
+              isDragOver
+                ? "border-brand-accent ring-2 ring-brand-accent/30"
+                : "border-border",
+            )}
+            onDragLeave={handleDragLeave}
+            onDragOverCapture={handleDragOverCapture}
+            onDropCapture={handleDropCapture}
+            onPasteCapture={handlePasteCapture}
+          >
+            {isDragOver ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+                <p className="text-sm font-medium text-brand-accent">
+                  释放以上传文件
+                </p>
+              </div>
+            ) : null}
             <MarkdownEditor
               defaultValue={defaultValue}
               onChange={setValue}
@@ -174,6 +271,25 @@ export function ArticleBodyEditor({
           </div>
         ) : null}
       </div>
+
+      {uploadStatus === "uploading" ? (
+        <p
+          aria-live="polite"
+          className="text-xs text-muted-foreground"
+          role="status"
+        >
+          上传中…
+        </p>
+      ) : null}
+      {uploadStatus === "error" && uploadError ? (
+        <p
+          aria-live="polite"
+          className="text-xs text-destructive"
+          role="alert"
+        >
+          {uploadError}
+        </p>
+      ) : null}
     </div>
   );
 }
