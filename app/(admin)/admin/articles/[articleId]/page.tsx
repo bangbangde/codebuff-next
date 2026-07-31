@@ -1,8 +1,4 @@
-import {
-  ArrowLeftIcon,
-  CheckCircle2Icon,
-  DatabaseIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, DatabaseIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,10 +22,8 @@ export const metadata: Metadata = {
 
 export default async function ArticleDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ articleId: string }>;
-  searchParams: Promise<{ saved?: string | string[] }>;
 }) {
   await requireAdmin();
 
@@ -39,12 +33,11 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [article, assets, categories, tags, query] = await Promise.all([
+  const [article, assets, categories, tags] = await Promise.all([
     getArticleById(route.data),
     listArticleAssets(route.data),
     listCategories(),
     listTags(),
-    searchParams,
   ]);
 
   if (!article) {
@@ -76,7 +69,7 @@ export default async function ArticleDetailPage({
           编辑文章
         </h1>
         <p className="mt-4 max-w-2xl text-[0.9375rem] leading-7 text-muted-foreground sm:text-base">
-          更改只会保存到 PostgreSQL。保存时会校验当前修订，过期页面不会覆盖更新后的内容。
+          更改会自动保存到 PostgreSQL。保存时会校验当前修订，过期页面不会覆盖更新后的内容。
         </p>
         <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
@@ -86,24 +79,10 @@ export default async function ArticleDetailPage({
         </div>
       </header>
 
-      {query.saved === "1" ? (
-        <div
-          className="mt-8 flex items-start gap-3 rounded-lg border border-brand-accent/35 bg-brand-accent-soft px-4 py-3 text-sm text-foreground"
-          role="status"
-        >
-          <CheckCircle2Icon
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-brand-accent"
-          />
-          <p>更改已保存，文章仍处于未发布状态。</p>
-        </div>
-      ) : null}
-
       <ArticleEditForm
         article={{ id: article.id, revision: article.revision }}
         assets={assets}
         categories={categories}
-        key={article.revision}
         tags={tags}
         values={values}
       />

@@ -56,6 +56,8 @@ export async function updateArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "文章标识或版本无效，请重新载入后再试。",
+      savedRevision: null,
+      status: "error",
       values,
     };
   }
@@ -65,6 +67,8 @@ export async function updateArticleAction(
       conflictRevision: null,
       fieldErrors: fields.error.flatten().fieldErrors,
       formError: "请检查标出的字段后再保存。",
+      savedRevision: null,
+      status: "error",
       values,
     };
   }
@@ -85,6 +89,8 @@ export async function updateArticleAction(
           bodyMarkdown: ["托管资产引用格式无效，请重新从资产插入。"],
         },
         formError: "文章尚未保存，请检查 Markdown 正文。",
+        savedRevision: null,
+        status: "error",
         values: fields.data,
       };
     }
@@ -96,6 +102,8 @@ export async function updateArticleAction(
           bodyMarkdown: ["正文引用了不属于本文或不存在的资产。"],
         },
         formError: "文章尚未保存，请移除无效资产引用。",
+        savedRevision: null,
+        status: "error",
         values: fields.data,
       };
     }
@@ -106,6 +114,8 @@ export async function updateArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "文章暂时无法保存，请稍后重试。",
+      savedRevision: null,
+      status: "error",
       values: fields.data,
     };
   }
@@ -116,6 +126,8 @@ export async function updateArticleAction(
       fieldErrors: {},
       formError:
         "数据库中的文章已被其他操作更新。你的输入仍保留在当前页面，重新载入前不会覆盖新版本。",
+      savedRevision: null,
+      status: "conflict",
       values: fields.data,
     };
   }
@@ -125,13 +137,23 @@ export async function updateArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "这篇文章已不存在，当前内容未保存。",
+      savedRevision: null,
+      status: "not_found",
       values: fields.data,
     };
   }
 
   revalidatePath("/admin/articles");
   revalidatePath(`/admin/articles/${reference.data.articleId}`);
-  redirect(`/admin/articles/${reference.data.articleId}?saved=1`);
+
+  return {
+    conflictRevision: null,
+    fieldErrors: {},
+    formError: null,
+    savedRevision: result.article.revision,
+    status: "saved",
+    values: fields.data,
+  };
 }
 
 export async function deleteArticleAction(

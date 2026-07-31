@@ -47,7 +47,9 @@ export function ArticleFields({
   autoFocusTitle = false,
   editorRef,
   fieldErrors,
+  onBodyChange,
   onInsertReference,
+  onTitleChange,
   taxonomy,
   values,
 }: {
@@ -55,7 +57,9 @@ export function ArticleFields({
   autoFocusTitle?: boolean;
   editorRef: React.Ref<MarkdownEditorHandle>;
   fieldErrors: ArticleFieldErrors;
+  onBodyChange?: (value: string) => void;
   onInsertReference: (reference: string) => boolean;
+  onTitleChange?: (value: string) => void;
   taxonomy?: React.ReactNode;
   values: ArticleCreateValues;
 }) {
@@ -76,6 +80,7 @@ export function ArticleFields({
             id="title"
             maxLength={articleFieldLimits.title}
             name="title"
+            onChange={(event) => onTitleChange?.(event.target.value)}
             type="text"
           />
           <FieldError errors={fieldErrors.title} field="title" />
@@ -104,6 +109,7 @@ export function ArticleFields({
             defaultValue={values.bodyMarkdown}
             editorRef={editorRef}
             onInsertReference={onInsertReference}
+            onValueChange={onBodyChange}
           />
         </div>
         <FieldError errors={fieldErrors.bodyMarkdown} field="bodyMarkdown" />

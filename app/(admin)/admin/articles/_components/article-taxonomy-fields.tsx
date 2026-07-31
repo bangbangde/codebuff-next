@@ -2,6 +2,7 @@
 
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
 import {
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -113,6 +114,8 @@ export function ArticleTaxonomyFields({
   fieldErrors,
   initialCategoryName,
   initialTagNames,
+  onCategoryChange,
+  onTagsChange,
   tags,
 }: {
   categories: readonly CategoryOption[];
@@ -122,6 +125,8 @@ export function ArticleTaxonomyFields({
   };
   initialCategoryName: string;
   initialTagNames: readonly string[];
+  onCategoryChange?: (name: string) => void;
+  onTagsChange?: (names: string[]) => void;
   tags: readonly TagOption[];
 }) {
   const categoryId = useId();
@@ -228,6 +233,26 @@ export function ArticleTaxonomyFields({
     () => buildTagItems(tags, tagQuery, tagValues.map((tag) => tag.name)),
     [tags, tagQuery, tagValues],
   );
+
+  // 通知父组件分类/标签变化，用于自动保存。
+  // 依赖 name 字符串避免对象引用变化导致的重复通知。
+  const categoryName = categoryValue?.name ?? "";
+  const tagNames = useMemo(
+    () => tagValues.map((tag) => tag.name),
+    [tagValues],
+  );
+
+  useEffect(() => {
+    onCategoryChange?.(categoryName);
+    // categoryName 是字符串，onCategoryChange 是稳定引用（父组件 useCallback）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryName]);
+
+  useEffect(() => {
+    onTagsChange?.(tagNames);
+    // tagNames 经过 useMemo 稳定化，onTagsChange 是稳定引用
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tagNames]);
 
   const categoryErrorId = `${categoryId}-error`;
   const tagErrorId = `${tagId}-error`;

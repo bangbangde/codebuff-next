@@ -5,6 +5,8 @@ export type ArticleEditFormState = Readonly<{
   conflictRevision: number | null;
   fieldErrors: ArticleFieldErrors;
   formError: string | null;
+  savedRevision: number | null;
+  status: "idle" | "saved" | "conflict" | "not_found" | "error";
   values: ArticleCreateValues;
 }>;
 
