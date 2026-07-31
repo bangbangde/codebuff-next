@@ -9,6 +9,8 @@ import type {
   DeleteArticleInput,
   PublishArticleInput,
   PublishArticleResult,
+  PublishedArticleDetail,
+  PublishedArticleSummary,
   TagOption,
   UpdateArticleInput,
 } from "../article-dto";
@@ -46,6 +48,16 @@ export function publishArticle(
   input: PublishArticleInput,
 ): Promise<PublishArticleResult> {
   return drizzleArticleRepository.publish(input, [input.coverAssetId]);
+}
+
+export function listPublishedArticles(): Promise<readonly PublishedArticleSummary[]> {
+  return drizzleArticleRepository.listPublishedArticles();
+}
+
+export function getPublishedArticle(
+  id: string,
+): Promise<PublishedArticleDetail | null> {
+  return drizzleArticleRepository.getPublishedArticle(id);
 }
 
 export async function deleteArticle(input: DeleteArticleInput) {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
 import {
@@ -19,6 +19,8 @@ import type {
   DeleteArticleResult,
   PublishArticleInput,
   PublishArticleResult,
+  PublishedArticleDetail,
+  PublishedArticleSummary,
   TagOption,
   UpdateArticleInput,
   UpdateArticleResult,
@@ -410,6 +412,76 @@ export const drizzleArticleRepository: ArticleRepository = {
       return {
         article: detail,
         status: "published" as const,
+      };
+    });
+  },
+
+  async listPublishedArticles(): Promise<readonly PublishedArticleSummary[]> {
+    const rows = await getDatabase()
+      .select({
+        categoryName: category.name,
+        id: article.id,
+        publishedAt: article.publishedAt,
+        publishedUpdatedAt: article.publishedUpdatedAt,
+        summary: article.summary,
+        title: article.title,
+      })
+      .from(article)
+      .leftJoin(category, eq(article.categoryId, category.id))
+      .where(isNotNull(article.publishedAt))
+      .orderBy(desc(article.publishedUpdatedAt), asc(article.title));
+
+    return rows.map((row) => ({
+      categoryName: row.categoryName,
+      id: row.id,
+      publishedAt: row.publishedAt?.toISOString() ?? "",
+      publishedUpdatedAt: row.publishedUpdatedAt?.toISOString() ?? "",
+      summary: row.summary,
+      title: row.title ?? "",
+    }));
+  },
+
+  async getPublishedArticle(
+    id: string,
+  ): Promise<PublishedArticleDetail | null> {
+    return getDatabase().transaction(async (transaction) => {
+      const [row] = await transaction
+        .select({
+          content: article.content,
+          coverAssetId: article.coverAssetId,
+          categoryName: category.name,
+          id: article.id,
+          publishedAt: article.publishedAt,
+          publishedUpdatedAt: article.publishedUpdatedAt,
+          summary: article.summary,
+          title: article.title,
+        })
+        .from(article)
+        .leftJoin(category, eq(article.categoryId, category.id))
+        .where(and(eq(article.id, id), isNotNull(article.publishedAt)))
+        .limit(1);
+
+      if (!row) {
+        return null;
+      }
+
+      const tagRows = await transaction
+        .select({ name: tag.name })
+        .from(articleTag)
+        .innerJoin(tag, eq(articleTag.tagId, tag.id))
+        .where(eq(articleTag.articleId, id))
+        .orderBy(asc(tag.name));
+
+      return {
+        content: row.content ?? "",
+        coverAssetId: row.coverAssetId,
+        categoryName: row.categoryName,
+        id: row.id,
+        publishedAt: row.publishedAt?.toISOString() ?? "",
+        publishedUpdatedAt: row.publishedUpdatedAt?.toISOString() ?? "",
+        summary: row.summary,
+        tags: tagRows.map((row) => row.name),
+        title: row.title ?? "",
       };
     });
   },

@@ -731,3 +731,117 @@ describe("Canonical article asset references", () => {
     assert.match(panel, /cq-asset:\/\//);
   });
 });
+
+describe("Public article page slice", () => {
+  it("exposes published-only DTO types that hide draft fields", async () => {
+    const dto = await readFile("features/articles/article-dto.ts", "utf8");
+
+    assert.match(dto, /export type PublishedArticleSummary = Readonly</);
+    assert.match(dto, /export type PublishedArticleDetail = Readonly</);
+    // 公开 DTO 仅包含线上槽位字段
+    assert.match(dto, /title: string;[\s\S]*?content: string;[\s\S]*?summary: string;/);
+    // 公开 DTO 不应包含草稿字段
+    const summaryBlock = dto.match(
+      /export type PublishedArticleSummary = Readonly<\{[\s\S]*?\}>;/,
+    );
+    const detailBlock = dto.match(
+      /export type PublishedArticleDetail = Readonly<\{[\s\S]*?\}>;/,
+    );
+    assert.ok(summaryBlock, "PublishedArticleSummary type missing");
+    assert.ok(detailBlock, "PublishedArticleDetail type missing");
+    assert.doesNotMatch(summaryBlock[0], /draft/);
+    assert.doesNotMatch(detailBlock[0], /draft/);
+  });
+
+  it("queries published articles without exposing draft columns", async () => {
+    const repository = await readFile(
+      "features/articles/server/drizzle-article-repository.ts",
+      "utf8",
+    );
+    const service = await readFile(
+      "features/articles/server/article-service.ts",
+      "utf8",
+    );
+
+    // listPublishedArticles 仅查 publishedAt != null 的行
+    assert.match(repository, /async listPublishedArticles\(\)/);
+    assert.match(repository, /isNotNull\(article\.publishedAt\)/);
+    assert.match(repository, /desc\(article\.publishedUpdatedAt\)/);
+    // 左连接 category 以获取分类名
+    assert.match(
+      repository,
+      /leftJoin\(category, eq\(article\.categoryId, category\.id\)\)/,
+    );
+
+    // getPublishedArticle 同样基于 publishedAt 过滤
+    assert.match(repository, /async getPublishedArticle\(/);
+    assert.match(
+      repository,
+      /and\(eq\(article\.id, id\), isNotNull\(article\.publishedAt\)\)/,
+    );
+    // 通过 articleTag join 读取标签
+    assert.match(
+      repository,
+      /innerJoin\(tag, eq\(articleTag\.tagId, tag\.id\)\)/,
+    );
+
+    // Service 透传
+    assert.match(service, /export function listPublishedArticles\(\)/);
+    assert.match(service, /export function getPublishedArticle\(/);
+    assert.match(service, /drizzleArticleRepository\.listPublishedArticles\(\)/);
+    assert.match(
+      service,
+      /drizzleArticleRepository\.getPublishedArticle\(id\)/,
+    );
+  });
+
+  it("renders the public list page without admin authorization", async () => {
+    const page = await readFile("app/(site)/articles/page.tsx", "utf8");
+
+    // 不调用 requireAdmin
+    assert.doesNotMatch(page, /requireAdmin/);
+    // 通过公开 service 读取已发布文章
+    assert.match(page, /listPublishedArticles\(\)/);
+    // 链接到详情页
+    assert.match(page, /href=\{`\/articles\/\$\{article\.id\}`\}/);
+    // 显示分类名
+    assert.match(page, /article\.categoryName/);
+    // 渲染摘要
+    assert.match(page, /article\.summary/);
+  });
+
+  it("renders the public detail page with markdown and 404 fallback", async () => {
+    const page = await readFile(
+      "app/(site)/articles/[articleId]/page.tsx",
+      "utf8",
+    );
+
+    // 不调用 requireAdmin
+    assert.doesNotMatch(page, /requireAdmin/);
+    // 通过 articleIdSchema 校验路径参数
+    assert.match(page, /articleIdSchema\.safeParse\(articleId\)/);
+    // 调用公开 service
+    assert.match(page, /getPublishedArticle\(articleId\)/);
+    // 未发布或不存在走 notFound()
+    assert.match(page, /notFound\(\)/);
+    // 复用 MarkdownRenderer 渲染线上 content
+    assert.match(page, /MarkdownRenderer/);
+    assert.match(page, /\{article\.content\}/);
+    // generateMetadata 返回 title 与 summary
+    assert.match(page, /generateMetadata/);
+    assert.match(page, /title: article\.title/);
+    assert.match(page, /description: article\.summary/);
+    // 不暴露草稿字段
+    assert.doesNotMatch(page, /draftTitle|draftContent|draftRevision/);
+  });
+
+  it("adds an Articles entry to the site header navigation", async () => {
+    const header = await readFile(
+      "app/(site)/_components/site-header.tsx",
+      "utf8",
+    );
+
+    assert.match(header, /href="\/articles"/);
+    assert.match(header, /Articles/);
+  });
+});
