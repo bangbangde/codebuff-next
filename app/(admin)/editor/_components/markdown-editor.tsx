@@ -14,15 +14,16 @@ import {
 export interface MarkdownEditorHandle {
   insertText: (text: string) => void;
   focus: () => void;
+  getScroller: () => HTMLElement | null;
 }
 
 export const MarkdownEditor = forwardRef<
   MarkdownEditorHandle,
   {
-    defaultValue: string;
+    value: string;
     onChange?: (value: string) => void;
   }
->(function MarkdownEditor({ defaultValue, onChange }, ref) {
+>(function MarkdownEditor({ value, onChange }, ref) {
   const viewRef = useRef<EditorView | null>(null);
 
   useImperativeHandle(ref, () => ({
@@ -56,6 +57,9 @@ export const MarkdownEditor = forwardRef<
     focus() {
       viewRef.current?.focus();
     },
+    getScroller() {
+      return viewRef.current?.scrollDOM ?? null;
+    },
   }));
 
   return (
@@ -65,16 +69,18 @@ export const MarkdownEditor = forwardRef<
         highlightActiveLineGutter: true,
         foldGutter: true,
       }}
-      defaultValue={defaultValue}
+      className="h-full"
       extensions={[
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         EditorView.lineWrapping,
       ]}
+      height="100%"
       onChange={onChange}
       onCreateEditor={(view) => {
         viewRef.current = view;
       }}
       theme="light"
+      value={value}
     />
   );
 });

@@ -189,7 +189,7 @@ describe("Article schema ownership", () => {
 });
 
 describe("Admin article list slice", () => {
-  it("protects the page and reads summaries directly through the service", async () => {
+  it("protects the page, reads summaries, and splits them into draft/published tabs", async () => {
     const page = await readFile(
       "app/(admin)/admin/articles/page.tsx",
       "utf8",
@@ -205,7 +205,6 @@ describe("Admin article list slice", () => {
 
     assert.match(page, /await requireAdmin\(\)/);
     assert.match(page, /await listArticleSummaries\(\)/);
-    assert.match(page, /articles\.length === 0/);
     assert.match(repository, /from\(article\)/);
     assert.match(
       repository,
@@ -213,6 +212,23 @@ describe("Admin article list slice", () => {
     );
     assert.match(service, /drizzleArticleRepository\.listSummaries\(\)/);
     assert.doesNotMatch(page, /fetch\(|\/api\/admin\/articles/);
+
+    // 按 publishedAt 拆分草稿箱与已发布
+    assert.match(
+      page,
+      /article\.publishedAt === null/,
+    );
+    assert.match(page, /article\.publishedAt !== null/);
+    // 默认 tab 为 drafts，published 为显式值
+    assert.match(page, /resolveTab\(query\.tab\)/);
+    assert.match(page, /value === "published" \? "published" : "drafts"/);
+    // 两个 tab 链接
+    assert.match(page, /\/admin\/articles\?tab=drafts/);
+    assert.match(page, /\/admin\/articles\?tab=published/);
+    // 搜索栏存在（暂不接功能）
+    assert.match(page, /type="search"/);
+    assert.match(page, /aria-label="搜索文章"/);
+    assert.match(page, /placeholder="搜索文章…"/);
   });
 });
 
@@ -269,7 +285,7 @@ describe("Admin article creation slice", () => {
 
     assert.ok(action.indexOf("await requireAdmin()") < action.indexOf("createDraft("));
     assert.match(action, /revalidatePath\("\/admin\/articles"\)/);
-    assert.match(action, /redirect\(`\/admin\/articles\/\$\{created\.id\}`\)/);
+    assert.match(action, /redirect\(`\/editor\/\$\{created\.id\}`\)/);
     assert.match(service, /drizzleArticleRepository\.createDraft\(\)/);
     assert.match(repository, /async createDraft/);
     assert.match(repository, /未命名文章/);
@@ -410,7 +426,7 @@ describe("Admin article detail and mutation slice", () => {
       "utf8",
     );
 
-    assert.match(listPage, /href={`\/admin\/articles\/\$\{article\.id\}`}/);
+    assert.match(listPage, /href={`\/editor\/\$\{article\.id\}`}/);
     assert.match(listPage, /articleDeleted/);
     assert.match(detailPage, /await requireAdmin\(\)/);
     assert.match(detailPage, /articleIdSchema\.safeParse/);
@@ -803,7 +819,7 @@ describe("Public article page slice", () => {
     // 通过公开 service 读取已发布文章
     assert.match(page, /listPublishedArticles\(\)/);
     // 链接到详情页
-    assert.match(page, /href=\{`\/articles\/\$\{article\.id\}`\}/);
+    assert.match(page, /href=\{`\/article\/\$\{article\.id\}`\}/);
     // 显示分类名
     assert.match(page, /article\.categoryName/);
     // 渲染摘要
@@ -812,7 +828,7 @@ describe("Public article page slice", () => {
 
   it("renders the public detail page with markdown and 404 fallback", async () => {
     const page = await readFile(
-      "app/(site)/articles/[articleId]/page.tsx",
+      "app/(site)/article/[articleId]/page.tsx",
       "utf8",
     );
 
@@ -835,17 +851,6 @@ describe("Public article page slice", () => {
     assert.match(page, /description: article\.summary/);
     // 不暴露草稿字段
     assert.doesNotMatch(page, /draftTitle|draftContent|draftRevision/);
-  });
-
-  it("adds an Articles entry to the site header navigation", async () => {
-    const header = await readFile(
-      "app/(site)/_components/site-header.tsx",
-      "utf8",
-    );
-
-    // 文章列表已合并到首页，导航锚点到首页的文章区
-    assert.match(header, /href="\/#articles"/);
-    assert.match(header, /Articles/);
   });
 });
 

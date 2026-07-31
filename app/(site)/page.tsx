@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { ContentContainer } from "./_components/content-container";
-import { SectionLabel } from "./_components/section-label";
 import { listPublishedArticles } from "@/features/articles/server/article-service";
 
 export const dynamic = "force-dynamic";

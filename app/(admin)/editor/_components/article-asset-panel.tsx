@@ -69,7 +69,11 @@ export function ArticleAssetPanel({
         </p>
       </div>
 
-      <form action={uploadAction} className="grid gap-3" onSubmit={handleActionSubmit}>
+      <form
+        action={uploadAction}
+        className="grid gap-3"
+        onSubmit={handleActionSubmit}
+      >
         <input name="articleId" type="hidden" value={articleId} />
         <div>
           <label

@@ -1,17 +1,20 @@
 "use client";
 
 import { Edit3, Eye, Columns2 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import type { AcceptedAssetType } from "@/features/article-assets/article-asset-dto";
 import { initialArticleAssetUploadFormState } from "@/features/article-assets/article-asset-form-state";
 import { formatCanonicalAssetReference } from "@/features/articles/article-asset-reference";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
-import {
-  MarkdownEditor,
-  type MarkdownEditorHandle,
-} from "./markdown-editor";
+import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor";
 import { uploadArticleAssetAction } from "../[articleId]/actions";
 
 type EditorMode = "edit" | "split" | "preview";
@@ -77,8 +80,6 @@ function getDesktopServerSnapshot(): boolean {
   return true;
 }
 
-type UploadStatus = "idle" | "uploading" | "error";
-
 function resolveAssetUrlFactory(articleId: string) {
   return (assetId: string) =>
     `/api/admin/articles/${articleId}/assets/${assetId}/content`;
@@ -93,7 +94,7 @@ export function ArticleBodyEditor({
 }: {
   articleId: string;
   defaultValue: string;
-  editorRef: React.Ref<MarkdownEditorHandle>;
+  editorRef: React.RefObject<MarkdownEditorHandle | null>;
   onInsertReference: (reference: string) => boolean;
   onValueChange?: (value: string) => void;
 }) {
@@ -113,9 +114,9 @@ export function ArticleBodyEditor({
     getDesktopSnapshot,
     getDesktopServerSnapshot,
   );
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
-  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [isDragOver, setIsDragOver] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   function changeMode(next: EditorMode) {
     persistEditorMode(next);
@@ -125,6 +126,55 @@ export function ArticleBodyEditor({
   const effectiveMode: EditorMode =
     !isDesktop && mode === "split" ? "edit" : mode;
 
+  // 分屏模式下编辑器与预览按比例同步滚动
+  useEffect(() => {
+    if (effectiveMode !== "split") {
+      return;
+    }
+
+    const preview = previewRef.current;
+    const editorScroller = editorRef.current?.getScroller();
+    if (!preview || !editorScroller) {
+      return;
+    }
+
+    let syncing = false;
+
+    function syncToPreview() {
+      if (syncing) return;
+      syncing = true;
+      const maxEditor =
+        editorScroller!.scrollHeight - editorScroller!.clientHeight;
+      const maxPreview = preview!.scrollHeight - preview!.clientHeight;
+      if (maxEditor > 0 && maxPreview > 0) {
+        preview!.scrollTop =
+          (editorScroller!.scrollTop / maxEditor) * maxPreview;
+      }
+      syncing = false;
+    }
+
+    function syncToEditor() {
+      if (syncing) return;
+      syncing = true;
+      const maxEditor =
+        editorScroller!.scrollHeight - editorScroller!.clientHeight;
+      const maxPreview = preview!.scrollHeight - preview!.clientHeight;
+      if (maxEditor > 0 && maxPreview > 0) {
+        editorScroller!.scrollTop =
+          (preview!.scrollTop / maxPreview) * maxEditor;
+      }
+      syncing = false;
+    }
+
+    editorScroller.addEventListener("scroll", syncToPreview, { passive: true });
+    preview.addEventListener("scroll", syncToEditor, { passive: true });
+
+    return () => {
+      editorScroller.removeEventListener("scroll", syncToPreview);
+      preview.removeEventListener("scroll", syncToEditor);
+    };
+  }, [effectiveMode, editorRef]);
+
   const resolveAssetUrl = useMemo(
     () => resolveAssetUrlFactory(articleId),
     [articleId],
@@ -133,9 +183,6 @@ export function ArticleBodyEditor({
   async function handleFilesUpload(files: FileList | File[]) {
     const fileArray = Array.from(files).filter((f) => f instanceof File);
     if (fileArray.length === 0) return;
-
-    setUploadStatus("uploading");
-    setUploadError(null);
 
     for (const file of fileArray) {
       const formData = new FormData();
@@ -148,8 +195,7 @@ export function ArticleBodyEditor({
       );
 
       if (result.formError) {
-        setUploadStatus("error");
-        setUploadError(`${file.name}：${result.formError}`);
+        console.error(`${file.name}：${result.formError}`);
         return;
       }
 
@@ -162,9 +208,6 @@ export function ArticleBodyEditor({
         onInsertReference(reference);
       }
     }
-
-    setUploadStatus("idle");
-    setUploadError(null);
   }
 
   // 捕获阶段拦截文件粘贴，纯文本粘贴放行给 CodeMirror
@@ -199,13 +242,12 @@ export function ArticleBodyEditor({
   }
 
   const showEditor = effectiveMode === "edit" || effectiveMode === "split";
-  const showPreview =
-    effectiveMode === "preview" || effectiveMode === "split";
+  const showPreview = effectiveMode === "preview" || effectiveMode === "split";
 
   return (
-    <div className="grid gap-3">
+    <div className="flex flex-1 flex-col h-0">
       <div
-        className="flex items-center gap-1 rounded-md border border-border bg-muted p-1"
+        className="flex shrink-0 items-center gap-1 bg-muted p-1"
         role="tablist"
       >
         <ModeButton
@@ -236,16 +278,11 @@ export function ArticleBodyEditor({
       {/* hidden input for form submission */}
       <input name="bodyMarkdown" type="hidden" value={value} />
 
-      <div
-        className={cn(
-          "grid gap-3",
-          effectiveMode === "split" && "md:grid-cols-2",
-        )}
-      >
+      <div className="flex flex-1 gap-3 h-0">
         {showEditor ? (
           <div
             className={cn(
-              "relative overflow-hidden rounded-md border bg-background transition-colors",
+              "relative flex flex-1 flex-col overflow-hidden border bg-background transition-colors",
               isDragOver
                 ? "border-brand-accent ring-2 ring-brand-accent/30"
                 : "border-border",
@@ -263,40 +300,26 @@ export function ArticleBodyEditor({
               </div>
             ) : null}
             <MarkdownEditor
-              defaultValue={defaultValue}
               onChange={handleChange}
               ref={editorRef}
+              value={value}
             />
           </div>
         ) : null}
 
         {showPreview ? (
-          <div className="prose prose-sm max-w-none overflow-auto rounded-md border border-border bg-background p-4 dark:prose-invert">
-            <MarkdownRenderer resolveAssetUrl={resolveAssetUrl}>
-              {value}
-            </MarkdownRenderer>
+          <div className="flex-1 border border-border bg-background dark:prose-invert">
+            <div
+              className="prose prose-sm h-full max-w-none overflow-auto"
+              ref={previewRef}
+            >
+              <MarkdownRenderer resolveAssetUrl={resolveAssetUrl}>
+                {value}
+              </MarkdownRenderer>
+            </div>
           </div>
         ) : null}
       </div>
-
-      {uploadStatus === "uploading" ? (
-        <p
-          aria-live="polite"
-          className="text-xs text-muted-foreground"
-          role="status"
-        >
-          上传中…
-        </p>
-      ) : null}
-      {uploadStatus === "error" && uploadError ? (
-        <p
-          aria-live="polite"
-          className="text-xs text-destructive"
-          role="alert"
-        >
-          {uploadError}
-        </p>
-      ) : null}
     </div>
   );
 }

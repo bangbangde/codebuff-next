@@ -65,19 +65,17 @@ describe("Admin authorization policy", () => {
 });
 
 describe("Admin shell navigation", () => {
-  it("contains only the real Overview, Articles, and Account destinations", () => {
+  it("contains only the Articles and Account destinations", () => {
     assert.deepEqual(
       adminNavigationItems.map(({ href, label }) => ({ href, label })),
       [
-        { href: "/admin", label: "Overview" },
         { href: "/admin/articles", label: "Articles" },
         { href: "/admin/account", label: "Account" },
       ],
     );
   });
 
-  it("keeps Overview exact while matching nested product destinations", () => {
-    assert.equal(isAdminNavigationItemActive("/admin", "/admin"), true);
+  it("matches nested product destinations by prefix", () => {
     assert.equal(
       isAdminNavigationItemActive("/admin/account", "/admin/account"),
       true,
@@ -89,28 +87,40 @@ describe("Admin shell navigation", () => {
       ),
       true,
     );
-    assert.equal(isAdminNavigationItemActive("/admin/other", "/admin"), false);
-    assert.equal(isAdminNavigationItemActive("/", "/admin"), false);
+    assert.equal(
+      isAdminNavigationItemActive("/admin/articles", "/admin/articles"),
+      true,
+    );
+    assert.equal(
+      isAdminNavigationItemActive("/admin/other", "/admin/articles"),
+      false,
+    );
+    assert.equal(
+      isAdminNavigationItemActive("/", "/admin/articles"),
+      false,
+    );
   });
 
-  it("uses deterministic local shell state and an accessible mobile dialog", async () => {
+  it("renders an accessible header navigation without sidebar or drawer state", async () => {
     const shell = await readFile(
       "app/(admin)/admin/_components/admin-shell.tsx",
       "utf8",
     );
 
-    assert.match(shell, /useState\(false\)/);
+    // 已移除侧边栏与抽屉：不再有本地状态、Dialog、Tooltip 或折叠控制
     assert.doesNotMatch(shell, /localStorage|sessionStorage/);
-    assert.match(shell, /aria-controls="admin-sidebar"/);
-    assert.match(shell, /aria-expanded=\{!collapsed\}/);
-    assert.match(shell, /onOpenChange=\{setMobileNavigationOpen\}/);
-    assert.match(shell, /data-open:slide-in-from-left/);
+    assert.doesNotMatch(shell, /useState/);
+    assert.doesNotMatch(shell, /admin-sidebar/);
+    assert.doesNotMatch(shell, /Dialog|Tooltip/);
+    assert.doesNotMatch(shell, /aria-label="Open navigation"/);
+    assert.doesNotMatch(shell, /aria-label="Close navigation"/);
+    assert.doesNotMatch(shell, /PanelLeftOpenIcon|PanelLeftCloseIcon|MenuIcon|XIcon/);
+    // 导航合并进顶部 header
+    assert.match(shell, /aria-label="Admin navigation"/);
     assert.match(shell, /Skip to Admin content/);
-    assert.match(shell, /<Tooltip disabled=\{!collapsed\}/);
-    assert.match(shell, /<TooltipContent>\{item\.label\}<\/TooltipContent>/);
-    assert.doesNotMatch(shell, /title=\{collapsed \? item\.label/);
-    assert.match(shell, /aria-label="Open navigation"[^]*className="size-11/);
-    assert.match(shell, /aria-label="Close navigation"[^]*className="size-11/);
+    // 当前页通过 aria-current 标记
+    assert.match(shell, /aria-current=\{active \? "page" : undefined\}/);
+    // 触控目标尺寸保留
     assert.match(shell, /min-h-11 min-w-11/);
   });
 

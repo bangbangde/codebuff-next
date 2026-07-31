@@ -54,7 +54,7 @@ export function ArticleFields({
 }: {
   articleId: string;
   autoFocusTitle?: boolean;
-  editorRef: React.Ref<MarkdownEditorHandle>;
+  editorRef: React.RefObject<MarkdownEditorHandle | null>;
   fieldErrors: ArticleFieldErrors;
   onBodyChange?: (value: string) => void;
   onInsertReference: (reference: string) => boolean;
