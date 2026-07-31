@@ -89,13 +89,20 @@ export function ArticleBodyEditor({
   defaultValue,
   editorRef,
   onInsertReference,
+  onValueChange,
 }: {
   articleId: string;
   defaultValue: string;
   editorRef: React.Ref<MarkdownEditorHandle>;
   onInsertReference: (reference: string) => boolean;
+  onValueChange?: (value: string) => void;
 }) {
   const [value, setValue] = useState(defaultValue);
+
+  function handleChange(next: string) {
+    setValue(next);
+    onValueChange?.(next);
+  }
   const mode = useSyncExternalStore(
     subscribeEditorMode,
     getEditorModeSnapshot,
@@ -257,7 +264,7 @@ export function ArticleBodyEditor({
             ) : null}
             <MarkdownEditor
               defaultValue={defaultValue}
-              onChange={setValue}
+              onChange={handleChange}
               ref={editorRef}
             />
           </div>

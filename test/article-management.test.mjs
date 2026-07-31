@@ -344,7 +344,9 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(actions, /error instanceof ArticleAssetUnavailableError/);
     assert.match(actions, /result\.status === "conflict"/);
     assert.match(actions, /result\.status === "not_found"/);
-    assert.match(actions, /redirect\(`\/admin\/articles\/\$\{/);
+    // #105: updateArticleAction 不再 redirect，返回 saved 状态与修订号供自动保存使用
+    assert.match(actions, /status: "saved"/);
+    assert.match(actions, /savedRevision: result\.article\.revision/);
     assert.match(actions, /redirect\("\/admin\/articles\?deleted=1"\)/);
   });
 
@@ -375,9 +377,12 @@ describe("Admin article detail and mutation slice", () => {
     assert.match(detailPage, /await requireAdmin\(\)/);
     assert.match(detailPage, /articleIdSchema\.safeParse/);
     assert.match(detailPage, /notFound\(\)/);
-    assert.match(detailPage, /key={article\.revision}/);
+    // #105: 移除 key={article.revision}，避免自动保存成功后 revalidatePath
+    // 导致 revision 变化触发组件重新挂载，丢失 saveStatus 状态
+    assert.doesNotMatch(detailPage, /key=\{article\.revision\}/);
     assert.match(editForm, /name="expectedRevision"/);
-    assert.match(editForm, /state\.conflictRevision/);
+    // #105: 重构为手动状态管理后，conflictRevision 是独立 useState
+    assert.match(editForm, /conflictRevision/);
     assert.match(actions, /你的输入仍保留/);
     assert.match(deleteDialog, /<DialogTitle>永久删除未发布文章？/);
     assert.match(deleteDialog, /你将删除“{title}”/);
