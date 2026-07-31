@@ -60,6 +60,10 @@ export function getPublishedArticle(
   return drizzleArticleRepository.getPublishedArticle(id);
 }
 
+export function isArticlePublished(id: string): Promise<boolean> {
+  return drizzleArticleRepository.isArticlePublished(id);
+}
+
 export async function deleteArticle(input: DeleteArticleInput) {
   // 必须在删除文章之前抓取 object keys：article_asset 行会随 article 一起
   // 被 ON DELETE cascade 移除，删除之后再查会得到空列表，导致 Garage 对象

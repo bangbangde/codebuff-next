@@ -31,4 +31,5 @@ export interface ArticleRepository {
   ): Promise<PublishArticleResult>;
   listPublishedArticles(): Promise<readonly PublishedArticleSummary[]>;
   getPublishedArticle(id: string): Promise<PublishedArticleDetail | null>;
+  isArticlePublished(id: string): Promise<boolean>;
 }

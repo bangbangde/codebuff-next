@@ -827,6 +827,8 @@ describe("Public article page slice", () => {
     // 复用 MarkdownRenderer 渲染线上 content
     assert.match(page, /MarkdownRenderer/);
     assert.match(page, /\{article\.content\}/);
+    // 传入公开资产 URL 解析器，指向 /api/articles/.../content
+    assert.match(page, /\/api\/articles\/\$\{article\.id\}\/assets\/\$\{assetId\}\/content/);
     // generateMetadata 返回 title 与 summary
     assert.match(page, /generateMetadata/);
     assert.match(page, /title: article\.title/);
@@ -843,5 +845,55 @@ describe("Public article page slice", () => {
 
     assert.match(header, /href="\/articles"/);
     assert.match(header, /Articles/);
+  });
+});
+
+describe("Public article asset route", () => {
+  it("serves published article assets without admin authorization", async () => {
+    const route = await readFile(
+      "app/api/articles/[articleId]/assets/[assetId]/content/route.ts",
+      "utf8",
+    );
+    const service = await readFile(
+      "features/articles/server/article-service.ts",
+      "utf8",
+    );
+    const repository = await readFile(
+      "features/articles/server/drizzle-article-repository.ts",
+      "utf8",
+    );
+
+    // 不调用 requireAdmin
+    assert.doesNotMatch(route, /requireAdmin/);
+    // 复用与 admin 路由相同的校验 schema
+    assert.match(route, /articleIdParamSchema\.safeParse/);
+    assert.match(route, /assetIdParamSchema\.safeParse/);
+    // 调用 isArticlePublished 守卫草稿资产
+    assert.match(route, /isArticlePublished\(parsedArticleId\.data\)/);
+    // 未发布文章的资产返回 404
+    assert.match(
+      route,
+      /if \(!\(await isArticlePublished[\s\S]*?return Response\.json\(\{ error: "资产不存在。" \}, \{ status: 404 \}\)/,
+    );
+    // 复用 readArticleAsset service
+    assert.match(route, /readArticleAsset\(/);
+    // 公开缓存策略（区别于 admin 的 private, no-store）
+    assert.match(route, /"Cache-Control": "public, max-age=300, must-revalidate"/);
+    assert.doesNotMatch(route, /private, no-store/);
+    // 错误处理与 admin 路由一致
+    assert.match(route, /AssetNotFoundError/);
+    assert.match(route, /AssetStorageError/);
+    assert.match(route, /X-Content-Type-Options/);
+
+    // Service 暴露 isArticlePublished
+    assert.match(service, /export function isArticlePublished\(id: string\)/);
+    assert.match(service, /drizzleArticleRepository\.isArticlePublished\(id\)/);
+
+    // Repository 实现：基于 publishedAt 过滤
+    assert.match(repository, /async isArticlePublished\(id: string\)/);
+    assert.match(
+      repository,
+      /and\(eq\(article\.id, id\), isNotNull\(article\.publishedAt\)\)/,
+    );
   });
 });
