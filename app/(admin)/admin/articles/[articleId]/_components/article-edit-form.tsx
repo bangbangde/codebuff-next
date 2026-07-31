@@ -4,16 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ArticleFields } from "@/app/(admin)/admin/articles/_components/article-fields";
-import { ArticleTaxonomyFields } from "@/app/(admin)/admin/articles/_components/article-taxonomy-fields";
 import type { MarkdownEditorHandle } from "@/app/(admin)/admin/articles/_components/markdown-editor";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
 import type { ArticleFieldErrors } from "@/features/articles/article-create-form-state";
-import type {
-  ArticleCreateValues,
-  CategoryOption,
-  TagOption,
-} from "@/features/articles/article-dto";
+import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { cn } from "@/lib/utils";
 import { ArticleAssetPanel } from "../../_components/article-asset-panel";
 import { updateArticleAction } from "../actions";
@@ -29,20 +24,12 @@ type SaveStatus =
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 function valuesEqual(a: ArticleCreateValues, b: ArticleCreateValues): boolean {
-  return (
-    a.title === b.title &&
-    a.bodyMarkdown === b.bodyMarkdown &&
-    a.categoryName === b.categoryName &&
-    a.tagNames.length === b.tagNames.length &&
-    a.tagNames.every((tag, index) => tag === b.tagNames[index])
-  );
+  return a.title === b.title && a.bodyMarkdown === b.bodyMarkdown;
 }
 
 export function ArticleEditForm({
   article,
   assets,
-  categories,
-  tags,
   values: initialValues,
 }: {
   article: {
@@ -50,8 +37,6 @@ export function ArticleEditForm({
     revision: number;
   };
   assets: readonly ArticleAsset[];
-  categories: readonly CategoryOption[];
-  tags: readonly TagOption[];
   values: ArticleCreateValues;
 }) {
   const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -86,10 +71,6 @@ export function ArticleEditForm({
       formData.append("expectedRevision", String(currentRevision));
       formData.append("title", currentValues.title);
       formData.append("bodyMarkdown", currentValues.bodyMarkdown);
-      formData.append("categoryName", currentValues.categoryName);
-      for (const tag of currentValues.tagNames) {
-        formData.append("tagNames", tag);
-      }
 
       const result = await updateArticleAction(
         {
@@ -152,24 +133,6 @@ export function ArticleEditForm({
     setValues((prev) =>
       prev.bodyMarkdown === bodyMarkdown ? prev : { ...prev, bodyMarkdown },
     );
-  }, []);
-
-  const handleCategoryChange = useCallback((categoryName: string) => {
-    setValues((prev) =>
-      prev.categoryName === categoryName ? prev : { ...prev, categoryName },
-    );
-  }, []);
-
-  const handleTagsChange = useCallback((tagNames: string[]) => {
-    setValues((prev) => {
-      if (
-        prev.tagNames.length === tagNames.length &&
-        prev.tagNames.every((tag, index) => tag === tagNames[index])
-      ) {
-        return prev;
-      }
-      return { ...prev, tagNames };
-    });
   }, []);
 
   function handleManualSave() {
@@ -240,16 +203,6 @@ export function ArticleEditForm({
           onBodyChange={handleBodyChange}
           onInsertReference={handleInsertReference}
           onTitleChange={handleTitleChange}
-          taxonomy={
-            <ArticleTaxonomyFields
-              categories={categories}
-              initialCategoryName={values.categoryName}
-              initialTagNames={values.tagNames}
-              onCategoryChange={handleCategoryChange}
-              onTagsChange={handleTagsChange}
-              tags={tags}
-            />
-          }
           values={values}
         />
       </form>
@@ -279,7 +232,7 @@ export function ArticleEditForm({
               className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-foreground underline underline-offset-4"
               href={`/admin/articles/${article.id}`}
             >
-              重新载入数据库版本（修订 {conflictRevision}）
+              重新载入数据库版本（草稿修订 {conflictRevision}）
             </a>
           ) : null}
         </div>

@@ -6,7 +6,6 @@ import { getDatabase } from "@/lib/db/client";
 import {
   article,
   articleAsset,
-  articleTag,
   category,
   tag,
 } from "@/lib/db/schema";
@@ -26,114 +25,12 @@ import type { ArticleRepository } from "../article-repository";
 
 async function readCurrentRevision(id: string) {
   const [current] = await getDatabase()
-    .select({ revision: article.revision })
+    .select({ revision: article.draftRevision })
     .from(article)
     .where(eq(article.id, id))
     .limit(1);
 
   return current?.revision ?? null;
-}
-
-async function resolveCategoryId(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
-  categoryName: string,
-): Promise<string | null> {
-  if (categoryName.length === 0) {
-    return null;
-  }
-
-  const lowerName = categoryName.toLowerCase();
-
-  const [existing] = await transaction
-    .select({ id: category.id })
-    .from(category)
-    .where(sql`lower(${category.name}) = ${lowerName}`)
-    .limit(1);
-
-  if (existing) {
-    return existing.id;
-  }
-
-  const [created] = await transaction
-    .insert(category)
-    .values({ name: categoryName })
-    .onConflictDoNothing()
-    .returning({ id: category.id });
-
-  if (created) {
-    return created.id;
-  }
-
-  // 并发创建：另一事务已插入同名分类，复用现有记录
-  const [retry] = await transaction
-    .select({ id: category.id })
-    .from(category)
-    .where(sql`lower(${category.name}) = ${lowerName}`)
-    .limit(1);
-
-  if (!retry) {
-    throw new Error("Category insert did not return the created record.");
-  }
-
-  return retry.id;
-}
-
-async function resolveTagIds(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
-  tagNames: readonly string[],
-): Promise<readonly string[]> {
-  if (tagNames.length === 0) {
-    return [];
-  }
-
-  const lowerNames = tagNames.map((name) => name.toLowerCase());
-
-  const existing = await transaction
-    .select({ id: tag.id, name: tag.name })
-    .from(tag)
-    .where(inArray(sql`lower(${tag.name})`, lowerNames));
-
-  const existingByLowerName = new Map(
-    existing.map((row) => [row.name.toLowerCase(), row.id]),
-  );
-  const missing = tagNames.filter(
-    (name) => !existingByLowerName.has(name.toLowerCase()),
-  );
-
-  if (missing.length > 0) {
-    const created = await transaction
-      .insert(tag)
-      .values(missing.map((name) => ({ name })))
-      .onConflictDoNothing()
-      .returning({ id: tag.id, name: tag.name });
-
-    for (const row of created) {
-      existingByLowerName.set(row.name.toLowerCase(), row.id);
-    }
-
-    // 并发创建：为 onConflictDoNothing 跳过的标签复用现有记录
-    const stillMissing = missing.filter(
-      (name) => !existingByLowerName.has(name.toLowerCase()),
-    );
-
-    if (stillMissing.length > 0) {
-      const retry = await transaction
-        .select({ id: tag.id, name: tag.name })
-        .from(tag)
-        .where(
-          inArray(
-            sql`lower(${tag.name})`,
-            stillMissing.map((n) => n.toLowerCase()),
-          ),
-        );
-
-      for (const row of retry) {
-        existingByLowerName.set(row.name.toLowerCase(), row.id);
-      }
-    }
-  }
-
-  return tagNames.map((name) => existingByLowerName.get(name.toLowerCase()) as string);
 }
 
 async function readArticleDetail(
@@ -142,13 +39,20 @@ async function readArticleDetail(
 ): Promise<ArticleDetail | null> {
   const [row] = await transaction
     .select({
-      bodyMarkdown: article.bodyMarkdown,
       categoryId: article.categoryId,
+      content: article.content,
+      coverAssetId: article.coverAssetId,
       createdAt: article.createdAt,
+      draftContent: article.draftContent,
+      draftRevision: article.draftRevision,
+      draftTitle: article.draftTitle,
+      draftUpdatedAt: article.draftUpdatedAt,
       id: article.id,
-      revision: article.revision,
+      publishedAt: article.publishedAt,
+      publishedFromRevision: article.publishedFromRevision,
+      publishedUpdatedAt: article.publishedUpdatedAt,
+      summary: article.summary,
       title: article.title,
-      updatedAt: article.updatedAt,
     })
     .from(article)
     .where(eq(article.id, id))
@@ -158,30 +62,21 @@ async function readArticleDetail(
     return null;
   }
 
-  const categoryName = row.categoryId
-    ? await transaction
-        .select({ name: category.name })
-        .from(category)
-        .where(eq(category.id, row.categoryId))
-        .limit(1)
-        .then((result) => result[0]?.name ?? null)
-    : null;
-
-  const tagRows = await transaction
-    .select({ name: tag.name })
-    .from(articleTag)
-    .innerJoin(tag, eq(articleTag.tagId, tag.id))
-    .where(eq(articleTag.articleId, id));
-
   return {
-    bodyMarkdown: row.bodyMarkdown,
-    categoryName,
+    categoryId: row.categoryId,
+    content: row.content,
+    coverAssetId: row.coverAssetId,
     createdAt: row.createdAt.toISOString(),
+    draftContent: row.draftContent,
+    draftRevision: row.draftRevision,
+    draftTitle: row.draftTitle,
+    draftUpdatedAt: row.draftUpdatedAt.toISOString(),
     id: row.id,
-    revision: row.revision,
-    tagNames: tagRows.map((row) => row.name),
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    publishedFromRevision: row.publishedFromRevision,
+    publishedUpdatedAt: row.publishedUpdatedAt?.toISOString() ?? null,
+    summary: row.summary,
     title: row.title,
-    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -190,7 +85,7 @@ export const drizzleArticleRepository: ArticleRepository = {
     const today = new Date().toISOString().slice(0, 10);
     const [created] = await getDatabase()
       .insert(article)
-      .values({ title: `未命名文章 ${today}` })
+      .values({ draftTitle: `未命名文章 ${today}` })
       .returning({ id: article.id });
 
     if (!created) {
@@ -206,7 +101,7 @@ export const drizzleArticleRepository: ArticleRepository = {
       .where(
         and(
           eq(article.id, input.id),
-          eq(article.revision, input.expectedRevision),
+          eq(article.draftRevision, input.expectedRevision),
         ),
       )
       .returning({ id: article.id });
@@ -229,64 +124,26 @@ export const drizzleArticleRepository: ArticleRepository = {
   },
 
   async listSummaries(): Promise<readonly ArticleSummary[]> {
-    const database = getDatabase();
-    const rows = await database
+    const rows = await getDatabase()
       .select({
-        categoryId: article.categoryId,
+        draftRevision: article.draftRevision,
+        draftTitle: article.draftTitle,
+        draftUpdatedAt: article.draftUpdatedAt,
         id: article.id,
-        revision: article.revision,
-        title: article.title,
-        updatedAt: article.updatedAt,
+        publishedAt: article.publishedAt,
       })
       .from(article)
-      .orderBy(desc(article.updatedAt), asc(article.title));
-
-    if (rows.length === 0) {
-      return [];
-    }
-
-    const categoryIds = Array.from(
-      new Set(rows.map((row) => row.categoryId).filter(Boolean)),
-    ) as string[];
-    const articleIds = rows.map((row) => row.id);
-
-    const [categoryRows, tagRows] = await Promise.all([
-      categoryIds.length > 0
-        ? database
-            .select({ id: category.id, name: category.name })
-            .from(category)
-            .where(inArray(category.id, categoryIds))
-        : Promise.resolve([]),
-      database
-        .select({
-          articleId: articleTag.articleId,
-          name: tag.name,
-        })
-        .from(articleTag)
-        .innerJoin(tag, eq(articleTag.tagId, tag.id))
-        .where(inArray(articleTag.articleId, articleIds)),
-    ]);
-
-    const categoryNameById = new Map(
-      categoryRows.map((row) => [row.id, row.name]),
-    );
-    const tagNamesByArticleId = new Map<string, string[]>();
-
-    for (const row of tagRows) {
-      const list = tagNamesByArticleId.get(row.articleId) ?? [];
-      list.push(row.name);
-      tagNamesByArticleId.set(row.articleId, list);
-    }
+      .orderBy(
+        desc(article.draftUpdatedAt),
+        asc(article.draftTitle),
+      );
 
     return rows.map((row) => ({
-      categoryName: row.categoryId
-        ? (categoryNameById.get(row.categoryId) ?? null)
-        : null,
+      draftRevision: row.draftRevision,
+      draftTitle: row.draftTitle,
+      draftUpdatedAt: row.draftUpdatedAt.toISOString(),
       id: row.id,
-      revision: row.revision,
-      tagNames: tagNamesByArticleId.get(row.id) ?? [],
-      title: row.title,
-      updatedAt: row.updatedAt.toISOString(),
+      publishedAt: row.publishedAt?.toISOString() ?? null,
     }));
   },
 
@@ -330,52 +187,31 @@ export const drizzleArticleRepository: ArticleRepository = {
         }
       }
 
-      const categoryId = await resolveCategoryId(
-        transaction,
-        input.categoryName,
-      );
-      const tagIds = await resolveTagIds(transaction, input.tagNames);
-
       const [updated] = await transaction
         .update(article)
         .set({
-          bodyMarkdown: input.bodyMarkdown,
-          categoryId,
-          revision: sql`${article.revision} + 1`,
-          title: input.title,
-          updatedAt: new Date(),
+          draftContent: input.bodyMarkdown,
+          draftRevision: sql`${article.draftRevision} + 1`,
+          draftTitle: input.title,
+          draftUpdatedAt: new Date(),
         })
         .where(
           and(
             eq(article.id, input.id),
-            eq(article.revision, input.expectedRevision),
+            eq(article.draftRevision, input.expectedRevision),
           ),
         )
         .returning({ id: article.id });
 
       if (!updated) {
-        const [current] = await transaction
-          .select({ revision: article.revision })
-          .from(article)
-          .where(eq(article.id, input.id))
-          .limit(1);
+        const currentRevision = await readCurrentRevision(input.id);
 
-        return current
-          ? {
-              currentRevision: current.revision,
+        return currentRevision === null
+          ? { status: "not_found" as const }
+          : {
+              currentRevision,
               status: "conflict" as const,
-            }
-          : { status: "not_found" as const };
-      }
-
-      await transaction
-        .delete(articleTag)
-        .where(eq(articleTag.articleId, input.id));
-
-      if (tagIds.length > 0) {
-        await transaction
-          .insert(articleTag)
-          .values(tagIds.map((tagId) => ({ articleId: input.id, tagId })));
+            };
       }
 
       const detail = await readArticleDetail(transaction, input.id);

@@ -50,7 +50,6 @@ export function ArticleFields({
   onBodyChange,
   onInsertReference,
   onTitleChange,
-  taxonomy,
   values,
 }: {
   articleId: string;
@@ -60,7 +59,6 @@ export function ArticleFields({
   onBodyChange?: (value: string) => void;
   onInsertReference: (reference: string) => boolean;
   onTitleChange?: (value: string) => void;
-  taxonomy?: React.ReactNode;
   values: ArticleCreateValues;
 }) {
   return (
@@ -85,8 +83,6 @@ export function ArticleFields({
           />
           <FieldError errors={fieldErrors.title} field="title" />
         </div>
-
-        {taxonomy}
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5 shadow-xs sm:p-7">

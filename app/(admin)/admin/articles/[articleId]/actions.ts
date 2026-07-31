@@ -150,7 +150,7 @@ export async function updateArticleAction(
     conflictRevision: null,
     fieldErrors: {},
     formError: null,
-    savedRevision: result.article.revision,
+    savedRevision: result.article.draftRevision,
     status: "saved",
     values: fields.data,
   };

@@ -1,15 +1,11 @@
 export const articleFieldLimits = {
   bodyMarkdown: 200_000,
-  categoryName: 50,
-  tagName: 50,
   title: 200,
 } as const;
 
 export type ArticleCreateValues = Readonly<{
   bodyMarkdown: string;
   title: string;
-  categoryName: string;
-  tagNames: readonly string[];
 }>;
 
 export type CreatedArticle = Readonly<{
@@ -39,22 +35,29 @@ export type TagOption = Readonly<{
 
 export type ArticleSummary = Readonly<{
   id: string;
-  title: string;
-  revision: number;
-  categoryName: string | null;
-  tagNames: readonly string[];
-  updatedAt: string;
+  draftTitle: string;
+  draftRevision: number;
+  draftUpdatedAt: string;
+  publishedAt: string | null;
 }>;
 
 export type ArticleDetail = Readonly<{
   id: string;
-  title: string;
-  bodyMarkdown: string;
-  revision: number;
-  categoryName: string | null;
-  tagNames: readonly string[];
+  draftTitle: string;
+  draftContent: string;
+  draftRevision: number;
+  draftUpdatedAt: string;
   createdAt: string;
-  updatedAt: string;
+  // 线上槽位（首次发布前为 null）
+  title: string | null;
+  content: string | null;
+  summary: string;
+  coverAssetId: string | null;
+  categoryId: string | null;
+  // 发布元数据
+  publishedAt: string | null;
+  publishedUpdatedAt: string | null;
+  publishedFromRevision: number | null;
 }>;
 
 export type UpdateArticleResult =
