@@ -404,9 +404,11 @@ export const drizzleArticleRepository: ArticleRepository = {
   },
 
   async listPublishedArticles(): Promise<readonly PublishedArticleSummary[]> {
-    const rows = await getDatabase()
+    const database = getDatabase();
+    const rows = await database
       .select({
         categoryName: category.name,
+        coverAssetId: article.coverAssetId,
         id: article.id,
         publishedAt: article.publishedAt,
         publishedUpdatedAt: article.publishedUpdatedAt,
@@ -418,12 +420,33 @@ export const drizzleArticleRepository: ArticleRepository = {
       .where(isNotNull(article.publishedAt))
       .orderBy(desc(article.publishedUpdatedAt), asc(article.title));
 
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const tagRows = await database
+      .select({ articleId: articleTag.articleId, name: tag.name })
+      .from(articleTag)
+      .innerJoin(tag, eq(articleTag.tagId, tag.id))
+      .where(inArray(articleTag.articleId, rows.map((row) => row.id)))
+      .orderBy(asc(tag.name));
+
+    const tagsByArticleId = new Map<string, string[]>();
+
+    for (const tagRow of tagRows) {
+      const names = tagsByArticleId.get(tagRow.articleId) ?? [];
+      names.push(tagRow.name);
+      tagsByArticleId.set(tagRow.articleId, names);
+    }
+
     return rows.map((row) => ({
       categoryName: row.categoryName,
+      coverAssetId: row.coverAssetId,
       id: row.id,
       publishedAt: row.publishedAt?.toISOString() ?? "",
       publishedUpdatedAt: row.publishedUpdatedAt?.toISOString() ?? "",
       summary: row.summary,
+      tags: tagsByArticleId.get(row.id) ?? [],
       title: row.title ?? "",
     }));
   },

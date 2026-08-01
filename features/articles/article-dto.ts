@@ -86,12 +86,14 @@ export type PublishArticleResult =
 // ─── 公开只读视图（仅线上槽位字段，不暴露草稿） ───────────────────
 
 export type PublishedArticleSummary = Readonly<{
+  coverAssetId: string | null;
   id: string;
   title: string;
   summary: string;
   publishedAt: string;
   publishedUpdatedAt: string;
   categoryName: string | null;
+  tags: readonly string[];
 }>;
 
 export type PublishedArticleDetail = Readonly<{
