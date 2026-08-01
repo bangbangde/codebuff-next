@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  type AnyPgColumn,
   index,
   integer,
   pgTable,
@@ -10,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { category } from "./article-taxonomy";
+import { articleAsset } from "./article-asset";
 
 export const article = pgTable(
   "article",
@@ -23,15 +25,17 @@ export const article = pgTable(
       .defaultNow()
       .notNull(),
     // 线上槽位（首次发布前为 null）
-    // coverAssetId 的 FK 约束由迁移 0009 定义；此处不使用 .references()
-    // 以避免与 article-asset.ts 形成循环类型推导
+    // 显式返回 AnyPgColumn，保留循环外键的 schema 所有权并避免循环类型推导。
     title: text("title"),
     content: text("content"),
     summary: text("summary").default("").notNull(),
     categoryId: uuid("category_id").references(() => category.id, {
       onDelete: "set null",
     }),
-    coverAssetId: uuid("cover_asset_id"),
+    coverAssetId: uuid("cover_asset_id").references(
+      (): AnyPgColumn => articleAsset.id,
+      { onDelete: "set null" },
+    ),
     // 发布元数据
     publishedAt: timestamp("published_at", { withTimezone: true }),
     publishedUpdatedAt: timestamp("published_updated_at", {
