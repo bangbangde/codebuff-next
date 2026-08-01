@@ -12,9 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "pnpm build:runtime-tools && node --env-file-if-exists=.env .build/runtime-tools/db/migrate.cjs",
     "start": "next start",
-    "lint": "eslint",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test \"test/*.test.mjs\"",
-    "test:integration:article-assets": "pnpm build:runtime-tools && node --env-file-if-exists=.env test/article-assets.integration.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1097.0",
@@ -47,12 +45,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@mdx-js/loader": "^3.1.1",
-    "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "16.2.10",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.20",
-    "@types/mdx": "^2.0.14",
     "@types/node": "^20",
     "@types/pg": "8.20.0",
     "@types/qrcode": "^1.5.6",

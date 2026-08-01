@@ -3,8 +3,6 @@ import type {
   ArticleSummary,
   CategoryOption,
   CreatedArticle,
-  DeleteArticleInput,
-  DeleteArticleResult,
   PublishArticleInput,
   PublishArticleResult,
   PublishedArticleDetail,
@@ -16,7 +14,6 @@ import type {
 
 export interface ArticleRepository {
   createDraft(): Promise<CreatedArticle>;
-  delete(input: DeleteArticleInput): Promise<DeleteArticleResult>;
   findById(id: string): Promise<ArticleDetail | null>;
   listSummaries(): Promise<readonly ArticleSummary[]>;
   listCategories(): Promise<readonly CategoryOption[]>;

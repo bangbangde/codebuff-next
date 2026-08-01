@@ -264,7 +264,7 @@ export function ArticleTaxonomyFields({
         <div>
           <label className={labelClassName} htmlFor={categoryId}>
             分类
-            <span className="ml-2 font-normal text-muted-foreground">可选</span>
+            <span className="ml-2 font-normal text-muted-foreground">必填</span>
           </label>
           <Combobox.Root<TaxonomyItem, false>
             items={categoryItems}

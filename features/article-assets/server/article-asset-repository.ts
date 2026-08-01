@@ -91,14 +91,3 @@ export async function deleteAssetById(
 
   return deleted ? toArticleAsset(deleted) : null;
 }
-
-export async function listObjectKeysByArticle(
-  articleId: string,
-): Promise<readonly string[]> {
-  const rows = await getDatabase()
-    .select({ objectKey: articleAsset.objectKey })
-    .from(articleAsset)
-    .where(eq(articleAsset.articleId, articleId));
-
-  return rows.map((row) => row.objectKey);
-}

@@ -15,8 +15,6 @@ import type {
   ArticleSummary,
   CategoryOption,
   CreatedArticle,
-  DeleteArticleInput,
-  DeleteArticleResult,
   PublishArticleInput,
   PublishArticleResult,
   PublishedArticleDetail,
@@ -145,6 +143,7 @@ async function readArticleDetail(
   const [row] = await transaction
     .select({
       categoryId: article.categoryId,
+      categoryName: category.name,
       content: article.content,
       coverAssetId: article.coverAssetId,
       createdAt: article.createdAt,
@@ -160,6 +159,7 @@ async function readArticleDetail(
       title: article.title,
     })
     .from(article)
+    .leftJoin(category, eq(article.categoryId, category.id))
     .where(eq(article.id, id))
     .limit(1);
 
@@ -167,8 +167,16 @@ async function readArticleDetail(
     return null;
   }
 
+  const tagRows = await transaction
+    .select({ name: tag.name })
+    .from(articleTag)
+    .innerJoin(tag, eq(articleTag.tagId, tag.id))
+    .where(eq(articleTag.articleId, id))
+    .orderBy(asc(tag.name));
+
   return {
     categoryId: row.categoryId,
+    categoryName: row.categoryName,
     content: row.content,
     coverAssetId: row.coverAssetId,
     createdAt: row.createdAt.toISOString(),
@@ -181,6 +189,7 @@ async function readArticleDetail(
     publishedFromRevision: row.publishedFromRevision,
     publishedUpdatedAt: row.publishedUpdatedAt?.toISOString() ?? null,
     summary: row.summary,
+    tagNames: tagRows.map((tagRow) => tagRow.name),
     title: row.title,
   };
 }
@@ -198,28 +207,6 @@ export const drizzleArticleRepository: ArticleRepository = {
     }
 
     return created;
-  },
-
-  async delete(input: DeleteArticleInput): Promise<DeleteArticleResult> {
-    const [deleted] = await getDatabase()
-      .delete(article)
-      .where(
-        and(
-          eq(article.id, input.id),
-          eq(article.draftRevision, input.expectedRevision),
-        ),
-      )
-      .returning({ id: article.id });
-
-    if (deleted) {
-      return { status: "deleted" };
-    }
-
-    const currentRevision = await readCurrentRevision(input.id);
-
-    return currentRevision === null
-      ? { status: "not_found" }
-      : { currentRevision, status: "conflict" };
   },
 
   async findById(id: string): Promise<ArticleDetail | null> {

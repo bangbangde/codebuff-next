@@ -36,7 +36,10 @@ export function PublishDialog({
   article,
   assets,
   categories,
+  initialCategoryName,
   initialCoverAssetId,
+  initialSummary,
+  initialTagNames,
   onOpenChange,
   open,
   tags,
@@ -49,15 +52,27 @@ export function PublishDialog({
   };
   assets: readonly ArticleAsset[];
   categories: readonly CategoryOption[];
+  initialCategoryName: string;
   initialCoverAssetId: string | null;
+  initialSummary: string;
+  initialTagNames: readonly string[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
   tags: readonly TagOption[];
 }) {
-  const [state, action, pending] = useActionState(
-    publishArticleAction,
-    initialArticlePublishFormState,
+  const initialPublishState = useMemo(
+    () => ({
+      ...initialArticlePublishFormState,
+      values: {
+        categoryName: initialCategoryName,
+        coverAssetId: initialCoverAssetId ?? "",
+        summary: initialSummary,
+        tagNames: initialTagNames,
+      },
+    }),
+    [initialCategoryName, initialCoverAssetId, initialSummary, initialTagNames],
   );
+  const [state, action, pending] = useActionState(publishArticleAction, initialPublishState);
 
   const imageAssets = useMemo(
     () => assets.filter((a) => a.mediaType.startsWith("image/")),
@@ -88,6 +103,8 @@ export function PublishDialog({
   }, [imageAssets, extraAssets]);
 
   const isPublished = article.publishedAt !== null;
+  const isPublishedRevisionCurrent =
+    isPublished && article.publishedFromRevision === article.revision;
   const summaryErrorId = "publish-summary-error";
 
   function handleUploadClick() {
@@ -141,6 +158,13 @@ export function PublishDialog({
           <DialogDescription>
             发布后文章将对访客可见。填写分类、标签、封面图与摘要。
           </DialogDescription>
+          <p className="text-xs text-muted-foreground" role="status">
+            {isPublishedRevisionCurrent
+              ? "线上版本已对应当前草稿修订。"
+              : isPublished
+                ? "当前草稿比线上版本更新。"
+                : "这篇文章尚未公开。"}
+          </p>
         </DialogHeader>
 
         <form action={action} className="grid gap-5">
@@ -155,6 +179,7 @@ export function PublishDialog({
           <div>
             <label className={labelClassName} htmlFor="publish-summary">
               摘要
+              <span className="ml-2 font-normal text-muted-foreground">必填</span>
             </label>
             <textarea
               aria-describedby={
@@ -187,7 +212,10 @@ export function PublishDialog({
           />
 
           <div>
-            <span className={labelClassName}>封面图</span>
+            <span className={labelClassName}>
+              封面图
+              <span className="ml-2 font-normal text-muted-foreground">必填</span>
+            </span>
 
             {/* 上传区域（非 form 元素，避免与发布表单嵌套） */}
             <div className="mt-2 flex items-center gap-2">
@@ -263,8 +291,18 @@ export function PublishDialog({
             </p>
           ) : null}
 
+          {state.status === "published" ? (
+            <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
+              线上版本已更新。
+            </p>
+          ) : null}
+
           <DialogFooter>
-            <Button disabled={pending} type="submit">
+            <Button
+              disabled={pending || selectedCoverId.length === 0}
+              title={selectedCoverId.length === 0 ? "请先选择封面图" : undefined}
+              type="submit"
+            >
               {pending ? "发布中…" : isPublished ? "更新线上版本" : "发布"}
             </Button>
           </DialogFooter>

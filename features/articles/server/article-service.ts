@@ -1,12 +1,7 @@
 import "server-only";
 
-import {
-  deleteArticleAssetObjectsByKeys,
-  listArticleAssetObjectKeys,
-} from "@/features/article-assets/server/article-asset-service";
 import type {
   CategoryOption,
-  DeleteArticleInput,
   PublishArticleInput,
   PublishArticleResult,
   PublishedArticleDetail,
@@ -44,10 +39,19 @@ export function updateArticle(input: UpdateArticleInput) {
   );
 }
 
-export function publishArticle(
+export async function publishArticle(
   input: PublishArticleInput,
 ): Promise<PublishArticleResult> {
-  return drizzleArticleRepository.publish(input, [input.coverAssetId]);
+  const current = await drizzleArticleRepository.findById(input.id);
+  const assetIds = new Set<string>([input.coverAssetId]);
+
+  if (current) {
+    for (const assetId of parseCanonicalAssetReferenceIds(current.draftContent)) {
+      assetIds.add(assetId);
+    }
+  }
+
+  return drizzleArticleRepository.publish(input, [...assetIds]);
 }
 
 export function listPublishedArticles(): Promise<readonly PublishedArticleSummary[]> {
@@ -62,20 +66,4 @@ export function getPublishedArticle(
 
 export function isArticlePublished(id: string): Promise<boolean> {
   return drizzleArticleRepository.isArticlePublished(id);
-}
-
-export async function deleteArticle(input: DeleteArticleInput) {
-  // 必须在删除文章之前抓取 object keys：article_asset 行会随 article 一起
-  // 被 ON DELETE cascade 移除，删除之后再查会得到空列表，导致 Garage 对象
-  // 全部成为永久孤儿。此处存在温和 TOCTOU（抓取 keys 后到删除文章前若有
-  // 新资产上传，其对象不会被清理），符合"接受孤儿"约定，不引入事务复杂度。
-  const objectKeys = await listArticleAssetObjectKeys(input.id);
-
-  const result = await drizzleArticleRepository.delete(input);
-
-  if (result.status === "deleted" && objectKeys.length > 0) {
-    await deleteArticleAssetObjectsByKeys(objectKeys);
-  }
-
-  return result;
 }

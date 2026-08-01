@@ -61,6 +61,7 @@ export function AdminShell({
 
             return (
               <Link
+                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2.5 text-sm font-medium no-underline transition-[color,background-color] duration-(--motion-duration) ease-(--motion-easing) hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground motion-reduce:transition-none",
