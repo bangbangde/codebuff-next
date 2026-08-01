@@ -21,11 +21,6 @@ export type UpdateArticleInput = ArticleCreateValues &
     id: string;
   }>;
 
-export type DeleteArticleInput = Readonly<{
-  expectedRevision: number;
-  id: string;
-}>;
-
 export type CategoryOption = Readonly<{
   id: string;
   name: string;
@@ -57,6 +52,8 @@ export type ArticleDetail = Readonly<{
   summary: string;
   coverAssetId: string | null;
   categoryId: string | null;
+  categoryName: string | null;
+  tagNames: readonly string[];
   // 发布元数据
   publishedAt: string | null;
   publishedUpdatedAt: string | null;
@@ -65,11 +62,6 @@ export type ArticleDetail = Readonly<{
 
 export type UpdateArticleResult =
   | Readonly<{ article: ArticleDetail; status: "updated" }>
-  | Readonly<{ currentRevision: number; status: "conflict" }>
-  | Readonly<{ status: "not_found" }>;
-
-export type DeleteArticleResult =
-  | Readonly<{ status: "deleted" }>
   | Readonly<{ currentRevision: number; status: "conflict" }>
   | Readonly<{ status: "not_found" }>;
 

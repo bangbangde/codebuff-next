@@ -1,10 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import type {
-  ArticleDeleteFormState,
   ArticleEditFormState,
   ArticlePublishFormState,
 } from "@/features/articles/article-edit-form-state";
@@ -17,11 +15,7 @@ import {
   readArticleValues,
   readPublishValues,
 } from "@/features/articles/article-validation";
-import {
-  deleteArticle,
-  publishArticle,
-  updateArticle,
-} from "@/features/articles/server/article-service";
+import { publishArticle, updateArticle } from "@/features/articles/server/article-service";
 import type {
   ArticleAssetDeleteFormState,
   ArticleAssetUploadFormState,
@@ -148,7 +142,7 @@ export async function updateArticleAction(
   }
 
   revalidatePath("/admin/articles");
-  revalidatePath(`/admin/articles/${reference.data.articleId}`);
+  revalidatePath(`/editor/${reference.data.articleId}`);
 
   return {
     conflictRevision: null,
@@ -178,6 +172,7 @@ export async function publishArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "文章标识或版本无效，请重新载入后再试。",
+      status: "error",
       values,
     };
   }
@@ -187,6 +182,7 @@ export async function publishArticleAction(
       conflictRevision: null,
       fieldErrors: fields.error.flatten().fieldErrors,
       formError: "请检查发布信息后再提交。",
+      status: "error",
       values,
     };
   }
@@ -203,10 +199,19 @@ export async function publishArticleAction(
     if (error instanceof ArticleAssetUnavailableError) {
       return {
         conflictRevision: null,
-        fieldErrors: {
-          coverAssetId: ["封面图不属于本文或已不存在，请重新选择。"],
-        },
-        formError: "发布未完成，请检查封面图。",
+        fieldErrors: {},
+        formError: "发布未完成：正文或封面引用了不属于本文或已不存在的资产。",
+        status: "error",
+        values: fields.data,
+      };
+    }
+
+    if (error instanceof ArticleAssetReferenceSyntaxError) {
+      return {
+        conflictRevision: null,
+        fieldErrors: {},
+        formError: "发布未完成：正文中的托管资产引用格式无效。",
+        status: "error",
         values: fields.data,
       };
     }
@@ -217,6 +222,7 @@ export async function publishArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "文章暂时无法发布，请稍后重试。",
+      status: "error",
       values: fields.data,
     };
   }
@@ -227,6 +233,7 @@ export async function publishArticleAction(
       fieldErrors: {},
       formError:
         "数据库中的文章草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
+      status: "conflict",
       values: fields.data,
     };
   }
@@ -236,17 +243,22 @@ export async function publishArticleAction(
       conflictRevision: null,
       fieldErrors: {},
       formError: "这篇文章已不存在，无法发布。",
+      status: "not_found",
       values: fields.data,
     };
   }
 
   revalidatePath("/admin/articles");
-  revalidatePath(`/admin/articles/${reference.data.articleId}`);
+  revalidatePath(`/editor/${reference.data.articleId}`);
+  revalidatePath("/");
+  revalidatePath("/notes");
+  revalidatePath(`/notes/${reference.data.articleId}`);
 
   return {
     conflictRevision: null,
     fieldErrors: {},
     formError: null,
+    status: "published",
     values: {
       categoryName: fields.data.categoryName,
       coverAssetId: result.article.coverAssetId ?? "",
@@ -254,59 +266,6 @@ export async function publishArticleAction(
       tagNames: fields.data.tagNames,
     },
   };
-}
-
-export async function deleteArticleAction(
-  _previousState: ArticleDeleteFormState,
-  formData: FormData,
-): Promise<ArticleDeleteFormState> {
-  await requireAdmin();
-
-  const reference = articleMutationReferenceSchema.safeParse({
-    articleId: formData.get("articleId"),
-    expectedRevision: formData.get("expectedRevision"),
-  });
-
-  if (!reference.success) {
-    return {
-      conflictRevision: null,
-      formError: "文章标识或版本无效，删除已拒绝。",
-    };
-  }
-
-  let result: Awaited<ReturnType<typeof deleteArticle>>;
-
-  try {
-    result = await deleteArticle({
-      expectedRevision: reference.data.expectedRevision,
-      id: reference.data.articleId,
-    });
-  } catch (error) {
-    console.error("Failed to delete article.", error);
-
-    return {
-      conflictRevision: null,
-      formError: "文章暂时无法删除，请稍后重试。",
-    };
-  }
-
-  if (result.status === "conflict") {
-    return {
-      conflictRevision: result.currentRevision,
-      formError:
-        "数据库中的文章已更新，当前删除请求已拒绝。请重新载入并检查最新内容。",
-    };
-  }
-
-  if (result.status === "not_found") {
-    return {
-      conflictRevision: null,
-      formError: "这篇文章已不存在，没有执行删除。",
-    };
-  }
-
-  revalidatePath("/admin/articles");
-  redirect("/admin/articles?deleted=1");
 }
 
 export async function uploadArticleAssetAction(
@@ -336,7 +295,7 @@ export async function uploadArticleAssetAction(
   try {
     const asset = await uploadArticleAsset(route.data, file);
 
-    revalidatePath(`/admin/articles/${route.data}`);
+    revalidatePath(`/editor/${route.data}`);
 
     return {
       formError: null,
@@ -393,7 +352,7 @@ export async function deleteArticleAssetAction(
   try {
     await deleteArticleAsset(articleRoute.data, assetRoute.data);
 
-    revalidatePath(`/admin/articles/${articleRoute.data}`);
+    revalidatePath(`/editor/${articleRoute.data}`);
 
     return {
       formError: null,

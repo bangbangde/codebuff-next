@@ -53,8 +53,10 @@ export default async function EditorPage({
         revision: article.draftRevision,
         publishedAt: article.publishedAt,
         publishedFromRevision: article.publishedFromRevision,
-        currentTitle: article.draftTitle,
         coverAssetId: article.coverAssetId,
+        summary: article.summary,
+        categoryName: article.categoryName,
+        tagNames: article.tagNames,
       }}
       assets={assets}
       categories={categories}

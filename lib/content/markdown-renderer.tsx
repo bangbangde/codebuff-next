@@ -1,4 +1,4 @@
-import Markdown from "react-markdown";
+import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const CQ_ASSET_PATTERN = /^cq-asset:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -47,28 +47,36 @@ export function MarkdownRenderer({
   children: string;
   resolveAssetUrl?: AssetUrlResolver;
 }) {
+  const components: Components = {
+    // 页面标题由页面模板负责；正文中的一级标题降为二级，避免重复主标题。
+    h1: ({ node: _node, ...props }) => <h2 {...props} />,
+    ...(resolveAssetUrl
+      ? {
+          // react-markdown v10 通过 passNode 会把 hast node 对象作为 prop 传入，
+          // 必须显式排除 node，否则对象会泄漏到 DOM。
+          img: ({ src, alt, node: _node, ...rest }) => {
+            const srcStr = typeof src === "string" ? src : undefined;
+            const resolved = resolveCqAsset(srcStr, resolveAssetUrl);
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img alt={alt} src={resolved ?? srcStr} {...rest} />;
+          },
+          a: ({ href, children: linkChildren, node: _node, ...rest }) => {
+            const resolved = resolveCqAsset(href, resolveAssetUrl);
+            return (
+              <a href={resolved ?? href} {...rest}>
+                {linkChildren}
+              </a>
+            );
+          },
+        }
+      : {}),
+  };
+
   return (
     <Markdown
       remarkPlugins={[remarkGfm]}
       urlTransform={urlTransform}
-      components={resolveAssetUrl ? {
-        // react-markdown v10 通过 passNode 会把 hast node 对象作为 prop 传入，
-        // 必须显式排除 node，否则对象会泄漏到 DOM 渲染为 node="[object Object]"。
-        img: ({ src, alt, node: _node, ...rest }) => {
-          const srcStr = typeof src === "string" ? src : undefined;
-          const resolved = resolveCqAsset(srcStr, resolveAssetUrl);
-          // eslint-disable-next-line @next/next/no-img-element
-          return <img alt={alt} src={resolved ?? srcStr} {...rest} />;
-        },
-        a: ({ href, children: linkChildren, node: _node, ...rest }) => {
-          const resolved = resolveCqAsset(href, resolveAssetUrl);
-          return (
-            <a href={resolved ?? href} {...rest}>
-              {linkChildren}
-            </a>
-          );
-        },
-      } : undefined}
+      components={components}
     >
       {children}
     </Markdown>

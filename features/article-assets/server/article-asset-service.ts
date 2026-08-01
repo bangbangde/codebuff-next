@@ -30,7 +30,6 @@ function isForeignKeyViolation(error: unknown): boolean {
   );
 }
 
-const DELETE_BATCH_SIZE = 10;
 
 export async function uploadArticleAsset(
   articleId: string,
@@ -164,30 +163,4 @@ export async function deleteArticleAsset(
 
 export function listArticleAssets(articleId: string) {
   return repository.listAssetsByArticle(articleId);
-}
-
-export function listArticleAssetObjectKeys(articleId: string) {
-  return repository.listObjectKeysByArticle(articleId);
-}
-
-export async function deleteArticleAssetObjectsByKeys(
-  objectKeys: readonly string[],
-  dependencies: ArticleAssetServiceDependencies = defaultDependencies(),
-): Promise<void> {
-  for (let i = 0; i < objectKeys.length; i += DELETE_BATCH_SIZE) {
-    const batch = objectKeys.slice(i, i + DELETE_BATCH_SIZE);
-
-    await Promise.all(
-      batch.map(async (objectKey) => {
-        try {
-          await dependencies.store.delete(objectKey);
-        } catch (error) {
-          console.error("Failed to delete article asset object during article cleanup.", {
-            objectKey,
-            cause: error instanceof Error ? error.name : "UnknownError",
-          });
-        }
-      }),
-    );
-  }
 }

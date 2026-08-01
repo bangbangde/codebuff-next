@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  type AnyPgColumn,
   index,
   integer,
   pgTable,
@@ -18,7 +19,7 @@ export const articleAsset = pgTable(
     id: uuid("id").primaryKey(),
     articleId: uuid("article_id")
       .notNull()
-      .references(() => article.id, { onDelete: "cascade" }),
+      .references((): AnyPgColumn => article.id, { onDelete: "cascade" }),
     objectKey: text("object_key").notNull(),
     originalFilename: text("original_filename").notNull(),
     mediaType: text("media_type").notNull(),

@@ -18,6 +18,11 @@ import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor";
 import { uploadArticleAssetAction } from "../[articleId]/actions";
 
 type EditorMode = "edit" | "split" | "preview";
+type UploadStatus =
+  | { kind: "idle" }
+  | { kind: "uploading"; filename: string }
+  | { kind: "success"; filename: string }
+  | { kind: "error"; message: string };
 
 const EDITOR_MODE_STORAGE_KEY = "article-editor-mode";
 const DEFAULT_EDITOR_MODE: EditorMode = "split";
@@ -116,6 +121,7 @@ export function ArticleBodyEditor({
   );
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: "idle" });
   const previewRef = useRef<HTMLDivElement>(null);
 
   function changeMode(next: EditorMode) {
@@ -185,6 +191,7 @@ export function ArticleBodyEditor({
     if (fileArray.length === 0) return;
 
     for (const file of fileArray) {
+      setUploadStatus({ kind: "uploading", filename: file.name });
       const formData = new FormData();
       formData.append("articleId", articleId);
       formData.append("file", file);
@@ -195,7 +202,7 @@ export function ArticleBodyEditor({
       );
 
       if (result.formError) {
-        console.error(`${file.name}：${result.formError}`);
+        setUploadStatus({ kind: "error", message: `${file.name}：${result.formError}` });
         return;
       }
 
@@ -205,7 +212,11 @@ export function ArticleBodyEditor({
           mediaType: file.type as AcceptedAssetType,
           originalFilename: file.name,
         });
-        onInsertReference(reference);
+        if (!onInsertReference(reference)) {
+          setUploadStatus({ kind: "error", message: `${file.name} 已上传，但当前编辑器无法插入引用。` });
+          return;
+        }
+        setUploadStatus({ kind: "success", filename: file.name });
       }
     }
   }
@@ -320,6 +331,21 @@ export function ArticleBodyEditor({
           </div>
         ) : null}
       </div>
+      {uploadStatus.kind !== "idle" ? (
+        <p
+          className={cn(
+            "shrink-0 px-3 py-1.5 text-xs",
+            uploadStatus.kind === "error" ? "text-destructive" : "text-muted-foreground",
+          )}
+          role={uploadStatus.kind === "error" ? "alert" : "status"}
+        >
+          {uploadStatus.kind === "uploading"
+            ? `正在上传 ${uploadStatus.filename}…`
+            : uploadStatus.kind === "success"
+              ? `${uploadStatus.filename} 已上传并插入正文。`
+              : uploadStatus.message}
+        </p>
+      ) : null}
     </div>
   );
 }

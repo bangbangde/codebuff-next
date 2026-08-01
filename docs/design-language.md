@@ -118,7 +118,7 @@ Admin value must not alter Site, and vice versa.
 | Role | Light | Dark | Usage |
 | --- | --- | --- | --- |
 | Background | `#ffffff` | `#0d1117` | Application canvas and fixed header |
-| Card | `#ffffff` | `#161b22` | Sidebar, cards, and primary work surfaces |
+| Card | `#ffffff` | `#161b22` | Top bar, cards, dialogs, and primary work surfaces |
 | Muted surface | `#f6f8fa` | `#161b22` | Secondary regions and quiet separation |
 | Foreground | `#1f2328` | `#f0f6fc` | Primary text and strong controls |
 | Muted foreground | `#59636e` | `#8b949e` | Supporting copy, labels, and metadata |
@@ -288,13 +288,14 @@ Keep branding and primary navigation compact. The header may remain visible
 during reading, but it should not dominate the viewport. The footer should give
 the page a clear ending without becoming another content section.
 
-Admin uses a surface-local application shell rather than the Site chrome. Its
-desktop frame keeps a compact header and collapsible sidebar stable around a
-separately scrolling content region. Narrow screens replace the sidebar with a
-focus-managed drawer instead of compressing the desktop rail. Collapsed
-navigation must retain accessible names, visible current-location feedback, and
-labels on demand. Shell visibility never substitutes for server-side Admin
-authorization.
+Admin uses a surface-local application shell rather than the Site chrome. A
+compact top bar owns product identity, primary tools, current-location feedback,
+account access, and color-scheme controls while the content region scrolls
+independently. Narrow screens keep the same top-bar information architecture and
+may reduce visible labels only when every icon retains an accessible name and a
+clear active state. Shell visibility never substitutes for server-side Admin
+authorization. The full-screen editor remains part of the Admin surface even
+though it replaces the standard shell composition with writing-specific chrome.
 
 ### Editorial introduction
 

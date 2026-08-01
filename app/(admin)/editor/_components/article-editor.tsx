@@ -44,8 +44,10 @@ export function ArticleEditor({
     revision: number;
     publishedAt: string | null;
     publishedFromRevision: number | null;
-    currentTitle: string;
     coverAssetId: string | null;
+    summary: string;
+    categoryName: string | null;
+    tagNames: readonly string[];
   };
   assets: readonly ArticleAsset[];
   categories: readonly CategoryOption[];
@@ -82,26 +84,31 @@ export function ArticleEditor({
       formData.append("title", currentValues.title);
       formData.append("bodyMarkdown", currentValues.bodyMarkdown);
 
-      const result = await updateArticleAction(
-        {
-          conflictRevision: null,
-          fieldErrors: {},
-          formError: null,
-          savedRevision: null,
-          status: "idle",
-          values: currentValues,
-        },
-        formData,
-      );
+      try {
+        const result = await updateArticleAction(
+          {
+            conflictRevision: null,
+            fieldErrors: {},
+            formError: null,
+            savedRevision: null,
+            status: "idle",
+            values: currentValues,
+          },
+          formData,
+        );
 
-      savingRef.current = false;
+        setFormError(result.formError);
+        setSaveStatus(result.status);
 
-      setFormError(result.formError);
-      setSaveStatus(result.status);
-
-      if (result.status === "saved" && result.savedRevision !== null) {
-        setExpectedRevision(result.savedRevision);
-        setLastSavedValues(currentValues);
+        if (result.status === "saved" && result.savedRevision !== null) {
+          setExpectedRevision(result.savedRevision);
+          setLastSavedValues(currentValues);
+        }
+      } catch {
+        setFormError("保存请求未完成，请检查网络后重试。");
+        setSaveStatus("error");
+      } finally {
+        savingRef.current = false;
       }
     },
     [article.id],
@@ -186,20 +193,20 @@ export function ArticleEditor({
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center border-b border-border bg-background px-4">
+      <header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:h-14 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-0">
         <input
           aria-label="文章标题"
-          className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"
+          className="h-9 w-full min-w-0 border-0 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0 sm:h-auto sm:flex-1"
           onChange={(event) => handleTitleChange(event.target.value)}
           placeholder="输入文章标题…"
           value={values.title}
         />
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto">
           <span
             aria-live="polite"
             className={cn(
-              "text-xs",
+              "mr-auto min-w-0 truncate text-xs sm:mr-0 sm:max-w-56",
               isStatusError
                 ? "text-destructive"
                 : saveStatus === "saving"
@@ -236,8 +243,16 @@ export function ArticleEditor({
           </Button>
 
           <Button
+            disabled={
+              isDirty ||
+              saveStatus === "saving" ||
+              saveStatus === "conflict" ||
+              saveStatus === "not_found" ||
+              saveStatus === "error"
+            }
             onClick={() => setPublishDialogOpen(true)}
             size="sm"
+            title={isDirty ? "请先保存草稿，再发布当前修订" : undefined}
             type="button"
           >
             <SendIcon aria-hidden="true" />
@@ -280,6 +295,9 @@ export function ArticleEditor({
         assets={assets}
         categories={categories}
         initialCoverAssetId={article.coverAssetId}
+        initialCategoryName={article.categoryName ?? ""}
+        initialSummary={article.summary}
+        initialTagNames={article.tagNames}
         onOpenChange={setPublishDialogOpen}
         open={publishDialogOpen}
         tags={tags}

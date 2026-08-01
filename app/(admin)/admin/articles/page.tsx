@@ -1,8 +1,6 @@
 import {
-  CheckCircle2Icon,
   FileTextIcon,
   PlusIcon,
-  SearchIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -104,19 +102,6 @@ export default async function ArticlesPage({
         </nav>
 
         <div className="flex items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              aria-label="搜索文章"
-              className="h-11 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              name="q"
-              placeholder="搜索文章…"
-              type="search"
-            />
-          </div>
           <form action={createDraftAction}>
             <Button type="submit">
               <PlusIcon aria-hidden="true" />

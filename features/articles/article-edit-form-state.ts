@@ -13,22 +13,13 @@ export type ArticleEditFormState = Readonly<{
   values: ArticleCreateValues;
 }>;
 
-export type ArticleDeleteFormState = Readonly<{
-  conflictRevision: number | null;
-  formError: string | null;
-}>;
-
-export const initialArticleDeleteFormState: ArticleDeleteFormState = {
-  conflictRevision: null,
-  formError: null,
-};
-
 export type ArticlePublishFormState = Readonly<{
   conflictRevision: number | null;
   fieldErrors: Partial<
     Record<keyof PublishArticleValues, readonly string[]>
   >;
   formError: string | null;
+  status: "idle" | "published" | "conflict" | "not_found" | "error";
   values: PublishArticleValues;
 }>;
 
@@ -36,6 +27,7 @@ export const initialArticlePublishFormState: ArticlePublishFormState = {
   conflictRevision: null,
   fieldErrors: {},
   formError: null,
+  status: "idle",
   values: {
     categoryName: "",
     coverAssetId: "",

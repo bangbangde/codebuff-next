@@ -1,3 +1,4 @@
+import { SurfaceTheme } from "@/components/surface-theme";
 import { requireAdmin } from "@/lib/auth/session";
 
 export default async function EditorLayout({
@@ -6,8 +7,8 @@ export default async function EditorLayout({
   await requireAdmin();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <SurfaceTheme className="flex h-dvh flex-col overflow-hidden bg-background text-foreground" surface="admin">
       {children}
-    </div>
+    </SurfaceTheme>
   );
 }
