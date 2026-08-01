@@ -51,16 +51,15 @@ export function AddPasskeyForm({
       className="mt-8 border-t border-border pt-8"
       onSubmit={handleSubmit}
     >
-      <h4 className="m-0 text-lg font-[540] tracking-[-0.025em]" lang="en">
-        Add a passkey
+      <h4 className="m-0 text-lg font-[540] tracking-[-0.025em]">
+        添加 Passkey
       </h4>
       <div className="mt-5">
         <label
           className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
           htmlFor="passkey-name"
-          lang="en"
         >
-          Name (optional)
+          名称（可选）
         </label>
         <input
           autoComplete="off"
@@ -68,7 +67,7 @@ export function AddPasskeyForm({
           id="passkey-name"
           maxLength={AUTH_PASSKEY_NAME_MAX_LENGTH}
           name="passkey-name"
-          placeholder="Laptop, phone, security key…"
+          placeholder="例如：笔记本电脑、手机、安全密钥"
           type="text"
         />
       </div>
@@ -77,9 +76,8 @@ export function AddPasskeyForm({
         <label
           className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
           htmlFor="authenticator-attachment"
-          lang="en"
         >
-          Authenticator
+          验证器
         </label>
         <select
           className={authInputClassName}
@@ -87,9 +85,9 @@ export function AddPasskeyForm({
           id="authenticator-attachment"
           name="authenticator-attachment"
         >
-          <option value="">Let the browser choose</option>
-          <option value="platform">This device</option>
-          <option value="cross-platform">Security key or another device</option>
+          <option value="">由浏览器选择</option>
+          <option value="platform">这台设备</option>
+          <option value="cross-platform">安全密钥或其他设备</option>
         </select>
       </div>
 
@@ -106,7 +104,7 @@ export function AddPasskeyForm({
         disabled={disabled}
         type="submit"
       >
-        {pending ? "Waiting for passkey…" : "Register passkey"}
+        {pending ? "正在等待 Passkey…" : "注册 Passkey"}
       </button>
 
       <button
@@ -115,7 +113,7 @@ export function AddPasskeyForm({
         onClick={() => void onRefresh()}
         type="button"
       >
-        Refresh list
+        刷新列表
       </button>
     </form>
   );

@@ -84,7 +84,7 @@ export function CredentialsStep({
         disabled={isPending}
         type="submit"
       >
-        {pendingAction === "credentials" ? "Signing in…" : "Sign in"}
+        {pendingAction === "credentials" ? "正在登录…" : "登录"}
       </button>
 
       <div
@@ -93,7 +93,7 @@ export function CredentialsStep({
       >
         <span className="h-px flex-1 bg-border" />
         <span className="font-mono text-[0.7rem] tracking-label uppercase">
-          or
+          或
         </span>
         <span className="h-px flex-1 bg-border" />
       </div>

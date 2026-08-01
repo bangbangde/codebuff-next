@@ -27,9 +27,9 @@ function removeRepeatedLeadingTitle(content: string, title: string) {
 
 export async function generateMetadata({ params }: NotePageProps): Promise<Metadata> {
   const { noteId } = await params;
-  if (!articleIdSchema.safeParse(noteId).success) return { title: "Not Found" };
+  if (!articleIdSchema.safeParse(noteId).success) return { title: "未找到页面" };
   const note = await getPublishedArticle(noteId);
-  return note ? { title: note.title, description: note.summary } : { title: "Not Found" };
+  return note ? { title: note.title, description: note.summary } : { title: "未找到页面" };
 }
 
 export default async function NotePage({ params }: NotePageProps) {
@@ -43,7 +43,7 @@ export default async function NotePage({ params }: NotePageProps) {
       <article>
         <ContentContainer>
           <header className="border-b border-border pt-[clamp(2.5rem,5vw,4.5rem)] pb-[clamp(3rem,7vw,5.5rem)]">
-            <Link className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" href="/notes">← Notes</Link>
+            <Link className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" href="/notes" lang="en">← Notes</Link>
             <p className="mt-8 font-mono text-xs tracking-label text-brand-accent uppercase">
               <time dateTime={note.publishedAt}>{formatPublishDate(note.publishedAt)}</time>
               {note.categoryName ? <> · {note.categoryName}</> : null}

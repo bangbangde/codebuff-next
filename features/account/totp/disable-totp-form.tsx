@@ -59,9 +59,8 @@ export function DisableTotpForm({
         <label
           className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
           htmlFor={passwordInputId}
-          lang="en"
         >
-          Current password
+          当前密码
         </label>
         <input
           autoComplete="current-password"
@@ -88,7 +87,7 @@ export function DisableTotpForm({
         disabled={disabled}
         type="submit"
       >
-        {isPending ? "Disabling…" : "Disable TOTP"}
+        {isPending ? "正在禁用…" : "禁用 TOTP"}
       </button>
     </form>
   );

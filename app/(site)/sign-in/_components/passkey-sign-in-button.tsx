@@ -19,7 +19,7 @@ export function PasskeySignInButton({
         onClick={onSignIn}
         type="button"
       >
-        {pending ? "Waiting for passkey…" : "Sign in with a passkey"}
+        {pending ? "正在等待 Passkey…" : "使用 Passkey 登录"}
       </button>
       <p className="mt-3 text-center text-sm leading-body text-muted-foreground">
         使用设备解锁、密码管理器或安全密钥完成登录，无需再次验证 TOTP。

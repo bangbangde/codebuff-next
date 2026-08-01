@@ -7,23 +7,23 @@ export function getPasskeyLabel(passkey: Passkey): string {
   return (
     passkey.name?.trim() ||
     getAuthenticatorName(passkey.aaguid) ||
-    "Unnamed passkey"
+    "未命名 Passkey"
   );
 }
 
 export function getPasskeyTypeLabel(passkey: Passkey): string {
   if (passkey.deviceType === "multiDevice") {
-    return passkey.backedUp ? "Synced passkey" : "Multi-device passkey";
+    return passkey.backedUp ? "已同步" : "多设备";
   }
 
-  return "Device-bound passkey";
+  return "仅限当前设备";
 }
 
 export function formatPasskeyDate(value: Date): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return "日期未知";
   }
 
   return new Intl.DateTimeFormat("zh-CN", {

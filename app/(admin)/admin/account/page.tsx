@@ -7,7 +7,7 @@ import { SecuritySettingsSection } from "./_components/security-settings-section
 
 export const metadata: Metadata = {
   title: "Account",
-  description: "Manage the private account and two-factor authentication.",
+  description: "管理私人账户与两步验证。",
 };
 
 export default async function AccountPage({

@@ -28,7 +28,7 @@ export function RemovePasskeyConfirmation({
           onClick={onRemove}
           type="button"
         >
-          {pending ? "Removing…" : "Remove passkey"}
+          {pending ? "正在移除…" : "移除 Passkey"}
         </button>
         <button
           className="min-h-11 rounded-md px-3 py-2 font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
@@ -36,7 +36,7 @@ export function RemovePasskeyConfirmation({
           onClick={onCancel}
           type="button"
         >
-          Cancel
+          取消
         </button>
       </div>
     </div>

@@ -10,7 +10,7 @@ It should feel personal without becoming a portfolio or self-promotional brand s
 
 - **Landing** provides a compact introduction, current context, and a small selection of work.
 - **Notes** is the main space for technical and editorial output. It is not required to behave like a chronological blog.
-- **Me** gives concise context about CQ without dominating the site.
+- **About** gives concise context about CQ without dominating the site.
 
 Specific content, features, and delivery scope belong in the relevant GitHub Issue and owner-approved Milestone rather than this document.
 
@@ -28,13 +28,15 @@ The site should feel technical, human, calm, credible, thoughtful, and in progre
 - Favor text-forward layouts and purposeful imagery over decorative illustration.
 - Let spacing feel calm but not empty; information density should remain useful on desktop and narrow screens.
 - Give page endings a deliberate sense of closure and offer a next step only when it has a clear navigation purpose.
-- Treat the accepted Landing direction as the visual reference for Notes and Me without copying its layout mechanically.
+- Treat the accepted Landing direction as the visual reference for Notes and About without copying its layout mechanically.
 
 Avoid generic SaaS sections, portfolio templates, uniform card grids, exaggerated hero copy, decorative complexity, and interaction that exists mainly to demonstrate itself. Animation should be subtle, purposeful, and safe for reduced-motion preferences.
 
 ### Copy
 
-Use natural, concise language. English carries the `CQ’s Lab` brand, product-surface names, and short positioning phrases; Simplified Chinese carries most explanation. Intentional Chinese-English mixing is welcome when it reads naturally.
+Use natural, concise language. English carries the `CQ’s Lab` brand, navigation, and product structure, such as `Notes`, `Projects`, and `About`. Simplified Chinese carries descriptive content. A small amount of English may remain when it functions as a label or established term.
+
+Do not add purely decorative English section subtitles. Every visible label should identify real structure, status, or meaning rather than acting as atmosphere.
 
 Avoid over-explaining metaphors, internal brand language, and copy that sounds more important than the underlying content.
 

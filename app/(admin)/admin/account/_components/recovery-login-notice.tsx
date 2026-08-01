@@ -20,8 +20,8 @@ export function RecoveryLoginNotice() {
           </svg>
         </div>
         <div className="flex-1">
-          <p className="m-0 font-medium text-foreground" lang="en">
-            You signed in with a recovery code
+          <p className="m-0 font-medium text-foreground">
+            已使用恢复码登录
           </p>
           <p className="m-0 mt-1 text-sm leading-body text-muted-foreground">
             你刚刚使用了恢复码登录。如果你丢失了身份验证器设备，建议尽快重新设置

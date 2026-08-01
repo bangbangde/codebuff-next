@@ -6,7 +6,7 @@ import { AdminShell } from "./_components/admin-shell";
 
 export const metadata: Metadata = {
   title: "Admin",
-  description: "Authenticated administration entry for CQ’s Lab.",
+  description: "CQ’s Lab 的已认证管理入口。",
 };
 
 export default async function AdminLayout({

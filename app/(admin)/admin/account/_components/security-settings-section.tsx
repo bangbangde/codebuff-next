@@ -12,10 +12,7 @@ export function SecuritySettingsSection({
         className="mt-10 border-t border-border pt-8 sm:mt-12 sm:pt-10"
         aria-labelledby="security-title"
       >
-        <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">
-          Security / TOTP
-        </p>
-        <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
           <div>
             <h2
               className="max-w-[16ch] text-2xl font-semibold tracking-[-0.035em]"
@@ -28,11 +25,8 @@ export function SecuritySettingsSection({
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-5 text-card-foreground sm:p-6">
-            <h3
-              className="text-lg font-semibold tracking-[-0.025em]"
-              lang="en"
-            >
-              {totpEnabled ? "TOTP enabled" : "TOTP not enabled"}
+            <h3 className="text-lg font-semibold tracking-[-0.025em]">
+              {totpEnabled ? "TOTP 已启用" : "TOTP 未启用"}
             </h3>
             <TotpSection enabled={totpEnabled} />
           </div>
@@ -43,10 +37,7 @@ export function SecuritySettingsSection({
         className="mt-10 border-t border-border pt-8 sm:mt-12 sm:pt-10"
         aria-labelledby="passkey-title"
       >
-        <p className="font-mono text-xs tracking-[0.1em] text-muted-foreground uppercase">
-          Security / Passkeys
-        </p>
-        <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
           <div>
             <h2
               className="max-w-[16ch] text-2xl font-semibold tracking-[-0.035em]"

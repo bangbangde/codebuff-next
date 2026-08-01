@@ -35,9 +35,8 @@ export function RenamePasskeyForm({
       <label
         className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
         htmlFor={inputId}
-        lang="en"
       >
-        Passkey name
+        Passkey 名称
       </label>
       <input
         autoComplete="off"
@@ -55,7 +54,7 @@ export function RenamePasskeyForm({
           disabled={disabled}
           type="submit"
         >
-          {pending ? "Saving…" : "Save"}
+          {pending ? "正在保存…" : "保存"}
         </button>
         <button
           className="min-h-11 rounded-md px-3 py-2 font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
@@ -63,7 +62,7 @@ export function RenamePasskeyForm({
           onClick={onCancel}
           type="button"
         >
-          Cancel
+          取消
         </button>
       </div>
     </form>

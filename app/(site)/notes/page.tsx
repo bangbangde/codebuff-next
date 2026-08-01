@@ -26,7 +26,9 @@ export default async function NotesPage() {
   return (
     <main className="flex-1" id="main-content">
       <ContentContainer className="py-[clamp(1.5rem,4vw,3rem)]">
-        <h1 className="sr-only">Notes</h1>
+        <h1 className="sr-only" lang="en">
+          Notes
+        </h1>
         <section aria-labelledby="notes-list-title">
           <h2 className="sr-only" id="notes-list-title">
             全部 Notes

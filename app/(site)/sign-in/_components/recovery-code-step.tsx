@@ -59,7 +59,7 @@ export function RecoveryCodeStep({
         disabled={pending}
         type="submit"
       >
-        {pending ? "Verifying…" : "Verify recovery code"}
+        {pending ? "正在验证…" : "验证恢复码"}
       </button>
 
       <div className="mt-6 text-center">

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 
 import { ContentContainer } from "@/app/(site)/_components/content-container";
-import { SectionLabel } from "@/app/(site)/_components/section-label";
 import { SignInForm } from "./_components/sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to the private account area of CQ's Lab.",
+  description: "登录 CQ’s Lab 的私人账户区域。",
 };
 
 export default function SignInPage() {
@@ -21,13 +20,12 @@ export default function SignInPage() {
           aria-labelledby="sign-in-title"
         >
           <div>
-            <SectionLabel>Private / Account</SectionLabel>
             <h1
-              className="mt-6 mb-0 max-w-[10ch] text-display font-[520] leading-display tracking-[-0.05em]"
+              className="m-0 max-w-[10ch] text-display font-[520] leading-display tracking-[-0.05em]"
               id="sign-in-title"
               lang="en"
             >
-              Sign in to continue.
+              Sign in
             </h1>
             <p className="mt-7 max-w-[34rem] text-lg leading-body text-muted-foreground">
               这里是 CQ&apos;s Lab
@@ -38,9 +36,8 @@ export default function SignInPage() {
           <div className="rounded-lg border border-border bg-surface-muted p-[clamp(1.5rem,4vw,2.5rem)]">
             <h2
               className="m-0 text-[1.5rem] font-[540] tracking-[-0.035em]"
-              lang="en"
             >
-              Account access
+              账户登录
             </h2>
             <p className="mt-3 text-sm leading-body text-muted-foreground">
               使用邮箱和密码登录。

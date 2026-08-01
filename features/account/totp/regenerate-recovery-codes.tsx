@@ -117,9 +117,8 @@ export function RegenerateRecoveryCodes({
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
             htmlFor={passwordInputId}
-            lang="en"
           >
-            Current password
+            当前密码
           </label>
           <input
             autoComplete="current-password"
@@ -146,7 +145,7 @@ export function RegenerateRecoveryCodes({
           disabled={disabled}
           type="submit"
         >
-          {isPending ? "Generating…" : "Generate new codes"}
+          {isPending ? "正在生成…" : "生成新恢复码"}
         </button>
 
         <button

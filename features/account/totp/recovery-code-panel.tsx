@@ -25,10 +25,10 @@ export function RecoveryCodePanel({
           </svg>
         </div>
         <div className="flex-1">
-          <p className="m-0 font-medium text-foreground" lang="en">
+          <p className="m-0 font-medium text-foreground">
             {regenerated
-              ? "Save your new recovery codes"
-              : "Save your recovery codes"}
+              ? "保存新的恢复码"
+              : "保存恢复码"}
           </p>
           <p className="m-0 mt-1 text-sm leading-body text-muted-foreground">
             以下是 {codes.length} 枚{regenerated ? "新的" : ""}

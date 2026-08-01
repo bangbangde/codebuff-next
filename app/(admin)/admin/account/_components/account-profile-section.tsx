@@ -13,10 +13,7 @@ export function AccountProfileSection({
     <section
       aria-labelledby="account-info-title"
     >
-      <p className="font-mono text-xs tracking-[0.1em] text-brand-accent uppercase">
-        Admin / Account
-      </p>
-      <div className="mt-4 grid items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(22rem,1fr)] lg:gap-12">
         <div>
           <h1
             className="max-w-[12ch] text-[clamp(2.25rem,6vw,4.75rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-balance"

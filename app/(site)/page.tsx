@@ -40,13 +40,12 @@ export default async function Home() {
           </p>
           <p
             className="mt-3 mb-0 flex items-center gap-3 font-mono text-[0.8125rem] leading-body tracking-[0.015em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.6rem] [@media(max-width:40rem)]:text-xs"
-            lang="en"
           >
             <span className="relative flex size-2 shrink-0" aria-hidden="true">
               <span className="absolute -inset-1 animate-ping rounded-full border border-brand-accent opacity-70 [animation-duration:1.8s] [animation-timing-function:cubic-bezier(0,0,0.2,1)] motion-reduce:animate-none motion-reduce:opacity-0" />
               <span className="relative size-2 rounded-full bg-brand-accent shadow-[0_0_0_0.25rem_var(--brand-accent-soft)]" />
             </span>
-            Now — Getting the site ready.
+            <span lang="en">Now</span> · 正在准备网站内容
           </p>
         </ContentContainer>
       </section>
@@ -55,10 +54,7 @@ export default async function Home() {
         <section id="notes" aria-labelledby="notes-title">
           <div className="flex items-end justify-between gap-6 border-b border-border pb-4">
             <div>
-              <p className="font-mono text-xs tracking-label text-brand-accent uppercase">
-                Published thoughts
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight" id="notes-title">
+              <h2 className="text-2xl font-semibold tracking-tight" id="notes-title" lang="en">
                 Notes
               </h2>
             </div>

@@ -267,10 +267,17 @@ error states when the interaction semantics require them.
 
 ## Content and language
 
-- `CQ’s Lab`, product-surface names, compact labels, and short positioning
-  phrases may remain in English.
-- Simplified Chinese carries most explanation and long-form interface copy.
-- Chinese-English mixing should sound natural, not perform technical identity.
+- Use English for navigation and product structure, including names such as
+  `Notes`, `Projects`, and `About`.
+- Use Simplified Chinese for descriptive content, explanations, feedback, and
+  long-form interface copy.
+- Keep English outside product structure to a small number of meaningful labels
+  and established terms such as `Passkey`, `TOTP`, or `AI`.
+- Do not use purely decorative English section subtitles, eyebrow copy, or
+  atmospheric taglines. A visible label must identify real structure, status,
+  or meaning.
+- Chinese-English mixing should sound natural and should not perform technical
+  identity.
 - Use concise, direct language. Avoid inflated claims and explanations that are
   more elaborate than the underlying work.
 - Apply the correct `lang` attribute when a meaningful text region differs from
@@ -326,6 +333,7 @@ must remain explicit. Do not rely on placeholder text as the only label.
 - Uniform grids when the content has a stronger editorial hierarchy.
 - Oversized promotional statements without substantive content nearby.
 - Decorative illustration or motion without a content purpose.
+- Purely decorative English section subtitles or atmospheric taglines.
 - New colors, spacing aliases, or component variants introduced for one local
   convenience.
 - Shared primitives that hard-code Site or Admin palette values.

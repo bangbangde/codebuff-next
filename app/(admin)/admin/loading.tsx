@@ -1,7 +1,7 @@
 export default function AdminLoading() {
   return (
     <div
-      aria-label="Loading Admin overview"
+      aria-label="正在载入 Admin"
       className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10"
       role="status"
     >
@@ -12,7 +12,7 @@ export default function AdminLoading() {
         <div className="h-44 animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none" />
         <div className="h-44 animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none" />
       </div>
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">正在载入…</span>
     </div>
   );
 }

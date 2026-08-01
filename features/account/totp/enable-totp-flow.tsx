@@ -114,7 +114,7 @@ export function EnableTotpFlow() {
         <div className="mt-6 flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            alt="TOTP QR code"
+            alt="TOTP 二维码"
             className="rounded-lg border border-border"
             height={200}
             src={qrDataUrl}
@@ -131,9 +131,8 @@ export function EnableTotpFlow() {
             <label
               className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
               htmlFor={codeInputId}
-              lang="en"
             >
-              Verification code
+              验证码
             </label>
             <input
               autoComplete="one-time-code"
@@ -179,7 +178,7 @@ export function EnableTotpFlow() {
             disabled={isPending || !codesSaved}
             type="submit"
           >
-            {isPending ? "Verifying…" : "Confirm and enable"}
+            {isPending ? "正在验证…" : "确认并启用"}
           </button>
         </form>
       </div>
@@ -197,9 +196,8 @@ export function EnableTotpFlow() {
           <label
             className="block font-mono text-xs leading-body tracking-label text-muted-foreground uppercase"
             htmlFor={passwordInputId}
-            lang="en"
           >
-            Current password
+            当前密码
           </label>
           <input
             autoComplete="current-password"
@@ -226,7 +224,7 @@ export function EnableTotpFlow() {
           disabled={isPending}
           type="submit"
         >
-          {isPending ? "Setting up…" : "Enable TOTP"}
+          {isPending ? "正在设置…" : "启用 TOTP"}
         </button>
       </form>
     </div>

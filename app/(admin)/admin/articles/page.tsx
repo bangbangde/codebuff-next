@@ -13,7 +13,7 @@ import { createDraftAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Articles",
-  description: "Review articles stored in PostgreSQL.",
+  description: "查看与管理存储在 PostgreSQL 中的文章。",
 };
 
 type ArticleTab = "drafts" | "published";
@@ -64,8 +64,9 @@ export default async function ArticlesPage({
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
             )}
             href="/admin/articles?tab=drafts"
+            lang="en"
           >
-            草稿箱
+            Drafts
             <span
               className={cn(
                 "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
@@ -86,8 +87,9 @@ export default async function ArticlesPage({
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
             )}
             href="/admin/articles?tab=published"
+            lang="en"
           >
-            已发布
+            Published
             <span
               className={cn(
                 "rounded-full px-1.5 py-0.5 text-xs tabular-nums",

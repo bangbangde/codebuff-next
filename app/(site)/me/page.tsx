@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { ContentContainer } from "@/app/(site)/_components/content-container";
-import { SectionLabel } from "@/app/(site)/_components/section-label";
 import { FactList } from "./_components/fact-list";
 
 const facts = [
   {
     term: "Focus",
-    description: "Frontend systems · Architecture · AI collaboration",
+    description: "Frontend 系统 · 架构设计 · AI 协作",
+    descriptionLang: "zh-CN",
   },
   {
     term: "Now",
@@ -31,8 +31,8 @@ const principles = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Me",
-  description: "A concise introduction to CQ and the work behind CQ’s Lab.",
+  title: "About",
+  description: "关于 CQ，以及 CQ’s Lab 背后的工作与思考。",
 };
 
 export default function MePage() {
@@ -43,14 +43,13 @@ export default function MePage() {
           className="border-b border-border pb-[clamp(4rem,8vw,7rem)]"
           aria-labelledby="me-page-title"
         >
-          <SectionLabel>Me / Frontend engineer</SectionLabel>
-          <div className="mt-6 grid grid-cols-[minmax(0,0.9fr)_minmax(24rem,1fr)] [align-items:start] gap-[clamp(3rem,8vw,8rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
+          <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(24rem,1fr)] [align-items:start] gap-[clamp(3rem,8vw,8rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">
             <h1
               className="m-0 max-w-[12ch] text-display font-[520] leading-display tracking-tighter"
               id="me-page-title"
               lang="en"
             >
-              Building beyond the interface.
+              About
             </h1>
             <div className="pt-2 [@media(max-width:40rem)]:pt-0">
               <p
@@ -71,14 +70,12 @@ export default function MePage() {
           className="border-b border-border py-[clamp(4rem,8vw,7rem)]"
           aria-labelledby="practice-title"
         >
-          <div className="grid grid-cols-[minmax(12rem,0.3fr)_minmax(0,1fr)] [align-items:start] gap-6 [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-4">
-            <SectionLabel>Practice / Approach</SectionLabel>
+          <div>
             <h2
               className="m-0 max-w-[16ch] text-[clamp(2rem,4vw,3.5rem)] font-[520] leading-[1.08] tracking-[-0.04em]"
               id="practice-title"
-              lang="en"
             >
-              How I approach the work
+              我的工作方式
             </h2>
           </div>
           <div className="mt-16 grid grid-cols-3 gap-[clamp(1.5rem,4vw,3rem)] [@media(max-width:40rem)]:mt-12 [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-8">

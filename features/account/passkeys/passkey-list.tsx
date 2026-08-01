@@ -33,7 +33,7 @@ export function PasskeyList({
   onStartRename,
 }: PasskeyListProps) {
   if (isLoading) {
-    return <p className="m-0 text-sm text-muted-foreground">Loading passkeys…</p>;
+    return <p className="m-0 text-sm text-muted-foreground">正在载入 Passkey…</p>;
   }
 
   if (passkeys.length === 0) {

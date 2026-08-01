@@ -39,7 +39,7 @@ export function SignOutButton() {
         onClick={handleSignOut}
         type="button"
       >
-        {isPending ? "Signing out…" : "Sign out"}
+        {isPending ? "正在退出…" : "退出登录"}
       </button>
       <p
         aria-live="polite"

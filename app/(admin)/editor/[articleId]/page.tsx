@@ -14,7 +14,7 @@ import { ArticleEditor } from "../_components/article-editor";
 
 export const metadata: Metadata = {
   title: "Edit article",
-  description: "Edit an article in full-screen mode.",
+  description: "使用全屏编辑器修改文章。",
 };
 
 export default async function EditorPage({

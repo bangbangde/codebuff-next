@@ -9,7 +9,7 @@ CQ’s Lab 的 Next.js 应用，使用 App Router、TypeScript、Tailwind CSS、
 | `/` | 站点简介与最多三篇已发布 Notes |
 | `/notes` | 从 PostgreSQL 读取的已发布 Notes 索引 |
 | `/notes/[noteId]` | 已发布 Note 详情；正文为数据库中的 Markdown |
-| `/me` | 公开的个人简介与工作方法 |
+| `/me` | About：公开的个人简介与工作方法 |
 | `/sign-in` | 邮箱密码、Passkey、TOTP 与恢复码登录 |
 | `/admin` | 需要 `admin` role 的后台入口，使用顶栏导航 |
 | `/admin/articles` | 草稿与已发布内容管理 |

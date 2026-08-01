@@ -44,7 +44,7 @@ export function PasskeyItem({
         <div className="min-w-0">
           <p className="m-0 break-words font-medium text-foreground">{label}</p>
           <p className="mt-1 text-sm leading-body text-muted-foreground">
-            <span lang="en">{getPasskeyTypeLabel(passkey)}</span>
+            <span>{getPasskeyTypeLabel(passkey)}</span>
             {" · "}
             注册于 {formatPasskeyDate(passkey.createdAt)}
           </p>
@@ -56,7 +56,7 @@ export function PasskeyItem({
             onClick={onStartRename}
             type="button"
           >
-            Rename
+            重命名
           </button>
           <button
             className="min-h-11 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs font-medium text-muted-foreground transition-[border-color,color] hover:border-brand-accent hover:text-brand-accent focus-visible:border-brand-accent focus-visible:text-brand-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
@@ -64,7 +64,7 @@ export function PasskeyItem({
             onClick={onStartDelete}
             type="button"
           >
-            Remove
+            移除
           </button>
         </div>
       </div>

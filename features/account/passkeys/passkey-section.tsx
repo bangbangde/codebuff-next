@@ -39,11 +39,8 @@ export function PasskeySection() {
   return (
     <div aria-busy={isLoading || isBusy}>
       <div>
-        <h3
-          className="m-0 text-[1.5rem] font-[540] tracking-[-0.035em]"
-          lang="en"
-        >
-          Registered passkeys
+        <h3 className="m-0 text-[1.5rem] font-[540] tracking-[-0.035em]">
+          已注册的 Passkey
         </h3>
         <p className="mt-3 text-sm leading-body text-muted-foreground">
           注册、重命名和移除需要最近 10 分钟内建立的登录 Session。
