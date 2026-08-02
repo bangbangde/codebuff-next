@@ -42,14 +42,23 @@ function urlTransform(url: string) {
 
 export function MarkdownRenderer({
   children,
+  headingIds,
   resolveAssetUrl,
 }: {
   children: string;
+  headingIds?: readonly string[];
   resolveAssetUrl?: AssetUrlResolver;
 }) {
+  let headingIndex = 0;
   const components: Components = {
     // 页面标题由页面模板负责；正文中的一级标题降为二级，避免重复主标题。
     h1: ({ node: _node, ...props }) => <h2 {...props} />,
+    h2: ({ node: _node, ...props }) => (
+      <h2 {...props} id={headingIds?.[headingIndex++]} />
+    ),
+    h3: ({ node: _node, ...props }) => (
+      <h3 {...props} id={headingIds?.[headingIndex++]} />
+    ),
     ...(resolveAssetUrl
       ? {
           // react-markdown v10 通过 passNode 会把 hast node 对象作为 prop 传入，
