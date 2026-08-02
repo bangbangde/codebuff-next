@@ -55,7 +55,7 @@ export const publishArticleSchema = z.object({
   tagNames: z
     .array(tagNameSchema)
     .min(1, "至少需要一个标签。")
-    .max(20, "单篇文章最多 20 个标签。"),
+    .max(20, "单篇笔记最多 20 个标签。"),
 });
 
 function normalizeText(value: string) {

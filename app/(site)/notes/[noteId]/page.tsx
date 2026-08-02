@@ -73,7 +73,7 @@ export default async function NotePage({ params }: NotePageProps) {
                 {note.title}
               </h1>
               <div
-                aria-label="文章信息"
+                aria-label="笔记信息"
                 className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-2 font-mono text-xs leading-5 text-muted-foreground"
               >
                 <time dateTime={note.publishedAt}>
@@ -115,7 +115,7 @@ export default async function NotePage({ params }: NotePageProps) {
                 <MarkdownRenderer
                   headingIds={outline.map((item) => item.id)}
                   resolveAssetUrl={(assetId) =>
-                    `/api/articles/${note.id}/assets/${assetId}/content`
+                    `/api/notes/${note.id}/assets/${assetId}/content`
                   }
                 >
                   {content}

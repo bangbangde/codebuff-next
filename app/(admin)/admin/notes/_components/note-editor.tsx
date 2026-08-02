@@ -4,8 +4,8 @@ import { ExternalLinkIcon, SaveIcon, SendIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { MarkdownEditorHandle } from "./markdown-editor";
-import { ArticleBodyEditor } from "./article-body-editor";
+import type { NoteMarkdownEditorHandle } from "./markdown-editor";
+import { NoteBodyEditor } from "./note-body-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
@@ -14,9 +14,9 @@ import type {
   TagOption,
 } from "@/features/articles/article-dto";
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
-import { AssetDialog } from "./asset-dialog";
-import { PublishDialog } from "./publish-dialog";
-import { updateArticleAction } from "../[articleId]/actions";
+import { NoteAssetDialog } from "./note-asset-dialog";
+import { PublishNoteDialog } from "./publish-note-dialog";
+import { updateArticleAction } from "../[noteId]/actions";
 
 type SaveStatus =
   | "idle"
@@ -32,7 +32,7 @@ function valuesEqual(a: ArticleCreateValues, b: ArticleCreateValues): boolean {
   return a.title === b.title && a.bodyMarkdown === b.bodyMarkdown;
 }
 
-export function ArticleEditor({
+export function NoteEditor({
   article,
   assets,
   categories,
@@ -54,7 +54,7 @@ export function ArticleEditor({
   tags: readonly TagOption[];
   initialValues: ArticleCreateValues;
 }) {
-  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const editorRef = useRef<NoteMarkdownEditorHandle>(null);
   const [values, setValues] = useState<ArticleCreateValues>(initialValues);
   const [expectedRevision, setExpectedRevision] = useState<number>(
     article.revision,
@@ -178,9 +178,9 @@ export function ArticleEditor({
       case "conflict":
         return formError ?? "检测到冲突";
       case "not_found":
-        return formError ?? "文章已不存在";
+        return formError ?? "笔记已不存在";
       default:
-        return "文章将自动保存至草稿箱";
+        return "笔记将自动保存至草稿箱";
     }
   })();
 
@@ -195,10 +195,10 @@ export function ArticleEditor({
     <>
       <header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:h-14 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-0">
         <input
-          aria-label="文章标题"
+          aria-label="笔记标题"
           className="h-9 w-full min-w-0 border-0 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0 sm:h-auto sm:flex-1"
           onChange={(event) => handleTitleChange(event.target.value)}
-          placeholder="输入文章标题…"
+          placeholder="输入笔记标题…"
           value={values.title}
         />
 
@@ -260,16 +260,16 @@ export function ArticleEditor({
           </Button>
 
           <Link
-            aria-label="返回文章列表"
+            aria-label="返回笔记列表"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            href="/admin/articles"
+            href="/admin/notes"
           >
             <ExternalLinkIcon aria-hidden="true" className="size-4" />
           </Link>
         </div>
       </header>
 
-      <ArticleBodyEditor
+      <NoteBodyEditor
         articleId={article.id}
         defaultValue={values.bodyMarkdown}
         editorRef={editorRef}
@@ -277,7 +277,7 @@ export function ArticleEditor({
         onValueChange={handleBodyChange}
       />
 
-      <AssetDialog
+      <NoteAssetDialog
         articleId={article.id}
         assets={assets}
         onInsertReference={handleInsertReference}
@@ -285,7 +285,7 @@ export function ArticleEditor({
         open={assetDialogOpen}
       />
 
-      <PublishDialog
+      <PublishNoteDialog
         article={{
           id: article.id,
           revision: expectedRevision,

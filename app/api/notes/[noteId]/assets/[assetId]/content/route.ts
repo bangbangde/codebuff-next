@@ -7,7 +7,7 @@ import {
   articleIdParamSchema,
 } from "@/features/article-assets/article-asset-validation";
 import { readArticleAsset } from "@/features/article-assets/server/article-asset-service";
-import { requireAdmin } from "@/lib/auth/session";
+import { isArticlePublished } from "@/features/articles/server/article-service";
 
 export const runtime = "nodejs";
 
@@ -21,27 +21,29 @@ function contentDisposition(filename: string) {
 
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ articleId: string; assetId: string }> },
+  context: { params: Promise<{ noteId: string; assetId: string }> },
 ) {
-  await requireAdmin();
-
-  const { articleId, assetId } = await context.params;
-  const parsedArticleId = articleIdParamSchema.safeParse(articleId);
+  const { noteId, assetId } = await context.params;
+  const parsedNoteId = articleIdParamSchema.safeParse(noteId);
   const parsedAssetId = assetIdParamSchema.safeParse(assetId);
 
-  if (!parsedArticleId.success || !parsedAssetId.success) {
+  if (!parsedNoteId.success || !parsedAssetId.success) {
+    return Response.json({ error: "资产不存在。" }, { status: 404 });
+  }
+
+  if (!(await isArticlePublished(parsedNoteId.data))) {
     return Response.json({ error: "资产不存在。" }, { status: 404 });
   }
 
   try {
     const { asset, body } = await readArticleAsset(
-      parsedArticleId.data,
+      parsedNoteId.data,
       parsedAssetId.data,
     );
 
     return new Response(Buffer.from(body), {
       headers: {
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "public, max-age=300, must-revalidate",
         "Content-Disposition": contentDisposition(asset.originalFilename),
         "Content-Length": String(body.byteLength),
         "Content-Type": asset.mediaType,
@@ -60,8 +62,8 @@ export async function GET(
       );
     }
 
-    console.error("Failed to read article asset.", {
-      articleId: parsedArticleId.data,
+    console.error("Failed to read public note asset.", {
+      noteId: parsedNoteId.data,
       assetId: parsedAssetId.data,
       cause: error instanceof Error ? error.name : "UnknownError",
     });

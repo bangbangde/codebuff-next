@@ -100,7 +100,7 @@ export default async function NotesPage() {
                           className="object-cover transition-transform duration-[180ms] group-hover:scale-[1.025] motion-reduce:transition-none"
                           fill
                           sizes="(max-width: 640px) 92px, 144px"
-                          src={`/api/articles/${note.id}/assets/${note.coverAssetId}/content`}
+                          src={`/api/notes/${note.id}/assets/${note.coverAssetId}/content`}
                         />
                       </div>
                     ) : null}

@@ -109,7 +109,7 @@ function buildTagItems(
   return [...existing, makeCreatableItem(trimmed)];
 }
 
-export function ArticleTaxonomyFields({
+export function NoteTaxonomyFields({
   categories,
   fieldErrors,
   initialCategoryName,

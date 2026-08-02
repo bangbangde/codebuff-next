@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   deleteArticleAssetAction,
   uploadArticleAssetAction,
-} from "../[articleId]/actions";
+} from "../[noteId]/actions";
 
 function formatBytes(value: number) {
   if (value >= 1024 * 1024) {
@@ -23,7 +23,7 @@ function formatBytes(value: number) {
   return `${(value / 1024).toFixed(1)} KiB`;
 }
 
-export function ArticleAssetPanel({
+export function NoteAssetPanel({
   articleId,
   assets,
   onInsertReference,
@@ -61,11 +61,11 @@ export function ArticleAssetPanel({
   return (
     <div className="mt-4 grid gap-4 rounded-md border border-border bg-muted p-4">
       <div>
-        <p className="text-sm font-medium text-foreground">文章资产</p>
+        <p className="text-sm font-medium text-foreground">笔记资产</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
           上传到本文的图片或附件会插入稳定的{" "}
           <code className="font-mono">cq-asset://</code>{" "}
-          引用；资产随文章删除而回收。当前阶段不提供预览。
+          引用；资产随笔记删除而回收。当前阶段不提供预览。
         </p>
       </div>
 

@@ -199,7 +199,7 @@ export const drizzleArticleRepository: ArticleRepository = {
     const today = new Date().toISOString().slice(0, 10);
     const [created] = await getDatabase()
       .insert(article)
-      .values({ draftTitle: `未命名文章 ${today}` })
+      .values({ draftTitle: `未命名笔记 ${today}` })
       .returning({ id: article.id });
 
     if (!created) {

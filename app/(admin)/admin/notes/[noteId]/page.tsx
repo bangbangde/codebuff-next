@@ -10,21 +10,21 @@ import {
 } from "@/features/articles/server/article-service";
 import { listArticleAssets } from "@/features/article-assets/server/article-asset-service";
 import { requireAdmin } from "@/lib/auth/session";
-import { ArticleEditor } from "../_components/article-editor";
+import { NoteEditor } from "../_components/note-editor";
 
 export const metadata: Metadata = {
-  title: "Edit article",
-  description: "使用全屏编辑器修改文章。",
+  title: "Edit note",
+  description: "使用全屏编辑器修改笔记。",
 };
 
-export default async function EditorPage({
+export default async function NoteEditorPage({
   params,
 }: {
-  params: Promise<{ articleId: string }>;
+  params: Promise<{ noteId: string }>;
 }) {
   await requireAdmin();
 
-  const route = articleIdSchema.safeParse((await params).articleId);
+  const route = articleIdSchema.safeParse((await params).noteId);
 
   if (!route.success) {
     notFound();
@@ -47,7 +47,7 @@ export default async function EditorPage({
   };
 
   return (
-    <ArticleEditor
+    <NoteEditor
       article={{
         id: article.id,
         revision: article.draftRevision,

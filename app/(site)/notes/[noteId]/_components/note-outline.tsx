@@ -130,7 +130,7 @@ export function NoteOutline({
         <summary className="flex min-h-11 cursor-pointer items-center font-mono text-xs tracking-label text-foreground uppercase marker:text-brand-accent">
           目录
         </summary>
-        <nav aria-label="文章目录" className="pb-3">
+        <nav aria-label="笔记目录" className="pb-3">
           <OutlineLinks
             activeId={activeId}
             onNavigate={setActiveId}
@@ -141,7 +141,7 @@ export function NoteOutline({
       </details>
 
       <aside className="sticky top-24 hidden max-h-[calc(100dvh-8rem)] overflow-y-auto border-l border-border xl:col-start-2 xl:row-start-1 xl:block">
-        <nav aria-label="文章目录">
+        <nav aria-label="笔记目录">
           <p className="m-0 pl-6 font-mono text-xs tracking-label text-brand-accent uppercase">
             目录
           </p>

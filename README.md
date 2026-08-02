@@ -11,13 +11,13 @@ CQ’s Lab 的 Next.js 应用，使用 App Router、TypeScript、Tailwind CSS、
 | `/notes/[noteId]` | 已发布 Note 详情；正文为数据库中的 Markdown |
 | `/me` | 永久重定向到首页 About 区域 |
 | `/sign-in` | 邮箱密码、Passkey、TOTP 与恢复码登录 |
-| `/admin` | 需要 `admin` role 的后台入口，使用顶栏导航 |
-| `/admin/articles` | 草稿与已发布内容管理 |
+| `/admin` | 永久重定向到 Notes 后台入口 |
+| `/admin/notes` | 草稿与已发布 Notes 管理 |
+| `/admin/notes/[noteId]` | 全屏 Markdown 编辑器 |
 | `/admin/account` | 当前管理员的账户与安全设置 |
-| `/editor/[articleId]` | 全屏 Markdown 编辑器 |
 | `/api/auth/*` | Better Auth API |
 
-旧的 `/articles`、`/articles/[articleId]` 与 `/article/[articleId]` 会永久重定向到 Notes 规范路由。仓库不再包含 MDX 内容或 MDX 构建管线。
+仓库不保留旧内容页面、重定向或资产 API；公开站点与 Admin 只提供 Notes 路由。仓库不再包含 MDX 内容或 MDX 构建管线。
 
 ## 本地开发
 
@@ -69,13 +69,13 @@ pnpm db:migrate
 
 ## Notes 与资产
 
-编辑器把草稿标题与 Markdown 正文保存在数据库。图片引用为 `![alt](cq-asset://<asset-id>)`，文件引用为 `[label](cq-asset://<asset-id>)`。保存草稿时会校验正文引用的资产存在且属于当前文章；发布时会再次校验正文与封面资产，然后把当前草稿修订复制到公开槽位。
+编辑器把草稿标题与 Markdown 正文保存在数据库。图片引用为 `![alt](cq-asset://<asset-id>)`，文件引用为 `[label](cq-asset://<asset-id>)`。保存草稿时会校验正文引用的资产存在且属于当前笔记；发布时会再次校验正文与封面资产，然后把当前草稿修订复制到公开槽位。
 
 资产上传由服务端校验文件签名，单文件上限 10 MiB，接受 JPEG、PNG、WebP、GIF、AVIF 与 PDF。对象键由服务端生成，Garage 写入成功但数据库落库失败时会 best-effort 回滚。公开资产路由只为已发布 Note 提供其所属资产，不暴露存储凭据。
 
 ## 认证边界
 
-公开注册始终关闭。首次账户通过 `pnpm auth:bootstrap` 创建并持久化为 `admin`。`/admin/*` 与 `/editor/*` 同时校验 Session 和服务端 role；只有精确的 `admin` 值可进入。
+公开注册始终关闭。首次账户通过 `pnpm auth:bootstrap` 创建并持久化为 `admin`。`/admin/*` 会校验 Session 和服务端 role；只有精确的 `admin` 值可进入。
 
 Passkey 注册与登录要求用户验证。密码登录可进入 TOTP/恢复码流程；Passkey 登录成功后不重复进入 TOTP。Passkey 管理要求最近 10 分钟内建立的 Session，且不能移除账户最后一个登录方式。
 
@@ -87,7 +87,7 @@ Passkey 注册与登录要求用户验证。密码登录可进入 TOTP/恢复码
 | `PASSKEY_RP_ID` | 必须等于公开 hostname 或其可注册父域 |
 | `BETTER_AUTH_SECRETS` | 版本化密钥列表；首项写入新数据 |
 
-Home 与 Notes 会查询 PostgreSQL；`/me` 只执行静态重定向，`/sign-in` 的初始渲染不依赖数据库。认证 API、Admin、Editor 与账户设置会初始化认证运行时。
+Home 与 Notes 会查询 PostgreSQL；`/me` 只执行静态重定向，`/sign-in` 的初始渲染不依赖数据库。认证 API、Admin Notes 编辑器与账户设置会初始化认证运行时。
 
 ## 校验基线
 

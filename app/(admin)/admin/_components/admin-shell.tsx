@@ -12,7 +12,7 @@ import {
 
 const navigationIcons = {
   account: UserRoundIcon,
-  articles: FileTextIcon,
+  notes: FileTextIcon,
 } as const;
 
 type AdminIdentity = {
@@ -28,6 +28,14 @@ export function AdminShell({
   identity: AdminIdentity;
 }>) {
   const pathname = usePathname();
+
+  if (pathname.startsWith("/admin/notes/")) {
+    return (
+      <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="h-dvh overflow-hidden bg-background text-foreground">

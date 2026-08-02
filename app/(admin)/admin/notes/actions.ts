@@ -11,6 +11,6 @@ export async function createDraftAction(): Promise<void> {
 
   const created = await createDraft();
 
-  revalidatePath("/admin/articles");
-  redirect(`/editor/${created.id}`);
+  revalidatePath("/admin/notes");
+  redirect(`/admin/notes/${created.id}`);
 }

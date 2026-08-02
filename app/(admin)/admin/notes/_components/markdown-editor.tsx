@@ -11,19 +11,19 @@ import {
   useRef,
 } from "react";
 
-export interface MarkdownEditorHandle {
+export interface NoteMarkdownEditorHandle {
   insertText: (text: string) => void;
   focus: () => void;
   getScroller: () => HTMLElement | null;
 }
 
-export const MarkdownEditor = forwardRef<
-  MarkdownEditorHandle,
+export const NoteMarkdownEditor = forwardRef<
+  NoteMarkdownEditorHandle,
   {
     value: string;
     onChange?: (value: string) => void;
   }
->(function MarkdownEditor({ value, onChange }, ref) {
+>(function NoteMarkdownEditor({ value, onChange }, ref) {
   const viewRef = useRef<EditorView | null>(null);
 
   useImperativeHandle(ref, () => ({

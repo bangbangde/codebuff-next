@@ -53,7 +53,7 @@ export async function updateArticleAction(
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "文章标识或版本无效，请重新载入后再试。",
+      formError: "笔记标识或版本无效，请重新载入后再试。",
       savedRevision: null,
       status: "error",
       values,
@@ -86,7 +86,7 @@ export async function updateArticleAction(
         fieldErrors: {
           bodyMarkdown: ["托管资产引用格式无效，请重新从资产插入。"],
         },
-        formError: "文章尚未保存，请检查 Markdown 正文。",
+        formError: "笔记尚未保存，请检查 Markdown 正文。",
         savedRevision: null,
         status: "error",
         values: fields.data,
@@ -99,19 +99,19 @@ export async function updateArticleAction(
         fieldErrors: {
           bodyMarkdown: ["正文引用了不属于本文或不存在的资产。"],
         },
-        formError: "文章尚未保存，请移除无效资产引用。",
+        formError: "笔记尚未保存，请移除无效资产引用。",
         savedRevision: null,
         status: "error",
         values: fields.data,
       };
     }
 
-    console.error("Failed to update article.", error);
+    console.error("Failed to update note.", error);
 
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "文章暂时无法保存，请稍后重试。",
+      formError: "笔记暂时无法保存，请稍后重试。",
       savedRevision: null,
       status: "error",
       values: fields.data,
@@ -123,7 +123,7 @@ export async function updateArticleAction(
       conflictRevision: result.currentRevision,
       fieldErrors: {},
       formError:
-        "数据库中的文章已被其他操作更新。你的输入仍保留在当前页面，重新载入前不会覆盖新版本。",
+        "数据库中的笔记已被其他操作更新。你的输入仍保留在当前页面，重新载入前不会覆盖新版本。",
       savedRevision: null,
       status: "conflict",
       values: fields.data,
@@ -134,15 +134,15 @@ export async function updateArticleAction(
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "这篇文章已不存在，当前内容未保存。",
+      formError: "这篇笔记已不存在，当前内容未保存。",
       savedRevision: null,
       status: "not_found",
       values: fields.data,
     };
   }
 
-  revalidatePath("/admin/articles");
-  revalidatePath(`/editor/${reference.data.articleId}`);
+  revalidatePath("/admin/notes");
+  revalidatePath(`/admin/notes/${reference.data.articleId}`);
 
   return {
     conflictRevision: null,
@@ -171,7 +171,7 @@ export async function publishArticleAction(
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "文章标识或版本无效，请重新载入后再试。",
+      formError: "笔记标识或版本无效，请重新载入后再试。",
       status: "error",
       values,
     };
@@ -216,12 +216,12 @@ export async function publishArticleAction(
       };
     }
 
-    console.error("Failed to publish article.", error);
+    console.error("Failed to publish note.", error);
 
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "文章暂时无法发布，请稍后重试。",
+      formError: "笔记暂时无法发布，请稍后重试。",
       status: "error",
       values: fields.data,
     };
@@ -232,7 +232,7 @@ export async function publishArticleAction(
       conflictRevision: result.currentRevision,
       fieldErrors: {},
       formError:
-        "数据库中的文章草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
+        "数据库中的笔记草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
       status: "conflict",
       values: fields.data,
     };
@@ -242,14 +242,14 @@ export async function publishArticleAction(
     return {
       conflictRevision: null,
       fieldErrors: {},
-      formError: "这篇文章已不存在，无法发布。",
+      formError: "这篇笔记已不存在，无法发布。",
       status: "not_found",
       values: fields.data,
     };
   }
 
-  revalidatePath("/admin/articles");
-  revalidatePath(`/editor/${reference.data.articleId}`);
+  revalidatePath("/admin/notes");
+  revalidatePath(`/admin/notes/${reference.data.articleId}`);
   revalidatePath("/");
   revalidatePath("/notes");
   revalidatePath(`/notes/${reference.data.articleId}`);
@@ -278,7 +278,7 @@ export async function uploadArticleAssetAction(
 
   if (!route.success) {
     return {
-      formError: "文章标识无效，请重新载入后再试。",
+      formError: "笔记标识无效，请重新载入后再试。",
       uploadedId: null,
     };
   }
@@ -295,7 +295,7 @@ export async function uploadArticleAssetAction(
   try {
     const asset = await uploadArticleAsset(route.data, file);
 
-    revalidatePath(`/editor/${route.data}`);
+    revalidatePath(`/admin/notes/${route.data}`);
 
     return {
       formError: null,
@@ -311,7 +311,7 @@ export async function uploadArticleAssetAction(
 
     if (error instanceof ArticleNotFoundError) {
       return {
-        formError: "这篇文章已不存在，无法上传资产。",
+        formError: "这篇笔记已不存在，无法上传资产。",
         uploadedId: null,
       };
     }
@@ -323,7 +323,7 @@ export async function uploadArticleAssetAction(
       };
     }
 
-    console.error("Failed to upload article asset.", error);
+    console.error("Failed to upload note asset.", error);
 
     return {
       formError: "资产暂时无法上传，请稍后重试。",
@@ -352,7 +352,7 @@ export async function deleteArticleAssetAction(
   try {
     await deleteArticleAsset(articleRoute.data, assetRoute.data);
 
-    revalidatePath(`/editor/${articleRoute.data}`);
+    revalidatePath(`/admin/notes/${articleRoute.data}`);
 
     return {
       formError: null,
@@ -364,7 +364,7 @@ export async function deleteArticleAssetAction(
       };
     }
 
-    console.error("Failed to delete article asset.", error);
+    console.error("Failed to delete note asset.", error);
 
     return {
       formError: "资产暂时无法删除，请稍后重试。",

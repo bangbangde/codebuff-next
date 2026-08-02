@@ -1,8 +1,8 @@
 export const adminNavigationItems = [
   {
-    href: "/admin/articles",
-    icon: "articles",
-    label: "Articles",
+    href: "/admin/notes",
+    icon: "notes",
+    label: "Notes",
   },
   {
     href: "/admin/account",

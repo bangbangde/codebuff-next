@@ -14,8 +14,11 @@ import { initialArticleAssetUploadFormState } from "@/features/article-assets/ar
 import { formatCanonicalAssetReference } from "@/features/articles/article-asset-reference";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
-import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor";
-import { uploadArticleAssetAction } from "../[articleId]/actions";
+import {
+  NoteMarkdownEditor,
+  type NoteMarkdownEditorHandle,
+} from "./markdown-editor";
+import { uploadArticleAssetAction } from "../[noteId]/actions";
 
 type EditorMode = "edit" | "split" | "preview";
 type UploadStatus =
@@ -87,10 +90,10 @@ function getDesktopServerSnapshot(): boolean {
 
 function resolveAssetUrlFactory(articleId: string) {
   return (assetId: string) =>
-    `/api/admin/articles/${articleId}/assets/${assetId}/content`;
+    `/api/admin/notes/${articleId}/assets/${assetId}/content`;
 }
 
-export function ArticleBodyEditor({
+export function NoteBodyEditor({
   articleId,
   defaultValue,
   editorRef,
@@ -99,7 +102,7 @@ export function ArticleBodyEditor({
 }: {
   articleId: string;
   defaultValue: string;
-  editorRef: React.RefObject<MarkdownEditorHandle | null>;
+  editorRef: React.RefObject<NoteMarkdownEditorHandle | null>;
   onInsertReference: (reference: string) => boolean;
   onValueChange?: (value: string) => void;
 }) {
@@ -310,7 +313,7 @@ export function ArticleBodyEditor({
                 </p>
               </div>
             ) : null}
-            <MarkdownEditor
+            <NoteMarkdownEditor
               onChange={handleChange}
               ref={editorRef}
               value={value}

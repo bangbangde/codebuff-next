@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 
-import { ArticleTaxonomyFields } from "./article-taxonomy-fields";
+import { NoteTaxonomyFields } from "./note-taxonomy-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
 } from "@/features/articles/article-dto";
 import { initialArticlePublishFormState } from "@/features/articles/article-edit-form-state";
 import { cn } from "@/lib/utils";
-import { publishArticleAction, uploadArticleAssetAction } from "../[articleId]/actions";
+import { publishArticleAction, uploadArticleAssetAction } from "../[noteId]/actions";
 
 const textareaClassName =
   "mt-2 block min-h-32 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-6 text-foreground shadow-xs outline-none transition-[border-color,box-shadow] duration-(--motion-duration) ease-(--motion-easing) placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/15 motion-reduce:transition-none";
@@ -29,10 +29,10 @@ const textareaClassName =
 const labelClassName = "block text-sm font-medium text-foreground";
 
 function resolveAssetUrl(articleId: string, assetId: string) {
-  return `/api/admin/articles/${articleId}/assets/${assetId}/content`;
+  return `/api/admin/notes/${articleId}/assets/${assetId}/content`;
 }
 
-export function PublishDialog({
+export function PublishNoteDialog({
   article,
   assets,
   categories,
@@ -154,16 +154,16 @@ export function PublishDialog({
     <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogContent className="max-h-[85vh] w-full max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isPublished ? "更新线上版本" : "发布文章"}</DialogTitle>
+          <DialogTitle>{isPublished ? "更新线上版本" : "发布笔记"}</DialogTitle>
           <DialogDescription>
-            发布后文章将对访客可见。填写分类、标签、封面图与摘要。
+            发布后笔记将对访客可见。填写分类、标签、封面图与摘要。
           </DialogDescription>
           <p className="text-xs text-muted-foreground" role="status">
             {isPublishedRevisionCurrent
               ? "线上版本已对应当前草稿修订。"
               : isPublished
                 ? "当前草稿比线上版本更新。"
-                : "这篇文章尚未公开。"}
+                : "这篇笔记尚未公开。"}
           </p>
         </DialogHeader>
 
@@ -191,7 +191,7 @@ export function PublishDialog({
               id="publish-summary"
               maxLength={articleFieldLimits.summary}
               name="summary"
-              placeholder="一句话概述这篇文章，用于列表与分享卡片。"
+              placeholder="一句话概述这篇笔记，用于列表与分享卡片。"
             />
             {state.fieldErrors.summary?.length ? (
               <p className="mt-2 text-sm text-destructive" id={summaryErrorId}>
@@ -200,7 +200,7 @@ export function PublishDialog({
             ) : null}
           </div>
 
-          <ArticleTaxonomyFields
+          <NoteTaxonomyFields
             categories={categories}
             fieldErrors={{
               categoryName: state.fieldErrors.categoryName,
