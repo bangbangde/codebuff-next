@@ -32,9 +32,9 @@ export function SiteUtilityLinks() {
             <TooltipTrigger
               render={
                 <a
-                  aria-label="GitHub"
+                  aria-label="前往 GitHub"
                   className={utilityLinkClassName}
-                  href="https://github.com/bangbangde/codebuff-next"
+                  href="https://github.com/bangbangde"
                   rel="noopener noreferrer"
                   target="_blank"
                   title="GitHub"
@@ -52,10 +52,10 @@ export function SiteUtilityLinks() {
             <TooltipTrigger
               render={
                 <Link
-                  aria-label="Admin"
+                  aria-label="进入管理后台"
                   className={utilityLinkClassName}
                   href="/admin"
-                  title="Admin"
+                  title="管理后台"
                 />
               }
             >
@@ -65,7 +65,7 @@ export function SiteUtilityLinks() {
               />
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>
-              Admin
+              管理后台
             </TooltipContent>
           </Tooltip>
         </div>

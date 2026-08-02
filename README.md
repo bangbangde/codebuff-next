@@ -6,10 +6,10 @@ CQ’s Lab 的 Next.js 应用，使用 App Router、TypeScript、Tailwind CSS、
 
 | 路径 | 实现 |
 | --- | --- |
-| `/` | 站点简介与最多三篇已发布 Notes |
+| `/` | 个人主页与内容入口：Hero、Now、最新一篇 Note 与 About |
 | `/notes` | 从 PostgreSQL 读取的已发布 Notes 索引 |
 | `/notes/[noteId]` | 已发布 Note 详情；正文为数据库中的 Markdown |
-| `/me` | About：公开的个人简介与工作方法 |
+| `/me` | 永久重定向到首页 About 区域 |
 | `/sign-in` | 邮箱密码、Passkey、TOTP 与恢复码登录 |
 | `/admin` | 需要 `admin` role 的后台入口，使用顶栏导航 |
 | `/admin/articles` | 草稿与已发布内容管理 |
@@ -87,7 +87,7 @@ Passkey 注册与登录要求用户验证。密码登录可进入 TOTP/恢复码
 | `PASSKEY_RP_ID` | 必须等于公开 hostname 或其可注册父域 |
 | `BETTER_AUTH_SECRETS` | 版本化密钥列表；首项写入新数据 |
 
-Home 与 Notes 会查询 PostgreSQL；`/me` 与 `/sign-in` 的初始渲染不依赖数据库。认证 API、Admin、Editor 与账户设置会初始化认证运行时。
+Home 与 Notes 会查询 PostgreSQL；`/me` 只执行静态重定向，`/sign-in` 的初始渲染不依赖数据库。认证 API、Admin、Editor 与账户设置会初始化认证运行时。
 
 ## 校验基线
 
@@ -97,4 +97,4 @@ pnpm build
 git diff --check
 ```
 
-按照稳定化 Milestone 的 owner 决定，仓库当前不保留自动化测试，也不提供 `pnpm test`。新增功能仍处于暂停状态；当前 CI 只检查生成的数据库产物、lint、构建、镜像构建，以及无数据库凭据时 `/me` 与 `/sign-in` 的容器运行状态。
+仓库当前不保留自动化测试，也不提供 `pnpm test`。当前 CI 检查生成的数据库产物、lint、构建、镜像构建，以及无数据库凭据时 `/me` 与 `/sign-in` 的容器运行状态。

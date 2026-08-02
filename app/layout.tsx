@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s · CQ’s Lab",
   },
   description:
-    "CQ 的个人技术实验室，记录笔记、实验与持续推进中的工作。",
+    "记录软件开发、AI 应用、工作与生活中的学习、实践与思考。",
 };
 
 export default function RootLayout({
