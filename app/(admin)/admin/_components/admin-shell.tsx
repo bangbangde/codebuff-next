@@ -1,19 +1,17 @@
 "use client";
 
-import { ExternalLinkIcon, FileTextIcon, UserRoundIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminAccountMenu } from "./admin-account-menu";
 import {
   adminNavigationItems,
   isAdminNavigationItemActive,
 } from "./admin-navigation";
-
-const navigationIcons = {
-  account: UserRoundIcon,
-  notes: FileTextIcon,
-} as const;
 
 type AdminIdentity = {
   email: string;
@@ -28,6 +26,7 @@ export function AdminShell({
   identity: AdminIdentity;
 }>) {
   const pathname = usePathname();
+  const router = useRouter();
 
   if (pathname.startsWith("/admin/notes/")) {
     return (
@@ -38,7 +37,7 @@ export function AdminShell({
   }
 
   return (
-    <div className="h-dvh overflow-hidden bg-background text-foreground">
+    <div className="h-dvh overflow-y-auto bg-background text-foreground">
       <a
         className="fixed top-2 left-2 z-70 -translate-y-[calc(100%+1rem)] rounded-md border border-border bg-popover px-3 py-2 text-sm font-medium text-popover-foreground no-underline shadow-sm transition-transform duration-(--motion-duration) ease-(--motion-easing) focus-visible:translate-y-0 motion-reduce:transition-none"
         href="#admin-main"
@@ -46,11 +45,29 @@ export function AdminShell({
         跳到后台主要内容
       </a>
 
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur-sm supports-backdrop-filter:bg-background/85 sm:px-4">
+      <header
+        className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur-sm supports-backdrop-filter:bg-background/85 sm:px-4"
+        style={
+          {
+            "--admin-content-left":
+              "max(2rem, calc((100% - 72rem) / 2 + 2rem))",
+          } as React.CSSProperties
+        }
+      >
         <Link
-          className="flex min-w-0 items-baseline gap-2 text-foreground no-underline"
+          aria-label="CQ’s Lab Admin 首页"
+          className="flex min-w-0 items-center gap-2 text-foreground no-underline"
           href="/admin"
         >
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="block size-8 shrink-0 rounded-md bg-white p-0.5"
+            height={32}
+            src="/brand/mark.svg"
+            unoptimized
+            width={32}
+          />
           <span
             className="truncate text-sm font-semibold tracking-[-0.02em]"
             lang="en"
@@ -58,64 +75,61 @@ export function AdminShell({
             CQ’s Lab
           </span>
           <span
-            className="shrink-0 font-mono text-[0.6875rem] tracking-[0.08em] text-muted-foreground uppercase"
+            className="shrink-0 rounded-md bg-brand-accent px-2 py-1 font-mono text-[0.625rem] leading-none font-semibold tracking-[0.08em] text-white uppercase"
             lang="en"
           >
             Admin
           </span>
         </Link>
-        <Link
-          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground no-underline"
-          href="/"
-          target="_blank"
-          lang="en"
+        <Button
+          className="ml-1"
+          render={<Link href="/" target="_blank" />}
+          size="sm"
+          variant="outline"
         >
-          <span className="hidden sm:inline">Site</span>
-          <ExternalLinkIcon aria-hidden="true" className="size-4" />
-          <span className="sr-only sm:hidden">Site</span>
-        </Link>
+          <span lang="en">Site</span>
+          <ExternalLinkIcon aria-hidden="true" />
+        </Button>
 
-        <nav
+        <Tabs
           aria-label="后台导航"
-          className="ml-auto flex items-center gap-1"
+          className="ml-1 min-[100rem]:absolute min-[100rem]:left-(--admin-content-left) min-[100rem]:ml-0"
+          onValueChange={(value) => {
+            if (typeof value === "string") {
+              router.push(value);
+            }
+          }}
+          value={
+            adminNavigationItems.find((item) =>
+              isAdminNavigationItemActive(pathname, item.href),
+            )?.href ?? null
+          }
         >
-          {adminNavigationItems.map((item) => {
-            const Icon = navigationIcons[item.icon];
-            const active = isAdminNavigationItemActive(pathname, item.href);
-
-            return (
-              <Link
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2.5 text-sm font-medium no-underline transition-[color,background-color] duration-(--motion-duration) ease-(--motion-easing) hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground motion-reduce:transition-none",
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground",
-                )}
-                href={item.href}
+          <TabsList
+            aria-label="后台主菜单"
+            className="h-11 p-0"
+            variant="line"
+          >
+            {adminNavigationItems.map((item) => (
+              <TabsTrigger
+                className="h-11 min-h-11 min-w-11 px-3"
                 key={item.href}
                 lang="en"
+                value={item.href}
               >
-                <Icon aria-hidden="true" className="size-[1.125rem] shrink-0" />
-                <span className="hidden sm:inline">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="hidden min-w-0 text-right md:block">
-            <p className="truncate text-xs font-medium">{identity.name}</p>
-            <p className="mt-0.5 max-w-56 truncate text-[0.6875rem] text-muted-foreground">
-              {identity.email}
-            </p>
-          </div>
+        <div className="ml-auto">
+          <AdminAccountMenu email={identity.email} name={identity.name} />
         </div>
       </header>
 
       <main
-        className="mt-14 h-[calc(100dvh-3.5rem)] overflow-y-auto"
+        className="min-h-[calc(100dvh-3.5rem)]"
         id="admin-main"
         tabIndex={-1}
       >
