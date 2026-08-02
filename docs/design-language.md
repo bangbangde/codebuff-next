@@ -25,8 +25,8 @@ The interface should feel:
   or constant motion.
 - **Credible:** typography, alignment, states, and content details are handled
   consistently.
-- **In progress:** the site may show active exploration, but placeholders and
-  unfinished work should be honest and deliberate.
+- **Current:** the site may show what CQ is learning or doing now, but it should
+  never present itself as unfinished or use placeholders to simulate content.
 
 The overall character is editorial rather than promotional. Avoid portfolio
 theater, generic SaaS composition, ornamental complexity, and interaction added
@@ -267,8 +267,8 @@ error states when the interaction semantics require them.
 
 ## Content and language
 
-- Use English for navigation and product structure, including names such as
-  `Notes`, `Projects`, and `About`.
+- Use English for the brand, navigation, and compact structural labels,
+  including names such as `Notes`, `Now`, and `About`.
 - Use Simplified Chinese for descriptive content, explanations, feedback, and
   long-form interface copy.
 - Keep English outside product structure to a small number of meaningful labels

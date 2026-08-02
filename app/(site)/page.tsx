@@ -5,105 +5,146 @@ import { listPublishedArticles } from "@/features/articles/server/article-servic
 
 export const dynamic = "force-dynamic";
 
+const sectionLabelClassName =
+  "m-0 font-mono text-xs leading-body tracking-label text-brand-accent uppercase";
+
 function formatPublishDate(date: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date(date));
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Shanghai",
+  })
+    .format(new Date(date))
+    .replaceAll("/", ".");
 }
 
 export default async function Home() {
-  const notes = (await listPublishedArticles()).slice(0, 3);
+  const [latestNote] = await listPublishedArticles();
 
   return (
     <main className="flex flex-1 flex-col" id="main-content">
       <section
-        className="bg-[radial-gradient(circle_at_calc(50%-min(26rem,32vw))_9%,rgba(184,93,22,0.045),transparent_28rem)]"
+        className="border-b border-border bg-[radial-gradient(circle_at_calc(50%-min(26rem,32vw))_12%,rgba(184,93,22,0.045),transparent_30rem)]"
         aria-labelledby="landing-title"
       >
-        <ContentContainer className="grid min-h-0 content-center pt-[clamp(3rem,4.5vw,4rem)] pb-[clamp(2.75rem,4vw,3.5rem)] [@media(max-width:40rem)]:pt-6 [@media(max-width:40rem)]:pb-4">
-          <h1
-            className="m-0 max-w-none text-[clamp(2.9rem,4.5vw,4.5rem)] leading-[0.98] font-[540] tracking-[-0.057em] text-balance [@media(max-width:40rem)]:max-w-[12ch] [@media(max-width:40rem)]:text-[clamp(2.65rem,11.8vw,3.35rem)] [@media(max-width:40rem)]:tracking-[-0.052em]"
-            id="landing-title"
-          >
-            <span className="inline-block">嗨，这里是</span>{" "}
-            <span
-              className="ml-[0.16em] inline-block text-brand-accent [@media(max-width:40rem)]:ml-[0.12em]"
-              lang="en"
+        <ContentContainer className="py-[clamp(3.75rem,7vw,6.75rem)] [@media(max-width:40rem)]:py-12">
+          <div className="max-w-[47rem]">
+            <h1
+              className="m-0 text-[clamp(2.65rem,5.2vw,4.75rem)] leading-[1.02] font-[540] tracking-[-0.055em] text-balance [@media(max-width:40rem)]:text-[clamp(2.4rem,11.5vw,3.25rem)]"
+              id="landing-title"
             >
-              CQ’s Lab
-            </span>
-          </h1>
-          <p className="mt-8 mb-0 text-[0.94rem] leading-normal tracking-[0.012em] text-muted-foreground [@media(max-width:40rem)]:mt-3 [@media(max-width:40rem)]:text-[0.82rem]">
-            Vibe Coding / 电子 DIY / 航模
-          </p>
-          <p
-            className="mt-3 mb-0 flex items-center gap-3 font-mono text-[0.8125rem] leading-body tracking-[0.015em] text-muted-foreground [@media(max-width:40rem)]:mt-[0.6rem] [@media(max-width:40rem)]:text-xs"
-          >
-            <span className="relative flex size-2 shrink-0" aria-hidden="true">
-              <span className="absolute -inset-1 animate-ping rounded-full border border-brand-accent opacity-70 [animation-duration:1.8s] [animation-timing-function:cubic-bezier(0,0,0.2,1)] motion-reduce:animate-none motion-reduce:opacity-0" />
-              <span className="relative size-2 rounded-full bg-brand-accent shadow-[0_0_0_0.25rem_var(--brand-accent-soft)]" />
-            </span>
-            <span lang="en">Now</span> · 正在准备网站内容
-          </p>
+              嗨，这里是 <span className="text-brand-accent" lang="en">CQ’s Lab</span>
+            </h1>
+            <p className="mt-9 mb-0 text-[clamp(1.35rem,2.2vw,1.75rem)] leading-snug font-[520] tracking-[-0.025em] text-foreground [@media(max-width:40rem)]:mt-7">
+              记录学习、实践与思考。
+            </p>
+            <p className="mt-7 mb-0 max-w-[40rem] text-base leading-8 text-muted-foreground">
+              这里主要整理软件开发与 AI 应用相关的学习笔记，也记录工作、生活中的一些经验和想法。
+            </p>
+            <p className="mt-4 mb-0 max-w-[40rem] text-base leading-8 text-muted-foreground">
+              写给未来的自己，也分享给恰好需要的人。
+            </p>
+          </div>
         </ContentContainer>
       </section>
 
-      <ContentContainer className="flex-1 pb-[clamp(3rem,7vw,6rem)]">
-        <section id="notes" aria-labelledby="notes-title">
-          <div className="flex items-end justify-between gap-6 border-b border-border pb-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight" id="notes-title" lang="en">
-                Notes
-              </h2>
-            </div>
-            <Link className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" href="/notes">
-              浏览全部
-            </Link>
-          </div>
-          {notes.length === 0 ? (
-            <p className="mt-6 mb-0 text-sm leading-7 text-muted-foreground">
-              还没有公开 Notes。
+      <section className="border-b border-border" aria-labelledby="now-title">
+        <ContentContainer className="grid grid-cols-[8rem_minmax(0,1fr)] gap-[clamp(2rem,6vw,6rem)] py-[clamp(2.75rem,5vw,4.5rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-5">
+          <h2 className={sectionLabelClassName} id="now-title" lang="en">
+            Now
+          </h2>
+          <div className="max-w-[43rem]">
+            <p className="m-0 text-[clamp(1.05rem,1.8vw,1.25rem)] leading-8 tracking-[-0.012em]">
+              最近在系统梳理 React、Next.js 与 AI Native 开发，同时完善这个网站的内容管理和发布流程。
             </p>
+            <p className="mt-5 mb-0 font-mono text-xs leading-body text-muted-foreground">
+              更新于 <time dateTime="2026-08">2026.08</time>
+            </p>
+          </div>
+        </ContentContainer>
+      </section>
+
+      <section className="border-b border-border" aria-labelledby="latest-note-title">
+        <ContentContainer className="py-[clamp(3.25rem,6vw,5.5rem)]">
+          <h2 className={sectionLabelClassName} id="latest-note-title" lang="en">
+            Latest Note
+          </h2>
+          {latestNote ? (
+            <article className="mt-9 max-w-[48rem]">
+              <p className="m-0 font-mono text-xs leading-body text-muted-foreground">
+                <time dateTime={latestNote.publishedAt}>
+                  {formatPublishDate(latestNote.publishedAt)}
+                </time>
+                {latestNote.categoryName ? (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <span>{latestNote.categoryName}</span>
+                  </>
+                ) : null}
+              </p>
+              <h3 className="mt-4 mb-0 max-w-[24ch] text-[clamp(1.75rem,3.6vw,3rem)] leading-[1.15] font-[540] tracking-[-0.04em] text-balance">
+                <Link
+                  className="rounded-sm transition-colors duration-[140ms] hover:text-brand-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                  href={`/notes/${latestNote.id}`}
+                >
+                  {latestNote.title}
+                </Link>
+              </h3>
+              {latestNote.summary ? (
+                <p className="mt-5 mb-0 line-clamp-3 max-w-[42rem] text-base leading-8 text-muted-foreground">
+                  {latestNote.summary}
+                </p>
+              ) : null}
+              <Link
+                className="mt-7 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-brand-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                href={`/notes/${latestNote.id}`}
+              >
+                阅读全文 <span aria-hidden="true">→</span>
+              </Link>
+            </article>
           ) : (
-            <ol className="mt-8 mb-0 divide-y divide-border border-y border-border">
-              {notes.map((note) => (
-                <li className="py-7" key={note.id}>
-                  <article className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-8">
-                    <div className="min-w-0">
-                      <p className="font-mono text-[0.6875rem] tracking-[0.1em] text-muted-foreground uppercase">
-                        <time dateTime={note.publishedAt}>
-                          {formatPublishDate(note.publishedAt)}
-                        </time>
-                        {note.categoryName ? (
-                          <>
-                            {" · "}
-                            <span>{note.categoryName}</span>
-                          </>
-                        ) : null}
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-tight">
-                        <Link
-                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                          href={`/notes/${note.id}`}
-                        >
-                          {note.title}
-                        </Link>
-                      </h3>
-                      {note.summary.length > 0 ? (
-                        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                          {note.summary}
-                        </p>
-                      ) : null}
-                    </div>
-                  </article>
-                </li>
-              ))}
-            </ol>
+            <p className="mt-7 mb-0 text-sm leading-7 text-muted-foreground">
+              还没有公开 Notes。第一篇记录发布后会出现在这里。
+            </p>
           )}
-        </section>
-      </ContentContainer>
+        </ContentContainer>
+      </section>
+
+      <section id="about" aria-labelledby="about-title">
+        <ContentContainer className="grid grid-cols-[8rem_minmax(0,1fr)] gap-[clamp(2rem,6vw,6rem)] py-[clamp(3.5rem,7vw,6.5rem)] [@media(max-width:40rem)]:grid-cols-1 [@media(max-width:40rem)]:gap-6">
+          <h2 className={sectionLabelClassName} id="about-title" lang="en">
+            About
+          </h2>
+          <div className="max-w-[43rem]">
+            <p className="m-0 text-[clamp(1.15rem,2vw,1.4rem)] leading-9 tracking-[-0.015em]">
+              我是一名软件工程师，主要从事 Web 产品与系统开发。
+            </p>
+            <p className="mt-6 mb-0 text-base leading-8 text-muted-foreground">
+              我关注软件工程、系统设计和 AI Native 开发，这个网站用于整理学习笔记，记录实践经验以及一些工作和生活中的思考。
+            </p>
+            <p className="mt-4 mb-0 text-base leading-8 text-muted-foreground">
+              目前在南京，正在关注合适的前端工程师相关机会。
+            </p>
+            <div className="mt-8 flex flex-wrap gap-x-7 gap-y-2">
+              <a
+                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-accent hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                href="mailto:chengqifw@gmail.com"
+              >
+                Email <span aria-hidden="true">↗</span>
+              </a>
+              <a
+                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-accent hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                href="https://github.com/bangbangde"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                GitHub <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </div>
+        </ContentContainer>
+      </section>
     </main>
   );
 }

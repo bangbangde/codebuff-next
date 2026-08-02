@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
   },
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/me",
+        destination: "/#about",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

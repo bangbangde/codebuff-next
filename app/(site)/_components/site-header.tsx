@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+
 import { SiteUtilityLinks } from "./site-utility-links";
 
 const navigationLinkClassName =
@@ -14,35 +15,27 @@ export function SiteHeader() {
       >
         跳到主要内容
       </a>
-      <header
-        className="sticky top-0 z-10 border-b border-border bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-[14px]"
-      >
+      <header className="sticky top-0 z-10 border-b border-border bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-[14px]">
         <div className="mx-auto flex min-h-18 w-full max-w-[calc(var(--layout-max)+2*var(--layout-gutter))] items-center justify-between gap-6 px-(--layout-gutter)">
           <Link
+            aria-label="CQ’s Lab 首页"
             className="inline-flex min-h-11 items-center gap-2 font-sans text-[1.0625rem] leading-none font-semibold tracking-[-0.035em] text-foreground no-underline transition-colors duration-[140ms] ease-[ease] hover:text-brand-accent focus-visible:text-brand-accent motion-reduce:transition-none"
             href="/"
-            aria-label="CQ’s Lab 首页"
           >
             <Image
-              className="block size-9 shrink-0"
-              src="/brand/mark.svg"
               alt=""
-              width={36}
-              height={36}
-              unoptimized
               aria-hidden="true"
+              className="block size-9 shrink-0"
+              height={36}
+              src="/brand/mark.svg"
+              unoptimized
+              width={36}
             />
             <span lang="en">CQ’s Lab</span>
           </Link>
-          <nav
-            className="flex items-center gap-1"
-            aria-label="主导航"
-          >
+          <nav aria-label="主导航" className="flex items-center gap-1">
             <Link className={navigationLinkClassName} href="/notes" lang="en">
               Notes
-            </Link>
-            <Link className={navigationLinkClassName} href="/me" lang="en">
-              About
             </Link>
             <SiteUtilityLinks />
           </nav>
