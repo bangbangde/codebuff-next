@@ -33,7 +33,7 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-border bg-surface-muted p-[clamp(1.5rem,4vw,2.5rem)]">
+          <div className="rounded-lg border border-border bg-muted p-[clamp(1.5rem,4vw,2.5rem)]">
             <h2
               className="m-0 text-[1.5rem] font-[540] tracking-[-0.035em]"
             >

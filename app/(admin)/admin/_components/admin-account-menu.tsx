@@ -52,7 +52,7 @@ export function AdminAccountMenu({ email, name }: AdminAccountMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="surface-admin w-64 border border-border shadow-lg"
+        className="w-64 border border-border shadow-lg"
         sideOffset={6}
       >
         <DropdownMenuGroup>

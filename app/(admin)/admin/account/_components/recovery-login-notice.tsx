@@ -5,7 +5,7 @@ export function RecoveryLoginNotice() {
       role="alert"
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-accent text-background">
+        <div className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-accent text-primary-foreground">
           <svg
             aria-hidden="true"
             className="h-3.5 w-3.5"
@@ -29,7 +29,7 @@ export function RecoveryLoginNotice() {
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <a
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-4 py-2 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-brand-accent focus-visible:bg-brand-accent focus-visible:outline-none motion-reduce:transition-none"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-4 py-2 font-mono text-sm font-medium text-background transition-[background-color,color,opacity] duration-150 ease-[ease] hover:bg-brand-accent hover:text-primary-foreground focus-visible:bg-brand-accent focus-visible:text-primary-foreground focus-visible:outline-none motion-reduce:transition-none"
               href="#security-title"
             >
               管理两步验证

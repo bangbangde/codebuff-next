@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SiteUtilityLinks } from "./site-utility-links";
 
 const navigationLinkClassName =
-  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color,border-color] duration-[140ms] ease-[ease] hover:bg-brand-accent-soft hover:text-brand-accent focus-visible:bg-brand-accent-soft focus-visible:text-brand-accent motion-reduce:transition-none";
+  "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 font-mono text-sm leading-body text-muted-foreground no-underline transition-[color,background-color,border-color] duration-[140ms] ease-[ease] hover:bg-brand-accent-soft hover:text-brand-ink focus-visible:bg-brand-accent-soft focus-visible:text-brand-ink motion-reduce:transition-none";
 
 export function SiteHeader() {
   return (
@@ -19,7 +19,7 @@ export function SiteHeader() {
         <div className="mx-auto flex min-h-18 w-full max-w-[calc(var(--layout-max)+2*var(--layout-gutter))] items-center justify-between gap-6 px-(--layout-gutter)">
           <Link
             aria-label="CQ’s Lab 首页"
-            className="inline-flex min-h-11 items-center gap-2 font-sans text-[1.0625rem] leading-none font-semibold tracking-[-0.035em] text-foreground no-underline transition-colors duration-[140ms] ease-[ease] hover:text-brand-accent focus-visible:text-brand-accent motion-reduce:transition-none"
+            className="inline-flex min-h-11 items-center gap-2 font-sans text-[1.0625rem] leading-none font-semibold tracking-[-0.035em] text-foreground no-underline transition-colors duration-[140ms] ease-[ease] hover:text-brand-ink focus-visible:text-brand-ink motion-reduce:transition-none"
             href="/"
           >
             <Image

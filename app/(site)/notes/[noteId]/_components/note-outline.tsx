@@ -40,11 +40,11 @@ function OutlineLinks({
               } ${
                 isActive
                   ? variant === "desktop"
-                    ? "text-brand-accent before:absolute before:inset-y-0 before:-left-px before:w-0.5 before:bg-brand-accent"
-                    : "border-brand-accent text-brand-accent"
+                    ? "text-brand-ink before:absolute before:inset-y-0 before:-left-px before:w-0.5 before:bg-brand-accent"
+                    : "border-brand-accent text-brand-ink"
                   : variant === "desktop"
-                    ? "text-muted-foreground hover:text-brand-accent hover:underline"
-                    : "border-transparent text-muted-foreground hover:border-border hover:text-brand-accent hover:underline"
+                    ? "text-muted-foreground hover:text-brand-ink hover:underline"
+                    : "border-transparent text-muted-foreground hover:border-border hover:text-brand-ink hover:underline"
               }`}
               href={`#${item.id}`}
               onClick={() => onNavigate(item.id)}
@@ -127,7 +127,7 @@ export function NoteOutline({
   return (
     <>
       <details className="group mb-9 border-y border-border py-2 xl:hidden">
-        <summary className="flex min-h-11 cursor-pointer items-center font-mono text-xs tracking-label text-foreground uppercase marker:text-brand-accent">
+        <summary className="flex min-h-11 cursor-pointer items-center font-mono text-xs tracking-label text-foreground uppercase marker:text-brand-ink">
           目录
         </summary>
         <nav aria-label="笔记目录" className="pb-3">
@@ -142,7 +142,7 @@ export function NoteOutline({
 
       <aside className="sticky top-24 hidden max-h-[calc(100dvh-8rem)] overflow-y-auto border-l border-border xl:col-start-2 xl:row-start-1 xl:block">
         <nav aria-label="笔记目录">
-          <p className="m-0 pl-6 font-mono text-xs tracking-label text-brand-accent uppercase">
+          <p className="m-0 pl-6 font-mono text-xs tracking-label text-brand-ink uppercase">
             目录
           </p>
           <OutlineLinks

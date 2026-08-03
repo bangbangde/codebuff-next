@@ -53,77 +53,93 @@ export default async function NotesPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:py-12">
-      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <nav aria-label="笔记视图" className="flex items-center gap-1">
-          <Link
-            aria-current={activeTab === "drafts" ? "page" : undefined}
-            className={cn(
-              tabClassName,
-              activeTab === "drafts"
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
-            )}
-            href="/admin/notes?tab=drafts"
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1
+            className="text-2xl leading-tight font-semibold tracking-[-0.035em] sm:text-[1.75rem]"
             lang="en"
           >
-            Drafts
-            <span
-              className={cn(
-                "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
-                activeTab === "drafts"
-                  ? "bg-background/60 text-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {drafts.length}
-            </span>
-          </Link>
-          <Link
-            aria-current={activeTab === "published" ? "page" : undefined}
-            className={cn(
-              tabClassName,
-              activeTab === "published"
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
-            )}
-            href="/admin/notes?tab=published"
-            lang="en"
-          >
-            Published
-            <span
-              className={cn(
-                "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
-                activeTab === "published"
-                  ? "bg-background/60 text-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {published.length}
-            </span>
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <form action={createDraftAction}>
-            <Button type="submit">
-              <PlusIcon aria-hidden="true" />
-              <span className="hidden sm:inline">创建笔记</span>
-              <span className="sr-only sm:hidden">创建笔记</span>
-            </Button>
-          </form>
+            Notes
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            管理草稿、发布状态与公开内容。
+          </p>
         </div>
-      </div>
+        <form action={createDraftAction} className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto" type="submit">
+            <PlusIcon aria-hidden="true" />
+            创建笔记
+          </Button>
+        </form>
+      </header>
 
-      <section aria-labelledby="note-list-title" className="pt-6">
+      <section
+        aria-labelledby="note-list-title"
+        className="mt-7 overflow-hidden rounded-lg border border-border bg-card text-card-foreground sm:mt-8"
+      >
+        <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border bg-muted/45 px-2 sm:px-4">
+          <nav aria-label="笔记视图" className="flex items-center gap-1">
+            <Link
+              aria-current={activeTab === "drafts" ? "page" : undefined}
+              className={cn(
+                tabClassName,
+                activeTab === "drafts"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
+              )}
+              href="/admin/notes?tab=drafts"
+              lang="en"
+            >
+              Drafts
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
+                  activeTab === "drafts"
+                    ? "bg-background/60 text-foreground"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {drafts.length}
+              </span>
+            </Link>
+            <Link
+              aria-current={activeTab === "published" ? "page" : undefined}
+              className={cn(
+                tabClassName,
+                activeTab === "published"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
+              )}
+              href="/admin/notes?tab=published"
+              lang="en"
+            >
+              Published
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
+                  activeTab === "published"
+                    ? "bg-background/60 text-foreground"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {published.length}
+              </span>
+            </Link>
+          </nav>
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            {visibleArticles.length} 篇
+          </p>
+        </div>
+
         <h2 className="sr-only" id="note-list-title">
           {activeTab === "drafts" ? "草稿箱笔记列表" : "已发布笔记列表"}
         </h2>
 
         {visibleArticles.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-muted px-5 py-10 sm:px-8 sm:py-12">
+          <div className="px-5 py-10 sm:px-8 sm:py-12">
             <FileTextIcon
               aria-hidden="true"
-              className="size-6 text-brand-accent"
+              className="size-6 text-brand-ink"
             />
             <h3 className="mt-5 text-base font-semibold">
               {activeTab === "drafts" ? "草稿箱为空" : "还没有已发布笔记"}
@@ -135,7 +151,7 @@ export default async function NotesPage({
             </p>
             {activeTab === "drafts" ? (
               <form action={createDraftAction} className="mt-6">
-                <Button size="sm" type="submit" variant="outline">
+                <Button size="sm" type="submit" variant="secondary">
                   <PlusIcon aria-hidden="true" />
                   创建第一篇草稿
                 </Button>
@@ -143,16 +159,16 @@ export default async function NotesPage({
             ) : null}
           </div>
         ) : (
-          <ol className="divide-y divide-border border-y border-border">
+          <ol className="divide-y divide-border">
             {visibleArticles.map((article) => (
               <li
-                className="grid gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8"
+                className="grid gap-3 px-4 py-4 transition-colors duration-(--motion-duration) ease-(--motion-easing) hover:bg-muted/45 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8 sm:px-5 motion-reduce:transition-none"
                 key={article.id}
               >
                 <div className="min-w-0">
                   <h3 className="text-base font-semibold">
                     <Link
-                      className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="rounded-sm underline-offset-4 transition-colors duration-(--motion-duration) ease-(--motion-easing) hover:text-brand-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                       href={`/admin/notes/${article.id}`}
                     >
                       {article.draftTitle.length > 0

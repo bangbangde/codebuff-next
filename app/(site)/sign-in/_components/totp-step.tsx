@@ -22,7 +22,7 @@ export function TotpStep({
 }: TotpStepProps) {
   return (
     <form className="mt-10" onSubmit={onSubmit}>
-      <div className="rounded-md border border-border bg-surface-muted p-4">
+      <div className="rounded-md border border-border bg-muted p-4">
         <p className="m-0 text-sm leading-body text-foreground">
           两步验证已启用。请输入认证应用为账户
           <span className="font-medium"> {email} </span>
@@ -55,7 +55,7 @@ export function TotpStep({
 
       <p
         aria-live="polite"
-        className="mt-5 min-h-[1.65em] text-sm text-brand-accent"
+        className="mt-5 min-h-[1.65em] text-sm text-brand-ink"
         role="status"
       >
         {message}
