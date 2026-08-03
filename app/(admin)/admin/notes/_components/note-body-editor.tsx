@@ -14,6 +14,7 @@ import { initialArticleAssetUploadFormState } from "@/features/article-assets/ar
 import { formatCanonicalAssetReference } from "@/features/articles/article-asset-reference";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   NoteMarkdownEditor,
   type NoteMarkdownEditorHandle,
@@ -259,47 +260,45 @@ export function NoteBodyEditor({
   const showPreview = effectiveMode === "preview" || effectiveMode === "split";
 
   return (
-    <div className="flex flex-1 flex-col h-0">
-      <div
-        className="flex shrink-0 items-center gap-1 bg-muted p-1"
-        role="tablist"
+    <div className="flex h-0 flex-1 flex-col bg-card">
+      <Tabs
+        className="shrink-0 gap-0 border-b border-border bg-card px-2 py-1"
+        onValueChange={(value) => {
+          if (value === "edit" || value === "split" || value === "preview") {
+            changeMode(value);
+          }
+        }}
+        value={effectiveMode}
       >
-        <ModeButton
-          active={effectiveMode === "edit"}
-          label="编辑"
-          onClick={() => changeMode("edit")}
-        >
-          <Edit3 className="size-4" />
-        </ModeButton>
-        {isDesktop ? (
-          <ModeButton
-            active={effectiveMode === "split"}
-            label="分屏"
-            onClick={() => changeMode("split")}
-          >
-            <Columns2 className="size-4" />
-          </ModeButton>
-        ) : null}
-        <ModeButton
-          active={effectiveMode === "preview"}
-          label="预览"
-          onClick={() => changeMode("preview")}
-        >
-          <Eye className="size-4" />
-        </ModeButton>
-      </div>
+        <TabsList aria-label="编辑器视图" className="h-8" variant="default">
+          <TabsTrigger className="min-w-20" value="edit">
+            <Edit3 aria-hidden="true" />
+            编辑
+          </TabsTrigger>
+          {isDesktop ? (
+            <TabsTrigger className="min-w-20" value="split">
+              <Columns2 aria-hidden="true" />
+              分屏
+            </TabsTrigger>
+          ) : null}
+          <TabsTrigger className="min-w-20" value="preview">
+            <Eye aria-hidden="true" />
+            预览
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* hidden input for form submission */}
       <input name="bodyMarkdown" type="hidden" value={value} />
 
-      <div className="flex flex-1 gap-3 h-0">
+      <div className="flex h-0 flex-1 gap-px bg-border">
         {showEditor ? (
           <div
             className={cn(
-              "relative flex flex-1 flex-col overflow-hidden border bg-background transition-colors",
+              "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background transition-shadow",
               isDragOver
-                ? "border-brand-accent ring-2 ring-brand-accent/30"
-                : "border-border",
+                ? "ring-2 ring-inset ring-brand-accent/50"
+                : null,
             )}
             onDragLeave={handleDragLeave}
             onDragOverCapture={handleDragOverCapture}
@@ -322,9 +321,9 @@ export function NoteBodyEditor({
         ) : null}
 
         {showPreview ? (
-          <div className="flex-1 border border-border bg-background dark:prose-invert">
+          <div className="min-w-0 flex-1 bg-background dark:prose-invert">
             <div
-              className="prose prose-sm h-full max-w-none overflow-auto"
+              className="prose prose-sm h-full max-w-none overflow-auto p-5 sm:p-7"
               ref={previewRef}
             >
               <MarkdownRenderer resolveAssetUrl={resolveAssetUrl}>
@@ -337,7 +336,7 @@ export function NoteBodyEditor({
       {uploadStatus.kind !== "idle" ? (
         <p
           className={cn(
-            "shrink-0 px-3 py-1.5 text-xs",
+            "shrink-0 border-t border-border bg-muted px-3 py-1.5 text-xs",
             uploadStatus.kind === "error" ? "text-destructive" : "text-muted-foreground",
           )}
           role={uploadStatus.kind === "error" ? "alert" : "status"}
@@ -350,35 +349,5 @@ export function NoteBodyEditor({
         </p>
       ) : null}
     </div>
-  );
-}
-
-function ModeButton({
-  active,
-  children,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-selected={active}
-      className={cn(
-        "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
-        active
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-      onClick={onClick}
-      role="tab"
-      type="button"
-    >
-      {children}
-      <span>{label}</span>
-    </button>
   );
 }
