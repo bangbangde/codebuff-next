@@ -1,12 +1,12 @@
 "use client";
 
-import { ExternalLinkIcon, SaveIcon, SendIcon } from "lucide-react";
+import { ArrowLeftIcon, SaveIcon, SendIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { NoteMarkdownEditorHandle } from "./markdown-editor";
 import { NoteBodyEditor } from "./note-body-editor";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
 import type {
@@ -193,20 +193,35 @@ export function NoteEditor({
 
   return (
     <>
-      <header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:h-14 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-0">
-        <input
-          aria-label="笔记标题"
-          className="h-9 w-full min-w-0 border-0 bg-transparent text-base font-medium text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0 sm:h-auto sm:flex-1"
-          onChange={(event) => handleTitleChange(event.target.value)}
-          placeholder="输入笔记标题…"
-          value={values.title}
-        />
+      <header className="shrink-0 border-b border-border bg-card text-card-foreground">
+        <div className="flex min-h-14 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Link
+              aria-label="返回笔记列表"
+              className={buttonVariants({
+                className:
+                  "h-9 w-9 shrink-0 text-muted-foreground sm:h-7 sm:w-7",
+                size: "icon-sm",
+                variant: "ghost",
+              })}
+              href="/admin/notes"
+            >
+              <ArrowLeftIcon aria-hidden="true" />
+            </Link>
+            <input
+              aria-label="笔记标题"
+              className="h-9 min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-lg font-semibold tracking-[-0.025em] text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+              onChange={(event) => handleTitleChange(event.target.value)}
+              placeholder="输入笔记标题…"
+              value={values.title}
+            />
+          </div>
 
-        <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto">
+          <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto">
           <span
             aria-live="polite"
             className={cn(
-              "mr-auto min-w-0 truncate text-xs sm:mr-0 sm:max-w-56",
+              "mr-auto min-w-0 truncate text-xs sm:mr-1 sm:max-w-52",
               isStatusError
                 ? "text-destructive"
                 : saveStatus === "saving"
@@ -219,6 +234,7 @@ export function NoteEditor({
           </span>
 
           <Button
+            className="h-9 sm:h-7"
             onClick={() => setAssetDialogOpen(true)}
             size="sm"
             type="button"
@@ -228,6 +244,7 @@ export function NoteEditor({
           </Button>
 
           <Button
+            className="h-9 sm:h-7"
             disabled={
               saveStatus === "saving" ||
               saveStatus === "conflict" ||
@@ -237,12 +254,14 @@ export function NoteEditor({
             onClick={handleManualSave}
             size="sm"
             type="button"
+            variant="secondary"
           >
             <SaveIcon aria-hidden="true" />
             保存
           </Button>
 
           <Button
+            className="h-9 sm:h-7"
             disabled={
               isDirty ||
               saveStatus === "saving" ||
@@ -258,14 +277,7 @@ export function NoteEditor({
             <SendIcon aria-hidden="true" />
             {isPublished ? "更新" : "发布"}
           </Button>
-
-          <Link
-            aria-label="返回笔记列表"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            href="/admin/notes"
-          >
-            <ExternalLinkIcon aria-hidden="true" className="size-4" />
-          </Link>
+          </div>
         </div>
       </header>
 

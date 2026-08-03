@@ -17,6 +17,47 @@ export interface NoteMarkdownEditorHandle {
   getScroller: () => HTMLElement | null;
 }
 
+const semanticEditorTheme = EditorView.theme({
+  "&": {
+    backgroundColor: "var(--background)",
+    color: "var(--foreground)",
+    height: "100%",
+  },
+  "&.cm-focused": {
+    outline: "none",
+  },
+  ".cm-scroller": {
+    fontFamily: "var(--typeface-code)",
+  },
+  ".cm-content": {
+    caretColor: "var(--ring)",
+  },
+  ".cm-cursor, .cm-dropCursor": {
+    borderLeftColor: "var(--ring)",
+  },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
+    {
+      backgroundColor: "var(--brand-accent-soft)",
+    },
+  ".cm-gutters": {
+    backgroundColor: "var(--muted)",
+    borderRight: "1px solid var(--border)",
+    color: "var(--muted-foreground)",
+  },
+  ".cm-activeLine": {
+    backgroundColor: "var(--accent)",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "var(--accent)",
+    color: "var(--accent-foreground)",
+  },
+  ".cm-foldPlaceholder": {
+    backgroundColor: "var(--muted)",
+    borderColor: "var(--border)",
+    color: "var(--muted-foreground)",
+  },
+});
+
 export const NoteMarkdownEditor = forwardRef<
   NoteMarkdownEditorHandle,
   {
@@ -79,7 +120,7 @@ export const NoteMarkdownEditor = forwardRef<
       onCreateEditor={(view) => {
         viewRef.current = view;
       }}
-      theme="light"
+      theme={semanticEditorTheme}
       value={value}
     />
   );

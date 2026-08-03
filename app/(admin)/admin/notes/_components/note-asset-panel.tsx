@@ -59,7 +59,7 @@ export function NoteAssetPanel({
   }
 
   return (
-    <div className="mt-4 grid gap-4 rounded-md border border-border bg-muted p-4">
+    <div className="mt-2 grid gap-5">
       <div>
         <p className="text-sm font-medium text-foreground">笔记资产</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -71,7 +71,7 @@ export function NoteAssetPanel({
 
       <form
         action={uploadAction}
-        className="grid gap-3"
+        className="grid gap-3 rounded-lg border border-border bg-muted/45 p-4"
         onSubmit={handleActionSubmit}
       >
         <input name="articleId" type="hidden" value={articleId} />
@@ -119,10 +119,10 @@ export function NoteAssetPanel({
       </form>
 
       {assets.length > 0 ? (
-        <ul className="grid gap-2 border-t border-border pt-3">
+        <ul className="grid gap-2 border-t border-border pt-4">
           {assets.map((asset) => (
             <li
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2"
               key={asset.id}
             >
               <div className="min-w-0">
@@ -159,7 +159,7 @@ export function NoteAssetPanel({
           ))}
         </ul>
       ) : (
-        <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+        <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
           本文还没有资产。上传后即可插入引用。
         </p>
       )}
