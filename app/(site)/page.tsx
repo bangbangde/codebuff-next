@@ -6,7 +6,7 @@ import { listPublishedArticles } from "@/features/articles/server/article-servic
 export const dynamic = "force-dynamic";
 
 const sectionLabelClassName =
-  "m-0 font-mono text-xs leading-body tracking-label text-brand-accent uppercase";
+  "m-0 font-mono text-xs leading-body tracking-label text-brand-ink uppercase";
 
 function formatPublishDate(date: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -34,7 +34,7 @@ export default async function Home() {
               className="m-0 text-[clamp(2.65rem,5.2vw,4.75rem)] leading-[1.02] font-[540] tracking-[-0.055em] text-balance [@media(max-width:40rem)]:text-[clamp(2.4rem,11.5vw,3.25rem)]"
               id="landing-title"
             >
-              嗨，这里是 <span className="text-brand-accent" lang="en">CQ’s Lab</span>
+              嗨，这里是 <span className="text-brand-ink" lang="en">CQ’s Lab</span>
             </h1>
             <p className="mt-9 mb-0 text-[clamp(1.35rem,2.2vw,1.75rem)] leading-snug font-[520] tracking-[-0.025em] text-foreground [@media(max-width:40rem)]:mt-7">
               记录学习、实践与思考。
@@ -85,7 +85,7 @@ export default async function Home() {
               </p>
               <h3 className="mt-4 mb-0 max-w-[24ch] text-[clamp(1.75rem,3.6vw,3rem)] leading-[1.15] font-[540] tracking-[-0.04em] text-balance">
                 <Link
-                  className="rounded-sm transition-colors duration-[140ms] hover:text-brand-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                  className="rounded-sm transition-colors duration-[140ms] hover:text-brand-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                   href={`/notes/${latestNote.id}`}
                 >
                   {latestNote.title}
@@ -97,7 +97,7 @@ export default async function Home() {
                 </p>
               ) : null}
               <Link
-                className="mt-7 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-brand-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="mt-7 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-brand-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 href={`/notes/${latestNote.id}`}
               >
                 阅读全文 <span aria-hidden="true">→</span>
@@ -128,13 +128,13 @@ export default async function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-x-7 gap-y-2">
               <a
-                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-accent hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-ink hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                 href="mailto:chengqifw@gmail.com"
               >
                 Email <span aria-hidden="true">↗</span>
               </a>
               <a
-                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-accent hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 transition-colors duration-[140ms] hover:text-brand-ink hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                 href="https://github.com/bangbangde"
                 rel="noopener noreferrer"
                 target="_blank"

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminAccountMenu } from "./admin-account-menu";
 import {
@@ -69,27 +69,30 @@ export function AdminShell({
             width={32}
           />
           <span
-            className="truncate text-sm font-semibold tracking-[-0.02em]"
+            className="hidden truncate text-sm font-semibold tracking-[-0.02em] sm:inline"
             lang="en"
           >
             CQ’s Lab
           </span>
           <span
-            className="shrink-0 rounded-md bg-brand-accent px-2 py-1 font-mono text-[0.625rem] leading-none font-semibold tracking-[0.08em] text-white uppercase"
+            className="shrink-0 rounded-md bg-brand-accent px-2 py-1 font-mono text-[0.625rem] leading-none font-semibold tracking-[0.08em] text-primary-foreground uppercase"
             lang="en"
           >
             Admin
           </span>
         </Link>
-        <Button
-          className="ml-1"
-          render={<Link href="/" target="_blank" />}
-          size="sm"
-          variant="outline"
+        <Link
+          className={buttonVariants({
+            className: "ml-1",
+            size: "sm",
+            variant: "outline",
+          })}
+          href="/"
+          target="_blank"
         >
           <span lang="en">Site</span>
           <ExternalLinkIcon aria-hidden="true" />
-        </Button>
+        </Link>
 
         <Tabs
           aria-label="后台导航"

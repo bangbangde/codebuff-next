@@ -308,7 +308,7 @@ export function NoteBodyEditor({
           >
             {isDragOver ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-                <p className="text-sm font-medium text-brand-accent">
+                <p className="text-sm font-medium text-brand-ink">
                   释放以上传文件
                 </p>
               </div>

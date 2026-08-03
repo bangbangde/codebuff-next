@@ -20,7 +20,7 @@ export function RecoveryCodeStep({
 }: RecoveryCodeStepProps) {
   return (
     <form className="mt-10" onSubmit={onSubmit}>
-      <div className="rounded-md border border-border bg-surface-muted p-4">
+      <div className="rounded-md border border-border bg-muted p-4">
         <p className="m-0 text-sm leading-body text-foreground">
           输入任意一枚未使用的恢复码以完成登录。每枚只能使用一次。
         </p>
@@ -48,7 +48,7 @@ export function RecoveryCodeStep({
 
       <p
         aria-live="polite"
-        className="mt-5 min-h-[1.65em] text-sm text-brand-accent"
+        className="mt-5 min-h-[1.65em] text-sm text-brand-ink"
         role="status"
       >
         {message}

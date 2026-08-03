@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const utilityLinkClassName =
-  "inline-flex size-11 items-center justify-center rounded-md text-muted-foreground no-underline transition-[color,background-color] duration-[140ms] ease-[ease] hover:bg-brand-accent-soft hover:text-brand-accent focus-visible:bg-brand-accent-soft focus-visible:text-brand-accent motion-reduce:transition-none";
+  "inline-flex size-11 items-center justify-center rounded-md text-muted-foreground no-underline transition-[color,background-color] duration-[140ms] ease-[ease] hover:bg-brand-accent-soft hover:text-brand-ink focus-visible:bg-brand-accent-soft focus-visible:text-brand-ink motion-reduce:transition-none";
 
 function GitHubMarkIcon(props: SVGProps<SVGSVGElement>) {
   return (

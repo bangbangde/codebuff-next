@@ -25,11 +25,19 @@ export default async function NotesPage() {
 
   return (
     <main className="flex-1" id="main-content">
-      <ContentContainer className="py-[clamp(1.5rem,4vw,3rem)]">
-        <h1 className="sr-only" lang="en">
-          Notes
-        </h1>
-        <section aria-labelledby="notes-list-title">
+      <ContentContainer className="py-[clamp(2rem,5vw,4rem)]">
+        <header className="max-w-(--layout-reading) border-b border-border pb-7 sm:pb-9">
+          <h1
+            className="text-3xl leading-tight font-semibold tracking-[-0.04em] sm:text-4xl"
+            lang="en"
+          >
+            Notes
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-[0.9375rem]">
+            学习记录、实践经验，以及工作与生活中的阶段性思考。
+          </p>
+        </header>
+        <section aria-labelledby="notes-list-title" className="mt-8 sm:mt-10">
           <h2 className="sr-only" id="notes-list-title">
             全部 Notes
           </h2>
@@ -51,7 +59,7 @@ export default async function NotesPage() {
                     <div className="min-w-0">
                       <h2 className="text-[1.125rem] leading-snug font-semibold tracking-[-0.025em] sm:text-[1.35rem]">
                         <Link
-                          className="rounded-sm transition-colors duration-[140ms] group-hover:text-brand-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
+                          className="rounded-sm transition-colors duration-[140ms] group-hover:text-brand-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                           href={`/notes/${note.id}`}
                         >
                           {note.title}

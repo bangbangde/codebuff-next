@@ -152,7 +152,7 @@ export function PublishNoteDialog({
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="max-h-[85vh] w-full max-w-lg overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isPublished ? "更新线上版本" : "发布笔记"}</DialogTitle>
           <DialogDescription>
