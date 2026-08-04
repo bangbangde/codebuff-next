@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, SaveIcon, SendIcon } from "lucide-react";
+import { ArrowLeftIcon, SendIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -14,7 +14,6 @@ import type {
   TagOption,
 } from "@/features/articles/article-dto";
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
-import { NoteAssetDialog } from "./note-asset-dialog";
 import { PublishNoteDialog } from "./publish-note-dialog";
 import { updateArticleAction } from "../[noteId]/actions";
 
@@ -65,8 +64,19 @@ export function NoteEditor({
     useState<ArticleCreateValues>(initialValues);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingRef = useRef(false);
+  // 卸载/可见性处理需要读取最新值，用 ref 避免频繁重绑监听器。
+  const latestValuesRef = useRef(values);
+  const latestRevisionRef = useRef(expectedRevision);
+  const latestLastSavedRef = useRef(lastSavedValues);
+  const latestSaveStatusRef = useRef(saveStatus);
 
-  const [assetDialogOpen, setAssetDialogOpen] = useState(false);
+  useEffect(() => {
+    latestValuesRef.current = values;
+    latestRevisionRef.current = expectedRevision;
+    latestLastSavedRef.current = lastSavedValues;
+    latestSaveStatusRef.current = saveStatus;
+  }, [values, expectedRevision, lastSavedValues, saveStatus]);
+
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   const performSave = useCallback(
@@ -148,15 +158,6 @@ export function NoteEditor({
     );
   }, []);
 
-  const handleInsertReference = useCallback((reference: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return false;
-    }
-    editor.insertText(reference);
-    return true;
-  }, []);
-
   function handleManualSave() {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -164,6 +165,105 @@ export function NoteEditor({
     }
     void performSave(values, expectedRevision);
   }
+
+  // Ctrl+S / Cmd+S 立即保存，并拦截浏览器默认保存网页行为。
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isSaveShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        (event.key === "s" || event.key === "S");
+      if (!isSaveShortcut) {
+        return;
+      }
+      event.preventDefault();
+      if (
+        saveStatus === "saving" ||
+        saveStatus === "conflict" ||
+        saveStatus === "not_found"
+      ) {
+        return;
+      }
+      handleManualSave();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // handleManualSave 依赖 values/expectedRevision；通过 ref 取最新值更稳定，
+    // 但此处保持简单：随 values 变化重新绑定以保证保存最新内容。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, expectedRevision, saveStatus, performSave]);
+
+  // 离开页面前尽量提交未保存的草稿：
+  // - 页面隐藏（切标签/最小化/移动端切换）：立即 flush 未触发的 debounce。
+  // - 页面真正卸载（pagehide）：用 keepalive fetch 兜底保存。
+  // - beforeunload：若有未保存修改，提示用户。
+  useEffect(() => {
+    function isDirty() {
+      return !valuesEqual(latestValuesRef.current, latestLastSavedRef.current);
+    }
+
+    function flushPendingDebounce() {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+        void performSave(latestValuesRef.current, latestRevisionRef.current);
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden && isDirty()) {
+        const status = latestSaveStatusRef.current;
+        if (status !== "conflict" && status !== "not_found") {
+          flushPendingDebounce();
+        }
+      }
+    }
+
+    function handlePageHide() {
+      if (!isDirty()) {
+        return;
+      }
+      const status = latestSaveStatusRef.current;
+      if (status === "conflict" || status === "not_found" || savingRef.current) {
+        return;
+      }
+      const formData = new FormData();
+      formData.append("articleId", article.id);
+      formData.append(
+        "expectedRevision",
+        String(latestRevisionRef.current),
+      );
+      formData.append("title", latestValuesRef.current.title);
+      formData.append("bodyMarkdown", latestValuesRef.current.bodyMarkdown);
+
+      // keepalive 让请求在页面卸载后仍有机会完成。
+      void fetch(`/api/admin/notes/${article.id}/save`, {
+        body: formData,
+        keepalive: true,
+        method: "POST",
+      }).catch(() => {
+        // 卸载阶段失败无法恢复，静默处理。
+      });
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (isDirty()) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [article.id, performSave]);
 
   const isDirty = !valuesEqual(values, lastSavedValues);
 
@@ -235,33 +335,6 @@ export function NoteEditor({
 
           <Button
             className="h-9 sm:h-7"
-            onClick={() => setAssetDialogOpen(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            资源
-          </Button>
-
-          <Button
-            className="h-9 sm:h-7"
-            disabled={
-              saveStatus === "saving" ||
-              saveStatus === "conflict" ||
-              saveStatus === "not_found" ||
-              !isDirty
-            }
-            onClick={handleManualSave}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <SaveIcon aria-hidden="true" />
-            保存
-          </Button>
-
-          <Button
-            className="h-9 sm:h-7"
             disabled={
               isDirty ||
               saveStatus === "saving" ||
@@ -285,16 +358,7 @@ export function NoteEditor({
         articleId={article.id}
         defaultValue={values.bodyMarkdown}
         editorRef={editorRef}
-        onInsertReference={handleInsertReference}
         onValueChange={handleBodyChange}
-      />
-
-      <NoteAssetDialog
-        articleId={article.id}
-        assets={assets}
-        onInsertReference={handleInsertReference}
-        onOpenChange={setAssetDialogOpen}
-        open={assetDialogOpen}
       />
 
       <PublishNoteDialog
@@ -306,6 +370,7 @@ export function NoteEditor({
         }}
         assets={assets}
         categories={categories}
+        draftBody={values.bodyMarkdown}
         initialCoverAssetId={article.coverAssetId}
         initialCategoryName={article.categoryName ?? ""}
         initialSummary={article.summary}

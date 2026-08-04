@@ -13,6 +13,25 @@ import {
 
 import { article } from "./article";
 
+/**
+ * 资源生命周期状态机（M20 资源生命周期管理）。
+ *
+ * - `uploading`：上传任务进行中（客户端态，落库时一般不使用）。
+ * - `temporary`：上传成功并落库，但尚未被文章正文或封面正式引用。
+ * - `active`：已被文章草稿正文、线上正文或封面正式引用。
+ * - `pending_delete`：引用已移除，等待后台清理任务安全删除 Garage 对象。
+ * - `deleted`：Garage 对象已删除，记录保留用于审计/修复。
+ */
+export const articleAssetStatuses = [
+  "uploading",
+  "temporary",
+  "active",
+  "pending_delete",
+  "deleted",
+] as const;
+
+export type ArticleAssetStatus = (typeof articleAssetStatuses)[number];
+
 export const articleAsset = pgTable(
   "article_asset",
   {
@@ -25,6 +44,10 @@ export const articleAsset = pgTable(
     mediaType: text("media_type").notNull(),
     byteSize: integer("byte_size").notNull(),
     sha256: text("sha256").notNull(),
+    status: text("status").notNull().default("temporary"),
+    statusUpdatedAt: timestamp("status_updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -35,6 +58,11 @@ export const articleAsset = pgTable(
   (table) => [
     uniqueIndex("article_asset_object_key_unique").on(table.objectKey),
     index("article_asset_article_id_idx").on(table.articleId),
+    index("article_asset_article_id_status_idx").on(
+      table.articleId,
+      table.status,
+    ),
+    index("article_asset_status_updated_at_idx").on(table.statusUpdatedAt),
     check(
       "article_asset_type_check",
       sql`${table.mediaType} in ('image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'application/pdf')`,
@@ -46,6 +74,10 @@ export const articleAsset = pgTable(
     check(
       "article_asset_sha256_check",
       sql`${table.sha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "article_asset_status_check",
+      sql`${table.status} in ('uploading', 'temporary', 'active', 'pending_delete', 'deleted')`,
     ),
   ],
 );

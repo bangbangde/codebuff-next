@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
 import {
@@ -24,6 +24,7 @@ import type {
   UpdateArticleResult,
 } from "../article-dto";
 import { ArticleAssetUnavailableError } from "../article-errors";
+import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import type { ArticleRepository } from "../article-repository";
 
 async function readCurrentRevision(id: string) {
@@ -194,6 +195,75 @@ async function readArticleDetail(
   };
 }
 
+type DbTransaction = Parameters<
+  Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+>[0];
+
+/**
+ * 同步文章资产引用状态：
+ * 1. 将被引用的资产从 temporary/pending_delete 提升为 active
+ * 2. 将不再被引用的 active 资产降级为 pending_delete
+ *
+ * "被引用"包括：草稿正文引用 + 线上正文引用 + 封面图引用。
+ * 必须在与文章更新同一事务内调用，保证引用关系与资产状态一致。
+ */
+async function syncAssetStatuses(
+  transaction: DbTransaction,
+  articleId: string,
+  referencedAssetIds: readonly string[],
+): Promise<void> {
+  // 合并线上槽位的引用（封面 + 已发布正文），确保草稿编辑不会误降级线上资产。
+  const [published] = await transaction
+    .select({ content: article.content, coverAssetId: article.coverAssetId })
+    .from(article)
+    .where(eq(article.id, articleId))
+    .limit(1);
+
+  const allReferencedIds = new Set<string>(referencedAssetIds);
+
+  if (published) {
+    if (published.coverAssetId) {
+      allReferencedIds.add(published.coverAssetId);
+    }
+    if (published.content) {
+      for (const id of parseCanonicalAssetReferenceIds(published.content)) {
+        allReferencedIds.add(id);
+      }
+    }
+  }
+
+  const referencedList = [...allReferencedIds];
+
+  if (referencedList.length > 0) {
+    await transaction
+      .update(articleAsset)
+      .set({ status: "active", statusUpdatedAt: new Date() })
+      .where(
+        and(
+          eq(articleAsset.articleId, articleId),
+          inArray(articleAsset.id, referencedList),
+          inArray(articleAsset.status, ["temporary", "pending_delete"]),
+        ),
+      );
+  }
+
+  const unreferencedActiveCondition = referencedList.length > 0
+    ? and(
+        eq(articleAsset.articleId, articleId),
+        eq(articleAsset.status, "active"),
+        not(inArray(articleAsset.id, referencedList)),
+      )
+    : and(
+        eq(articleAsset.articleId, articleId),
+        eq(articleAsset.status, "active"),
+      );
+
+  await transaction
+    .update(articleAsset)
+    .set({ status: "pending_delete", statusUpdatedAt: new Date() })
+    .where(unreferencedActiveCondition);
+}
+
 export const drizzleArticleRepository: ArticleRepository = {
   async createDraft(): Promise<CreatedArticle> {
     const today = new Date().toISOString().slice(0, 10);
@@ -306,6 +376,9 @@ export const drizzleArticleRepository: ArticleRepository = {
             };
       }
 
+      // 同步资产引用状态：引用的 → active，不再引用的 → pending_delete
+      await syncAssetStatuses(transaction, input.id, assetIds);
+
       const detail = await readArticleDetail(transaction, input.id);
 
       if (!detail) {
@@ -329,6 +402,7 @@ export const drizzleArticleRepository: ArticleRepository = {
           .select({
             articleId: articleAsset.articleId,
             id: articleAsset.id,
+            mediaType: articleAsset.mediaType,
           })
           .from(articleAsset)
           .where(inArray(articleAsset.id, [...assetIds]));
@@ -339,12 +413,20 @@ export const drizzleArticleRepository: ArticleRepository = {
         ) {
           throw new ArticleAssetUnavailableError();
         }
+
+        // 封面图必须是图片类型
+        const coverAsset = referencedAssets.find(
+          (asset) => asset.id === input.coverAssetId,
+        );
+        if (coverAsset && !coverAsset.mediaType.startsWith("image/")) {
+          throw new ArticleAssetUnavailableError();
+        }
       }
 
-      const categoryId = await resolveCategoryId(
-        transaction,
-        input.categoryName,
-      );
+      const categoryId =
+        input.categoryName.length > 0
+          ? await resolveCategoryId(transaction, input.categoryName)
+          : null;
       const tagIds = await resolveTagIds(transaction, input.tagNames);
 
       // 将当前草稿复制到线上槽位，publishedAt 仅在首次发布时写入。
@@ -389,6 +471,9 @@ export const drizzleArticleRepository: ArticleRepository = {
           tagIds.map((tagId) => ({ articleId: input.id, tagId })),
         );
       }
+
+      // 同步资产引用状态：发布时同样需要保持引用关系与资产状态一致
+      await syncAssetStatuses(transaction, input.id, assetIds);
 
       const detail = await readArticleDetail(transaction, input.id);
 

@@ -13,6 +13,7 @@ import {
 
 export interface NoteMarkdownEditorHandle {
   insertText: (text: string) => void;
+  replaceText: (search: string, replacement: string) => boolean;
   focus: () => void;
   getScroller: () => HTMLElement | null;
 }
@@ -94,6 +95,40 @@ export const NoteMarkdownEditor = forwardRef<
       if (onChange) {
         onChange(view.state.doc.toString());
       }
+    },
+    replaceText(search: string, replacement: string): boolean {
+      const view = viewRef.current;
+      if (!view) {
+        return false;
+      }
+
+      const text = view.state.doc.toString();
+      const changes: { from: number; to: number; insert: string }[] = [];
+      let pos = 0;
+      while (true) {
+        const index = text.indexOf(search, pos);
+        if (index === -1) {
+          break;
+        }
+        changes.push({
+          from: index,
+          to: index + search.length,
+          insert: replacement,
+        });
+        pos = index + search.length;
+      }
+
+      if (changes.length === 0) {
+        return false;
+      }
+
+      view.dispatch({ changes });
+
+      if (onChange) {
+        onChange(view.state.doc.toString());
+      }
+
+      return true;
     },
     focus() {
       viewRef.current?.focus();

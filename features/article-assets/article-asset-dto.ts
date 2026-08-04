@@ -11,6 +11,13 @@ export const maximumAssetBytes = 10 * 1024 * 1024;
 
 export type AcceptedAssetType = (typeof acceptedAssetTypes)[number];
 
+export type ArticleAssetStatus =
+  | "uploading"
+  | "temporary"
+  | "active"
+  | "pending_delete"
+  | "deleted";
+
 export type ArticleAsset = Readonly<{
   articleId: string;
   byteSize: number;
@@ -20,6 +27,8 @@ export type ArticleAsset = Readonly<{
   objectKey: string;
   originalFilename: string;
   sha256: string;
+  status: ArticleAssetStatus;
+  statusUpdatedAt: string;
   updatedAt: string;
 }>;
 

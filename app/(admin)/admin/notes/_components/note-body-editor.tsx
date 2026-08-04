@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit3, Eye, Columns2 } from "lucide-react";
+import { Edit3, Columns2, Upload } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -9,27 +9,30 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import type { AcceptedAssetType } from "@/features/article-assets/article-asset-dto";
-import { initialArticleAssetUploadFormState } from "@/features/article-assets/article-asset-form-state";
-import { formatCanonicalAssetReference } from "@/features/articles/article-asset-reference";
+import { uploadTaskManager } from "@/features/article-assets/upload-task-manager";
+import { useUploadTasks, useUploadActions } from "@/features/article-assets/use-upload-tasks";
+import {
+  formatUploadPlaceholder,
+  UPLOADING_SCHEME,
+} from "@/features/articles/article-asset-reference";
+import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UploadStatusPanel } from "./upload-status-panel";
 import {
   NoteMarkdownEditor,
   type NoteMarkdownEditorHandle,
 } from "./markdown-editor";
-import { uploadArticleAssetAction } from "../[noteId]/actions";
 
-type EditorMode = "edit" | "split" | "preview";
-type UploadStatus =
-  | { kind: "idle" }
-  | { kind: "uploading"; filename: string }
-  | { kind: "success"; filename: string }
-  | { kind: "error"; message: string };
+type EditorMode = "edit" | "split";
 
 const EDITOR_MODE_STORAGE_KEY = "article-editor-mode";
+const SPLIT_RATIO_STORAGE_KEY = "article-editor-split-ratio";
 const DEFAULT_EDITOR_MODE: EditorMode = "split";
+const DEFAULT_SPLIT_RATIO = 0.5;
+const MIN_SPLIT_RATIO = 0.2;
+const MAX_SPLIT_RATIO = 0.8;
 const DESKTOP_BREAKPOINT = 768;
 const DESKTOP_MEDIA_QUERY = `(min-width: ${DESKTOP_BREAKPOINT}px)`;
 
@@ -50,7 +53,7 @@ function getEditorModeSnapshot(): EditorMode {
     return DEFAULT_EDITOR_MODE;
   }
   const stored = localStorage.getItem(EDITOR_MODE_STORAGE_KEY);
-  return stored === "edit" || stored === "split" || stored === "preview"
+  return stored === "edit" || stored === "split"
     ? stored
     : DEFAULT_EDITOR_MODE;
 }
@@ -64,6 +67,48 @@ function persistEditorMode(next: EditorMode) {
     localStorage.setItem(EDITOR_MODE_STORAGE_KEY, next);
   }
   editorModeListeners.forEach((listener) => listener());
+}
+
+// 分屏比例同样使用 useSyncExternalStore 订阅，避免 SSR hydration mismatch。
+// 拖拽过程中通过 live state 更新视觉，松手时调用 persistSplitRatio 写入 localStorage。
+const splitRatioListeners = new Set<() => void>();
+
+function subscribeSplitRatio(callback: () => void) {
+  splitRatioListeners.add(callback);
+  return () => {
+    splitRatioListeners.delete(callback);
+  };
+}
+
+function readSplitRatio(): number {
+  const stored = localStorage.getItem(SPLIT_RATIO_STORAGE_KEY);
+  const parsed = stored ? Number.parseFloat(stored) : Number.NaN;
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_SPLIT_RATIO;
+  }
+  return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, parsed));
+}
+
+function getSplitRatioSnapshot(): number {
+  if (typeof window === "undefined") {
+    return DEFAULT_SPLIT_RATIO;
+  }
+  return readSplitRatio();
+}
+
+function getSplitRatioServerSnapshot(): number {
+  return DEFAULT_SPLIT_RATIO;
+}
+
+function persistSplitRatio(next: number) {
+  if (typeof window !== "undefined") {
+    const clamped = Math.min(
+      MAX_SPLIT_RATIO,
+      Math.max(MIN_SPLIT_RATIO, next),
+    );
+    localStorage.setItem(SPLIT_RATIO_STORAGE_KEY, String(clamped));
+    splitRatioListeners.forEach((listener) => listener());
+  }
 }
 
 // 同样的 useSyncExternalStore 模式订阅 media query：
@@ -98,13 +143,11 @@ export function NoteBodyEditor({
   articleId,
   defaultValue,
   editorRef,
-  onInsertReference,
   onValueChange,
 }: {
   articleId: string;
   defaultValue: string;
   editorRef: React.RefObject<NoteMarkdownEditorHandle | null>;
-  onInsertReference: (reference: string) => boolean;
   onValueChange?: (value: string) => void;
 }) {
   const [value, setValue] = useState(defaultValue);
@@ -125,8 +168,59 @@ export function NoteBodyEditor({
   );
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ kind: "idle" });
   const previewRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const tasks = useUploadTasks();
+  const { enqueue } = useUploadActions();
+  // 已处理过占位符替换的任务 ID，避免重复替换
+  const handledUploadsRef = useRef<Set<string>>(new Set());
+
+  // 分屏比例：持久化值 + 拖拽期间的实时覆盖值
+  const persistedRatio = useSyncExternalStore(
+    subscribeSplitRatio,
+    getSplitRatioSnapshot,
+    getSplitRatioServerSnapshot,
+  );
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const splitRatio = dragRatio ?? persistedRatio;
+
+  // 拖拽分割线：使用 pointer events 统一鼠标与触屏，拖拽期间禁用文本选择
+  function handleDividerPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (effectiveMode !== "split") return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const container = splitContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+
+    function onPointerMove(ev: PointerEvent) {
+      if (!container) return;
+      const next = (ev.clientX - rect.left) / rect.width;
+      setDragRatio(
+        Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, next)),
+      );
+    }
+
+    function onPointerUp(ev: PointerEvent) {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      const next = (ev.clientX - rect.left) / rect.width;
+      const clamped = Math.min(
+        MAX_SPLIT_RATIO,
+        Math.max(MIN_SPLIT_RATIO, next),
+      );
+      persistSplitRatio(clamped);
+      setDragRatio(null);
+    }
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  }
 
   function changeMode(next: EditorMode) {
     persistEditorMode(next);
@@ -185,42 +279,39 @@ export function NoteBodyEditor({
     };
   }, [effectiveMode, editorRef]);
 
+  // 上传完成时将占位符 uploading:{taskId} 替换为稳定的 cq-asset://{assetId}。
+  // 使用 ref 记录已处理的任务，避免重复替换；若用户已删除占位符则替换静默失败。
+  useEffect(() => {
+    for (const task of tasks) {
+      if (
+        task.status === "success" &&
+        task.asset &&
+        !handledUploadsRef.current.has(task.id)
+      ) {
+        handledUploadsRef.current.add(task.id);
+        editorRef.current?.replaceText(
+          `${UPLOADING_SCHEME}:${task.id}`,
+          `cq-asset://${task.asset.id}`,
+        );
+      }
+    }
+  }, [tasks, editorRef]);
+
   const resolveAssetUrl = useMemo(
     () => resolveAssetUrlFactory(articleId),
     [articleId],
   );
 
-  async function handleFilesUpload(files: FileList | File[]) {
+  function handleFilesUpload(files: FileList | File[]) {
     const fileArray = Array.from(files).filter((f) => f instanceof File);
     if (fileArray.length === 0) return;
 
     for (const file of fileArray) {
-      setUploadStatus({ kind: "uploading", filename: file.name });
-      const formData = new FormData();
-      formData.append("articleId", articleId);
-      formData.append("file", file);
-
-      const result = await uploadArticleAssetAction(
-        initialArticleAssetUploadFormState,
-        formData,
-      );
-
-      if (result.formError) {
-        setUploadStatus({ kind: "error", message: `${file.name}：${result.formError}` });
-        return;
-      }
-
-      if (result.uploadedId) {
-        const reference = formatCanonicalAssetReference({
-          id: result.uploadedId,
-          mediaType: file.type as AcceptedAssetType,
-          originalFilename: file.name,
-        });
-        if (!onInsertReference(reference)) {
-          setUploadStatus({ kind: "error", message: `${file.name} 已上传，但当前编辑器无法插入引用。` });
-          return;
-        }
-        setUploadStatus({ kind: "success", filename: file.name });
+      const taskId = enqueue(articleId, file);
+      // 客户端校验未通过的任务以 "error" 状态创建，不插入占位符
+      const task = uploadTaskManager.getTask(taskId);
+      if (task && task.status !== "error") {
+        editorRef.current?.insertText(formatUploadPlaceholder(taskId, file));
       }
     }
   }
@@ -257,45 +348,79 @@ export function NoteBodyEditor({
   }
 
   const showEditor = effectiveMode === "edit" || effectiveMode === "split";
-  const showPreview = effectiveMode === "preview" || effectiveMode === "split";
+  const showPreview = effectiveMode === "split";
+  const isSplit = effectiveMode === "split";
+  const isDragging = dragRatio !== null;
+  const editorBasis = `${splitRatio * 100}%`;
 
   return (
-    <div className="flex h-0 flex-1 flex-col bg-card">
-      <Tabs
-        className="shrink-0 gap-0 border-b border-border bg-card px-2 py-1"
-        onValueChange={(value) => {
-          if (value === "edit" || value === "split" || value === "preview") {
-            changeMode(value);
-          }
-        }}
-        value={effectiveMode}
-      >
-        <TabsList aria-label="编辑器视图" className="h-8" variant="default">
-          <TabsTrigger className="min-w-20" value="edit">
-            <Edit3 aria-hidden="true" />
-            编辑
-          </TabsTrigger>
-          {isDesktop ? (
-            <TabsTrigger className="min-w-20" value="split">
-              <Columns2 aria-hidden="true" />
-              分屏
+    <div className="relative flex h-0 flex-1 flex-col bg-card">
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card px-2 py-1">
+        <Tabs
+          className="gap-0"
+          onValueChange={(value) => {
+            if (value === "edit" || value === "split") {
+              changeMode(value);
+            }
+          }}
+          value={effectiveMode}
+        >
+          <TabsList aria-label="编辑器视图" className="h-8" variant="default">
+            <TabsTrigger className="min-w-20" value="edit">
+              <Edit3 aria-hidden="true" />
+              编辑
             </TabsTrigger>
-          ) : null}
-          <TabsTrigger className="min-w-20" value="preview">
-            <Eye aria-hidden="true" />
-            预览
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+            {isDesktop ? (
+              <TabsTrigger className="min-w-20" value="split">
+                <Columns2 aria-hidden="true" />
+                分屏
+              </TabsTrigger>
+            ) : null}
+          </TabsList>
+        </Tabs>
+        <Button
+          aria-label="上传文件"
+          className="ml-auto"
+          onClick={() => fileInputRef.current?.click()}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <Upload aria-hidden="true" />
+        </Button>
+        <input
+          accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.pdf,image/jpeg,image/png,image/webp,image/gif,image/avif,application/pdf"
+          className="hidden"
+          multiple
+          onChange={(event) => {
+            const files = event.target.files;
+            if (files && files.length > 0) {
+              handleFilesUpload(files);
+            }
+            // 重置 value 以便重复选择同一文件时仍触发 onChange
+            event.target.value = "";
+          }}
+          ref={fileInputRef}
+          type="file"
+        />
+      </div>
 
       {/* hidden input for form submission */}
       <input name="bodyMarkdown" type="hidden" value={value} />
 
-      <div className="flex h-0 flex-1 gap-px bg-border">
+      <div
+        className={cn(
+          "flex h-0 flex-1 bg-border",
+          // 拖拽期间禁用文本选择，统一指针样式
+          isDragging && "select-none cursor-col-resize",
+        )}
+        ref={splitContainerRef}
+      >
         {showEditor ? (
           <div
             className={cn(
-              "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background transition-shadow",
+              "relative flex min-w-0 flex-col overflow-hidden bg-background transition-shadow",
+              !isSplit && "flex-1",
               isDragOver
                 ? "ring-2 ring-inset ring-brand-accent/50"
                 : null,
@@ -304,6 +429,7 @@ export function NoteBodyEditor({
             onDragOverCapture={handleDragOverCapture}
             onDropCapture={handleDropCapture}
             onPasteCapture={handlePasteCapture}
+            style={isSplit ? { flexBasis: editorBasis, flexGrow: 0, flexShrink: 0 } : undefined}
           >
             {isDragOver ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
@@ -320,8 +446,31 @@ export function NoteBodyEditor({
           </div>
         ) : null}
 
+        {isSplit ? (
+          <div
+            aria-hidden="true"
+            className={cn(
+              "group relative w-px shrink-0 cursor-col-resize bg-border",
+              isDragging && "bg-brand-accent",
+            )}
+            data-dragging={isDragging ? "true" : undefined}
+            onPointerDown={handleDividerPointerDown}
+          >
+            {/* 加宽命中区域，方便鼠标与触屏抓取 */}
+            <div className="absolute inset-y-0 -left-1.5 -right-1.5 z-10" />
+            <div
+              className={cn(
+                "pointer-events-none absolute top-1/2 left-1/2 flex h-10 w-1 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-border transition-colors group-hover:bg-muted-foreground/60",
+                isDragging && "bg-brand-accent",
+              )}
+            />
+          </div>
+        ) : null}
+
         {showPreview ? (
-          <div className="min-w-0 flex-1 bg-background dark:prose-invert">
+          <div
+            className="min-w-0 flex-1 bg-background dark:prose-invert"
+          >
             <div
               className="prose prose-sm h-full max-w-none overflow-auto p-5 sm:p-7"
               ref={previewRef}
@@ -333,21 +482,7 @@ export function NoteBodyEditor({
           </div>
         ) : null}
       </div>
-      {uploadStatus.kind !== "idle" ? (
-        <p
-          className={cn(
-            "shrink-0 border-t border-border bg-muted px-3 py-1.5 text-xs",
-            uploadStatus.kind === "error" ? "text-destructive" : "text-muted-foreground",
-          )}
-          role={uploadStatus.kind === "error" ? "alert" : "status"}
-        >
-          {uploadStatus.kind === "uploading"
-            ? `正在上传 ${uploadStatus.filename}…`
-            : uploadStatus.kind === "success"
-              ? `${uploadStatus.filename} 已上传并插入正文。`
-              : uploadStatus.message}
-        </p>
-      ) : null}
+      <UploadStatusPanel articleId={articleId} />
     </div>
   );
 }

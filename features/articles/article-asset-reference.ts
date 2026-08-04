@@ -33,7 +33,7 @@ export function parseCanonicalAssetReferenceIds(bodyMarkdown: string) {
   return [...ids];
 }
 
-function escapeMarkdownLabel(value: string) {
+export function escapeMarkdownLabel(value: string) {
   return value
     .replace(/[\r\n]+/g, " ")
     .replaceAll("\\", "\\\\")
@@ -49,6 +49,25 @@ export function formatCanonicalAssetReference(
   const destination = `cq-asset://${asset.id}`;
 
   return asset.mediaType.startsWith("image/")
+    ? `![${safeLabel}](${destination})`
+    : `[${safeLabel}](${destination})`;
+}
+
+// ─── 上传占位符 ─────────────────────────────────────────────
+
+/** 占位符使用的伪 scheme，与正式的 cq-asset:// 区分 */
+export const UPLOADING_SCHEME = "uploading";
+
+/**
+ * 格式化上传占位符。结构与 formatCanonicalAssetReference 一致，
+ * 仅将目标 URL 替换为 uploading:{taskId}。
+ * 上传完成后，编辑器将 uploading:{taskId} 替换为 cq-asset://{assetId}，
+ * 标签和 image 前缀保持不变。
+ */
+export function formatUploadPlaceholder(taskId: string, file: File): string {
+  const safeLabel = escapeMarkdownLabel(file.name) || "asset";
+  const destination = `${UPLOADING_SCHEME}:${taskId}`;
+  return file.type.startsWith("image/")
     ? `![${safeLabel}](${destination})`
     : `[${safeLabel}](${destination})`;
 }

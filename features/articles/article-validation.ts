@@ -39,7 +39,6 @@ export const tagNameSchema = z
 export const publishArticleSchema = z.object({
   categoryName: z
     .string()
-    .min(1, "分类不能为空。")
     .max(
       articleFieldLimits.categoryName,
       `分类不能超过 ${articleFieldLimits.categoryName} 个字符。`,
@@ -54,7 +53,6 @@ export const publishArticleSchema = z.object({
     ),
   tagNames: z
     .array(tagNameSchema)
-    .min(1, "至少需要一个标签。")
     .max(20, "单篇笔记最多 20 个标签。"),
 });
 

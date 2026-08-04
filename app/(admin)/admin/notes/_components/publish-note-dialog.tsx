@@ -1,27 +1,28 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
+import { UploadIcon } from "lucide-react";
 
 import { NoteTaxonomyFields } from "./note-taxonomy-fields";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import type { AcceptedAssetType, ArticleAsset } from "@/features/article-assets/article-asset-dto";
-import { initialArticleAssetUploadFormState } from "@/features/article-assets/article-asset-form-state";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
 import {
   articleFieldLimits,
   type CategoryOption,
   type TagOption,
 } from "@/features/articles/article-dto";
 import { initialArticlePublishFormState } from "@/features/articles/article-edit-form-state";
+import { extractSummaryFromMarkdown } from "@/features/articles/article-summary";
 import { cn } from "@/lib/utils";
-import { publishArticleAction, uploadArticleAssetAction } from "../[noteId]/actions";
+import { publishArticleAction } from "../[noteId]/actions";
 
 const textareaClassName =
   "mt-2 block min-h-32 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-6 text-foreground shadow-xs outline-none transition-[border-color,box-shadow] duration-(--motion-duration) ease-(--motion-easing) placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/15 motion-reduce:transition-none";
@@ -36,6 +37,7 @@ export function PublishNoteDialog({
   article,
   assets,
   categories,
+  draftBody,
   initialCategoryName,
   initialCoverAssetId,
   initialSummary,
@@ -52,6 +54,7 @@ export function PublishNoteDialog({
   };
   assets: readonly ArticleAsset[];
   categories: readonly CategoryOption[];
+  draftBody: string;
   initialCategoryName: string;
   initialCoverAssetId: string | null;
   initialSummary: string;
@@ -83,8 +86,10 @@ export function PublishNoteDialog({
   const [selectedCoverId, setSelectedCoverId] = useState<string>(
     initialCoverAssetId ?? "",
   );
+  const [summary, setSummary] = useState<string>(initialSummary);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadPending, startUploadTransition] = useTransition();
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 对话框打开时重置本地状态
@@ -92,7 +97,9 @@ export function PublishNoteDialog({
     if (next) {
       setExtraAssets([]);
       setSelectedCoverId(initialCoverAssetId ?? "");
+      setSummary(initialSummary);
       setUploadError(null);
+      setUploadProgress(null);
     }
     onOpenChange(next);
   }
@@ -106,58 +113,94 @@ export function PublishNoteDialog({
   const isPublishedRevisionCurrent =
     isPublished && article.publishedFromRevision === article.revision;
   const summaryErrorId = "publish-summary-error";
+  const isUploading = uploadProgress !== null;
 
-  function handleUploadClick() {
-    const fileInput = fileInputRef.current;
-    if (!fileInput || !fileInput.files?.[0]) {
+  function handleAutoExtractSummary() {
+    const extracted = extractSummaryFromMarkdown(draftBody);
+    if (extracted) {
+      setSummary(extracted);
+    }
+  }
+
+  async function uploadCoverFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setUploadError("封面图必须是图片文件。");
       return;
     }
 
-    const file = fileInput.files[0];
     setUploadError(null);
+    setUploadProgress(0);
 
     const formData = new FormData();
     formData.append("articleId", article.id);
     formData.append("file", file);
 
-    startUploadTransition(async () => {
-      const result = await uploadArticleAssetAction(
-        initialArticleAssetUploadFormState,
-        formData,
-      );
+    try {
+      const asset = await new Promise<ArticleAsset>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `/api/admin/notes/${article.id}/assets`);
 
-      if (result.uploadedId) {
-        const isImage = file.type.startsWith("image/");
-        const newAsset: ArticleAsset = {
-          id: result.uploadedId,
-          articleId: article.id,
-          mediaType: file.type as AcceptedAssetType,
-          originalFilename: file.name,
-          byteSize: file.size,
-          objectKey: "",
-          sha256: "",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(Math.round((event.loaded / event.total) * 100));
+          }
         };
-        setExtraAssets((prev) => [...prev, newAsset]);
-        if (isImage) {
-          setSelectedCoverId(result.uploadedId);
-        }
-        fileInput.value = "";
-      } else {
-        setUploadError(result.formError);
-      }
-    });
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText) as { asset: ArticleAsset };
+              resolve(data.asset);
+            } catch {
+              reject(new Error("解析上传响应失败。"));
+            }
+          } else {
+            reject(new Error("上传失败，请稍后重试。"));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("网络错误，上传失败。"));
+        xhr.send(formData);
+      });
+
+      setExtraAssets((prev) => [...prev, asset]);
+      setSelectedCoverId(asset.id);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "上传失败，请稍后重试。",
+      );
+    } finally {
+      setUploadProgress(null);
+    }
+  }
+
+  function handleFileInputChange() {
+    const fileInput = fileInputRef.current;
+    if (!fileInput || !fileInput.files?.[0]) {
+      return;
+    }
+    void uploadCoverFile(fileInput.files[0]);
+    fileInput.value = "";
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault();
+    setIsDragOver(false);
+
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      void uploadCoverFile(file);
+    }
   }
 
   return (
-    <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{isPublished ? "更新线上版本" : "发布笔记"}</DialogTitle>
-          <DialogDescription>
+    <Sheet onOpenChange={handleOpenChange} open={open}>
+      <SheetContent className="flex flex-col">
+        <SheetHeader>
+          <SheetTitle>{isPublished ? "更新线上版本" : "发布笔记"}</SheetTitle>
+          <SheetDescription>
             发布后笔记将对访客可见。填写分类、标签、封面图与摘要。
-          </DialogDescription>
+          </SheetDescription>
           <p className="text-xs text-muted-foreground" role="status">
             {isPublishedRevisionCurrent
               ? "线上版本已对应当前草稿修订。"
@@ -165,9 +208,9 @@ export function PublishNoteDialog({
                 ? "当前草稿比线上版本更新。"
                 : "这篇笔记尚未公开。"}
           </p>
-        </DialogHeader>
+        </SheetHeader>
 
-        <form action={action} className="grid gap-5">
+        <form action={action} className="grid flex-1 gap-5 overflow-y-auto">
           <input name="articleId" type="hidden" value={article.id} />
           <input
             name="expectedRevision"
@@ -177,21 +220,32 @@ export function PublishNoteDialog({
           <input name="coverAssetId" type="hidden" value={selectedCoverId} />
 
           <div>
-            <label className={labelClassName} htmlFor="publish-summary">
-              摘要
-              <span className="ml-2 font-normal text-muted-foreground">必填</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className={labelClassName} htmlFor="publish-summary">
+                摘要
+                <span className="ml-2 font-normal text-muted-foreground">必填</span>
+              </label>
+              <Button
+                onClick={handleAutoExtractSummary}
+                size="xs"
+                type="button"
+                variant="ghost"
+              >
+                自动提取
+              </Button>
+            </div>
             <textarea
               aria-describedby={
                 state.fieldErrors.summary?.length ? summaryErrorId : undefined
               }
               aria-invalid={Boolean(state.fieldErrors.summary?.length)}
               className={textareaClassName}
-              defaultValue={state.values.summary}
               id="publish-summary"
               maxLength={articleFieldLimits.summary}
               name="summary"
+              onChange={(event) => setSummary(event.target.value)}
               placeholder="一句话概述这篇笔记，用于列表与分享卡片。"
+              value={summary}
             />
             {state.fieldErrors.summary?.length ? (
               <p className="mt-2 text-sm text-destructive" id={summaryErrorId}>
@@ -217,26 +271,51 @@ export function PublishNoteDialog({
               <span className="ml-2 font-normal text-muted-foreground">必填</span>
             </span>
 
-            {/* 上传区域（非 form 元素，避免与发布表单嵌套） */}
-            <div className="mt-2 flex items-center gap-2">
+            {/* 拖拽上传区域 */}
+            <div
+              className={cn(
+                "mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 transition-colors",
+                isDragOver
+                  ? "border-brand-accent bg-brand-accent-soft"
+                  : "border-border hover:border-muted-foreground",
+                isUploading && "pointer-events-none opacity-60",
+              )}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+            >
+              <UploadIcon aria-hidden="true" className="size-6 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                {isUploading
+                  ? `上传中… ${uploadProgress}%`
+                  : "点击或拖拽图片到此处上传"}
+              </p>
               <input
                 accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                className="block min-h-(--control-height) flex-1 rounded-md border border-input bg-background px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs file:font-medium focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 focus-visible:outline-none"
-                disabled={uploadPending}
-                id="publish-cover-upload"
+                className="hidden"
+                disabled={isUploading}
+                onChange={handleFileInputChange}
                 ref={fileInputRef}
                 type="file"
               />
-              <Button
-                disabled={uploadPending}
-                onClick={handleUploadClick}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                {uploadPending ? "上传中…" : "上传"}
-              </Button>
             </div>
+
+            {/* 上传进度条 */}
+            {isUploading ? (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            ) : null}
+
             {uploadError ? (
               <p className="mt-1 text-xs text-destructive" role="alert">
                 {uploadError}
@@ -297,17 +376,17 @@ export function PublishNoteDialog({
             </p>
           ) : null}
 
-          <DialogFooter>
+          <SheetFooter>
             <Button
-              disabled={pending || selectedCoverId.length === 0}
+              disabled={pending || selectedCoverId.length === 0 || isUploading}
               title={selectedCoverId.length === 0 ? "请先选择封面图" : undefined}
               type="submit"
             >
               {pending ? "发布中…" : isPublished ? "更新线上版本" : "发布"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
