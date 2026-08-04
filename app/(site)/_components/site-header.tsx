@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import logo from "@/assets/brand/logo.svg";
 import { SiteUtilityLinks } from "./site-utility-links";
 
 const navigationLinkClassName =
@@ -27,7 +28,7 @@ export function SiteHeader() {
               aria-hidden="true"
               className="block size-9 shrink-0"
               height={36}
-              src="/brand/mark.svg"
+              src={logo}
               unoptimized
               width={36}
             />

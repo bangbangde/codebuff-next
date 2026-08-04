@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <style>
+    :root { color: #111111; }
+    @media (prefers-color-scheme: dark) { :root { color: #f5f5f4; } }
+  </style>
+  <g xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="32" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="256,40 443.061,148 443.061,364 256,472 68.939,364 68.939,148"/>
+    <polygon points="332.210,84 443.061,148 443.061,276 332.210,340 221.359,276 221.359,148"/>
+  </g>
+</svg>
