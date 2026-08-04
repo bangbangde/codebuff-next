@@ -15,7 +15,7 @@ import {
   readArticleValues,
   readPublishValues,
 } from "@/features/articles/article-validation";
-import { publishArticle, updateArticle } from "@/features/articles/server/article-service";
+import { getArticleById, publishArticle, updateArticle } from "@/features/articles/server/article-service";
 import { requireAdmin } from "@/lib/auth/session";
 
 export async function updateArticleAction(
@@ -214,7 +214,7 @@ export async function publishArticleAction(
       conflictRevision: result.currentRevision,
       fieldErrors: {},
       formError:
-        "数据库中的笔记草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
+        "检测到正文版本冲突，请先在编辑器中合并正文后再发布。",
       status: "conflict",
       values: fields.data,
     };
@@ -247,5 +247,32 @@ export async function publishArticleAction(
       summary: result.article.summary,
       tagNames: fields.data.tagNames,
     },
+  };
+}
+
+/**
+ * 获取笔记的最新草稿正文与修订号，用于冲突合并对话框展示服务器侧版本。
+ *
+ * 仅在编辑器检测到 expectedRevision 冲突时调用：客户端拿着本地草稿与
+ * 此处返回的服务器最新草稿进入 unifiedMergeView，让用户手动合并。
+ */
+export async function getLatestDraftBodyAction(
+  articleId: string,
+): Promise<
+  | { status: "ok"; bodyMarkdown: string; revision: number }
+  | { status: "not_found" }
+> {
+  await requireAdmin();
+
+  const article = await getArticleById(articleId);
+
+  if (!article) {
+    return { status: "not_found" };
+  }
+
+  return {
+    bodyMarkdown: article.draftContent,
+    revision: article.draftRevision,
+    status: "ok",
   };
 }

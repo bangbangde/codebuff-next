@@ -7,7 +7,7 @@ import {
   UserRoundIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import {
   DropdownMenu,
@@ -32,7 +32,10 @@ export function AdminAccountMenu({ email, name }: AdminAccountMenuProps) {
     const signedOut = await signOut();
 
     if (!signedOut) {
-      toast.error("暂时无法退出，请重试。");
+      toast.add({
+        description: "暂时无法退出，请重试。",
+        type: "error",
+      });
     }
   }
 

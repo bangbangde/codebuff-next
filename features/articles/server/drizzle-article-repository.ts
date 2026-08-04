@@ -337,13 +337,15 @@ export const drizzleArticleRepository: ArticleRepository = {
           .select({
             articleId: articleAsset.articleId,
             id: articleAsset.id,
+            status: articleAsset.status,
           })
           .from(articleAsset)
           .where(inArray(articleAsset.id, [...assetIds]));
 
         if (
           referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id)
+          referencedAssets.some((asset) => asset.articleId !== input.id) ||
+          referencedAssets.some((asset) => asset.status === "deleted")
         ) {
           throw new ArticleAssetUnavailableError();
         }
@@ -403,13 +405,15 @@ export const drizzleArticleRepository: ArticleRepository = {
             articleId: articleAsset.articleId,
             id: articleAsset.id,
             mediaType: articleAsset.mediaType,
+            status: articleAsset.status,
           })
           .from(articleAsset)
           .where(inArray(articleAsset.id, [...assetIds]));
 
         if (
           referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id)
+          referencedAssets.some((asset) => asset.articleId !== input.id) ||
+          referencedAssets.some((asset) => asset.status === "deleted")
         ) {
           throw new ArticleAssetUnavailableError();
         }

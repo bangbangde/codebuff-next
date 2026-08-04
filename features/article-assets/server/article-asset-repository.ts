@@ -105,8 +105,44 @@ export async function listAssetsPendingCleanup(
 }
 
 /**
+ * 原子性地 claim 一个资产可被安全删除（仅在状态仍为 temporary/pending_delete 时成功）。
+ * 用于 cleanup 任务：在真正删除 Garage 对象之前 claim 成功，
+ * 才能避免 TOCTOU：即 listAssetsPendingCleanup 选中后，用户保存文章
+ * 将资产从 pending_delete 复活为 active；若无 claim，后续 store.delete
+ * 会删掉正在被引用的对象。
+ *
+ * 这里采用"先 claim 成中间态再删除"的保守做法：直接把符合条件的行
+ * UPDATE 为同一个 status（强制 bump statusUpdatedAt）并 returning。
+ * 若 0 行返回，说明该资产已不再处于可清理状态，调用方跳过。
+ * （PG 不支持 "UPDATE ... WHERE ... RETURNING" 时无行变化，所以
+ * 我们复用 WHERE 条件作为 claim 判定。）
+ */
+export async function claimAssetForDeletion(
+  assetId: string,
+  expectedStatuses: readonly ("pending_delete" | "temporary")[],
+): Promise<ArticleAsset | null> {
+  const [updated] = await getDatabase()
+    .update(articleAsset)
+    .set({ statusUpdatedAt: new Date() })
+    .where(
+      and(
+        eq(articleAsset.id, assetId),
+        inArray(articleAsset.status, [...expectedStatuses]),
+      ),
+    )
+    .returning();
+
+  return updated ? toArticleAsset(updated) : null;
+}
+
+/**
  * 将资产状态标记为 `deleted`（Garage 对象已删除，记录保留用于审计）。
  * 仅在 Garage 对象成功删除后调用。
+ * 加 `WHERE status IN ('pending_delete', 'temporary')`：
+ * 若在此期间用户保存文章并将资产从 pending_delete 重新提升为 active，
+ * 该 UPDATE 不会命中，调用方据此跳过标记，避免误删正在被引用的资产。
+ *
+ * @returns 更新后的资产记录，若无匹配行返回 null（表示状态已被改变，不应继续标记）。
  */
 export async function markAssetAsDeleted(
   assetId: string,
@@ -114,7 +150,12 @@ export async function markAssetAsDeleted(
   const [updated] = await getDatabase()
     .update(articleAsset)
     .set({ status: "deleted", statusUpdatedAt: new Date() })
-    .where(eq(articleAsset.id, assetId))
+    .where(
+      and(
+        eq(articleAsset.id, assetId),
+        inArray(articleAsset.status, ["pending_delete", "temporary"]),
+      ),
+    )
     .returning();
 
   return updated ? toArticleAsset(updated) : null;

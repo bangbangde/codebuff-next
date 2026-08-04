@@ -12,14 +12,14 @@ import {
 import { uploadTaskManager } from "@/features/article-assets/upload-task-manager";
 import { useUploadTasks, useUploadActions } from "@/features/article-assets/use-upload-tasks";
 import {
+  formatCanonicalAssetReference,
   formatUploadPlaceholder,
-  UPLOADING_SCHEME,
 } from "@/features/articles/article-asset-reference";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UploadStatusPanel } from "./upload-status-panel";
+import { UploadToastBridge } from "./upload-toast-bridge";
 import {
   NoteMarkdownEditor,
   type NoteMarkdownEditorHandle,
@@ -168,6 +168,7 @@ export function NoteBodyEditor({
   );
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const dragDepthRef = useRef(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -279,8 +280,9 @@ export function NoteBodyEditor({
     };
   }, [effectiveMode, editorRef]);
 
-  // 上传完成时将占位符 uploading:{taskId} 替换为稳定的 cq-asset://{assetId}。
-  // 使用 ref 记录已处理的任务，避免重复替换；若用户已删除占位符则替换静默失败。
+  // 上传完成时将占位符注释 <!-- cq-upload:taskId --> 替换为稳定的
+  // cq-asset://{assetId} markdown 引用。使用 ref 记录已处理的任务，
+  // 避免重复替换；若用户已删除占位符则替换静默失败。
   useEffect(() => {
     for (const task of tasks) {
       if (
@@ -290,8 +292,26 @@ export function NoteBodyEditor({
       ) {
         handledUploadsRef.current.add(task.id);
         editorRef.current?.replaceText(
-          `${UPLOADING_SCHEME}:${task.id}`,
-          `cq-asset://${task.asset.id}`,
+          formatUploadPlaceholder(task.id),
+          formatCanonicalAssetReference(task.asset),
+        );
+      }
+    }
+  }, [tasks, editorRef]);
+
+  // 上传取消时删除整个占位符注释，与 success 替换逻辑对称。
+  // 使用独立 ref 记录已处理的取消，避免重复删除。
+  const handledCancellationsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const task of tasks) {
+      if (
+        task.status === "canceled" &&
+        !handledCancellationsRef.current.has(task.id)
+      ) {
+        handledCancellationsRef.current.add(task.id);
+        editorRef.current?.replaceText(
+          formatUploadPlaceholder(task.id),
+          "",
         );
       }
     }
@@ -311,7 +331,7 @@ export function NoteBodyEditor({
       // 客户端校验未通过的任务以 "error" 状态创建，不插入占位符
       const task = uploadTaskManager.getTask(taskId);
       if (task && task.status !== "error") {
-        editorRef.current?.insertText(formatUploadPlaceholder(taskId, file));
+        editorRef.current?.insertText(formatUploadPlaceholder(taskId));
       }
     }
   }
@@ -328,13 +348,24 @@ export function NoteBodyEditor({
   function handleDragOverCapture(event: React.DragEvent) {
     if (event.dataTransfer?.types.includes("Files")) {
       event.preventDefault();
-      setIsDragOver(true);
+      if (dragDepthRef.current === 0) {
+        setIsDragOver(true);
+      }
+      dragDepthRef.current += 1;
     }
   }
 
   function handleDragLeave(event: React.DragEvent) {
-    if (event.relatedTarget === null) {
-      setIsDragOver(false);
+    // 用 counter + contains 双重检测：
+    // - counter 处理父子元素之间 dragenter/dragleave 抖动
+    // - contains 处理 relatedTarget === null 但只是离开子元素的情形
+    const currentTarget = event.currentTarget as HTMLElement;
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (relatedTarget === null || !currentTarget.contains(relatedTarget)) {
+      dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+      if (dragDepthRef.current === 0) {
+        setIsDragOver(false);
+      }
     }
   }
 
@@ -342,6 +373,7 @@ export function NoteBodyEditor({
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       event.preventDefault();
+      dragDepthRef.current = 0;
       setIsDragOver(false);
       handleFilesUpload(files);
     }
@@ -482,7 +514,7 @@ export function NoteBodyEditor({
           </div>
         ) : null}
       </div>
-      <UploadStatusPanel articleId={articleId} />
+      <UploadToastBridge articleId={articleId} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { NoteMarkdownEditorHandle } from "./markdown-editor";
+import { ConflictMergeDialog } from "./conflict-merge-dialog";
 import { NoteBodyEditor } from "./note-body-editor";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,7 @@ import type {
 } from "@/features/articles/article-dto";
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
 import { PublishNoteDialog } from "./publish-note-dialog";
-import { updateArticleAction } from "../[noteId]/actions";
+import { getLatestDraftBodyAction, updateArticleAction } from "../[noteId]/actions";
 
 type SaveStatus =
   | "idle"
@@ -79,6 +80,48 @@ export function NoteEditor({
 
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
+  // ── 冲突合并对话框状态 ──────────────────────────────────────────
+  // 当 expectedRevision 与数据库不一致时，自动拉取服务器最新草稿正文
+  // 并打开 ConflictMergeDialog。用户合并完成后用 conflictRevision 作为
+  // 新的 expectedRevision 重发保存，避免覆盖另一标签页/设备的修改。
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [conflictRevision, setConflictRevision] = useState<number | null>(null);
+  const [serverDraft, setServerDraft] = useState<string>("");
+  const [conflictLoadError, setConflictLoadError] = useState<string | null>(
+    null,
+  );
+  // 每次打开冲突对话框时递增，作为 ConflictMergeDialog 的 key 强制重挂载，
+  // 确保 CodeMirror 与 unifiedMergeView 扩展以全新状态重建。
+  const [conflictSessionId, setConflictSessionId] = useState(0);
+
+  // 拉取服务器最新草稿正文并打开冲突合并对话框。保存与发布两条路径
+  // 检测到 expectedRevision 冲突时都复用此函数，避免逻辑重复。
+  // fallbackRevision 用于 getLatestDraftBodyAction 失败时仍能展示一个
+  // 大致的冲突 revision（来自服务端 action 返回的 conflictRevision）。
+  const loadServerDraftAndOpenDialog = useCallback(
+    async (articleId: string, fallbackRevision: number | null) => {
+      setConflictRevision(fallbackRevision);
+      setConflictLoadError(null);
+
+      try {
+        const latest = await getLatestDraftBodyAction(articleId);
+        if (latest.status === "ok") {
+          setServerDraft(latest.bodyMarkdown);
+          setConflictRevision(latest.revision);
+          setConflictSessionId((id) => id + 1);
+          setConflictDialogOpen(true);
+        } else {
+          setConflictLoadError("笔记已不存在，无法获取服务器版本。");
+        }
+      } catch {
+        setConflictLoadError(
+          "无法获取服务器最新版本，请检查网络后刷新页面。",
+        );
+      }
+    },
+    [],
+  );
+
   const performSave = useCallback(
     async (currentValues: ArticleCreateValues, currentRevision: number) => {
       if (savingRef.current) {
@@ -113,6 +156,13 @@ export function NoteEditor({
         if (result.status === "saved" && result.savedRevision !== null) {
           setExpectedRevision(result.savedRevision);
           setLastSavedValues(currentValues);
+          return;
+        }
+
+        if (result.status === "conflict") {
+          // 拉取服务器最新草稿正文供合并对话框使用。失败时保留 conflict
+          // 状态并提示用户手动刷新——不打开对话框以免展示空服务器版本。
+          await loadServerDraftAndOpenDialog(article.id, result.conflictRevision);
         }
       } catch {
         setFormError("保存请求未完成，请检查网络后重试。");
@@ -121,7 +171,48 @@ export function NoteEditor({
         savingRef.current = false;
       }
     },
-    [article.id],
+    [article.id, loadServerDraftAndOpenDialog],
+  );
+
+  // 发布流程检测到正文版本冲突时：关闭发布对话框，把状态切到 conflict，
+  // 并复用 loadServerDraftAndOpenDialog 拉取服务器草稿、打开合并对话框。
+  // 用户合并正文并重新保存后，可以再次打开发布对话框发布。
+  const handlePublishConflict = useCallback(
+    (conflictRevision: number | null) => {
+      setPublishDialogOpen(false);
+      setSaveStatus("conflict");
+      setFormError(null);
+      void loadServerDraftAndOpenDialog(article.id, conflictRevision);
+    },
+    [article.id, loadServerDraftAndOpenDialog],
+  );
+
+  // 用户在冲突合并对话框中点「保存合并结果」后的回调：
+  // 1. 用合并后的正文更新 values（触发 NoteBodyEditor 同步）
+  // 2. 把 expectedRevision bump 到服务器最新 revision
+  // 3. 关闭对话框
+  // 4. 立即用新 revision 重发保存（避免再走 debounce 等待）
+  const handleResolveConflict = useCallback(
+    (mergedBody: string) => {
+      if (conflictRevision === null) {
+        return;
+      }
+
+      const nextValues: ArticleCreateValues = {
+        ...values,
+        bodyMarkdown: mergedBody,
+      };
+      setValues(nextValues);
+      setExpectedRevision(conflictRevision);
+      setConflictDialogOpen(false);
+      setConflictRevision(null);
+      setServerDraft("");
+      setFormError(null);
+      setSaveStatus("saving");
+
+      void performSave(nextValues, conflictRevision);
+    },
+    [conflictRevision, performSave, values],
   );
 
   useEffect(() => {
@@ -225,9 +316,13 @@ export function NoteEditor({
         return;
       }
       const status = latestSaveStatusRef.current;
-      if (status === "conflict" || status === "not_found" || savingRef.current) {
+      if (status === "conflict" || status === "not_found") {
         return;
       }
+      // savingRef.current 为 true 表示正在进行 server action。
+      // pagehide 阶段的 server action 可能被浏览器中止，仍以 keepalive fetch 兜底
+      // （即使同时有两个保存请求，服务端通过 expectedRevision 乐观锁去重，
+      // 较旧请求返回 conflict，新修订仍以最后成功的为准）。
       const formData = new FormData();
       formData.append("articleId", article.id);
       formData.append(
@@ -237,7 +332,6 @@ export function NoteEditor({
       formData.append("title", latestValuesRef.current.title);
       formData.append("bodyMarkdown", latestValuesRef.current.bodyMarkdown);
 
-      // keepalive 让请求在页面卸载后仍有机会完成。
       void fetch(`/api/admin/notes/${article.id}/save`, {
         body: formData,
         keepalive: true,
@@ -272,15 +366,15 @@ export function NoteEditor({
       case "saving":
         return "保存中…";
       case "saved":
-        return isDirty ? "正在保存…" : "所有更改已保存";
+        return isDirty ? "未保存" : "所有更改已保存";
       case "error":
         return formError ?? "保存失败";
       case "conflict":
-        return formError ?? "检测到冲突";
+        return conflictLoadError ?? formError ?? "检测到冲突，正在加载服务器版本…";
       case "not_found":
         return formError ?? "笔记已不存在";
       default:
-        return "笔记将自动保存至草稿箱";
+        return isDirty ? "未保存" : "笔记将自动保存至草稿箱";
     }
   })();
 
@@ -375,9 +469,19 @@ export function NoteEditor({
         initialCategoryName={article.categoryName ?? ""}
         initialSummary={article.summary}
         initialTagNames={article.tagNames}
+        onConflict={handlePublishConflict}
         onOpenChange={setPublishDialogOpen}
         open={publishDialogOpen}
         tags={tags}
+      />
+
+      <ConflictMergeDialog
+        key={conflictSessionId}
+        localDraft={values.bodyMarkdown}
+        onOpenChange={setConflictDialogOpen}
+        onResolve={handleResolveConflict}
+        open={conflictDialogOpen}
+        serverDraft={serverDraft}
       />
     </>
   );

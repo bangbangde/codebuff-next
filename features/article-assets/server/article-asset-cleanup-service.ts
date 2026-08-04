@@ -28,9 +28,11 @@ export type ArticleAssetCleanupSummary = Readonly<{
   pendingDeleteProcessed: number;
   pendingDeleteSucceeded: number;
   pendingDeleteFailed: number;
+  pendingDeleteSkipped: number;
   temporaryProcessed: number;
   temporarySucceeded: number;
   temporaryFailed: number;
+  temporarySkipped: number;
 }>;
 
 /**
@@ -73,33 +75,53 @@ export async function cleanupArticleAssets(
   const pendingDeleteResult = await processBatch(
     pendingDeleteAssets,
     dependencies.store,
+    ["pending_delete"],
   );
   const temporaryResult = await processBatch(
     temporaryAssets,
     dependencies.store,
+    ["temporary"],
   );
 
   return {
     pendingDeleteProcessed: pendingDeleteResult.processed,
     pendingDeleteSucceeded: pendingDeleteResult.succeeded,
     pendingDeleteFailed: pendingDeleteResult.failed,
+    pendingDeleteSkipped: pendingDeleteResult.skipped,
     temporaryProcessed: temporaryResult.processed,
     temporarySucceeded: temporaryResult.succeeded,
     temporaryFailed: temporaryResult.failed,
+    temporarySkipped: temporaryResult.skipped,
   };
 }
 
 async function processBatch(
   assets: readonly ArticleAsset[],
   store: GarageObjectStore,
-): Promise<{ processed: number; succeeded: number; failed: number }> {
+  expectedStatuses: readonly ("pending_delete" | "temporary")[],
+): Promise<{ processed: number; succeeded: number; failed: number; skipped: number }> {
   let succeeded = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const asset of assets) {
     try {
+      // 在删除 Garage 对象前先 claim：若其他事务在此期间将资产复活
+      // 为 active（例如用户保存/发布文章时 syncAssetStatuses），
+      // claimAssetForDeletion 会返回 null，此处跳过，不再删除对象。
+      const claimed = await repository.claimAssetForDeletion(asset.id, expectedStatuses);
+      if (!claimed) {
+        skipped += 1;
+        continue;
+      }
+
       await store.delete(asset.objectKey);
-      await repository.markAssetAsDeleted(asset.id);
+      const marked = await repository.markAssetAsDeleted(asset.id);
+      if (!marked) {
+        // claim 成功但 mark 删除时状态被其他事务变更，保留已被复活
+        skipped += 1;
+        continue;
+      }
       succeeded += 1;
     } catch (error) {
       failed += 1;
@@ -113,5 +135,5 @@ async function processBatch(
     }
   }
 
-  return { processed: assets.length, succeeded, failed };
+  return { processed: assets.length, succeeded, failed, skipped };
 }

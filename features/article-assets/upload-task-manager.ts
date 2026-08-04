@@ -367,6 +367,7 @@ async function runUpload(taskId: string) {
  * 将文件加入上传队列。
  * 如果客户端校验失败，任务直接以 "error" 状态创建（仍出现在列表中，
  * 用户可在面板中看到失败原因并手动重试）。
+ * 新任务入队时清理其他文章的所有终态任务，避免跨文章累积内存。
  * @returns 任务 ID
  */
 function enqueue(articleId: string, file: File): string {
@@ -395,6 +396,23 @@ function enqueue(articleId: string, file: File): string {
     controller: null,
     running: false,
   });
+
+  // 清理其他文章的终态任务，防止跨文章切换时内存累积。
+  let _changed = false;
+  for (const [taskId, entry] of entries) {
+    if (entry.snapshot.articleId !== articleId) {
+      const status = entry.snapshot.status;
+      if (
+        status === "success" ||
+        status === "error" ||
+        status === "canceled"
+      ) {
+        entries.delete(taskId);
+        _changed = true;
+      }
+    }
+  }
+
   emit();
 
   if (validation.ok) {

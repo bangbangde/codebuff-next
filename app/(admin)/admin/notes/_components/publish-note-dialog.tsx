@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { UploadIcon } from "lucide-react";
 
 import { NoteTaxonomyFields } from "./note-taxonomy-fields";
@@ -14,6 +14,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
+import {
+  validateAssetFileClientSide,
+} from "@/features/article-assets/upload-task-manager";
 import {
   articleFieldLimits,
   type CategoryOption,
@@ -42,6 +45,7 @@ export function PublishNoteDialog({
   initialCoverAssetId,
   initialSummary,
   initialTagNames,
+  onConflict,
   onOpenChange,
   open,
   tags,
@@ -59,6 +63,13 @@ export function PublishNoteDialog({
   initialCoverAssetId: string | null;
   initialSummary: string;
   initialTagNames: readonly string[];
+  /**
+   * 发布时检测到正文版本冲突（草稿 revision 不匹配）时调用。
+   * 父组件负责关闭发布对话框并打开正文冲突合并对话框；
+   * 发布元数据（封面/分类/标签/摘要）本身不做冲突合并，
+   * 用户解决正文冲突后可再次打开发布对话框发布。
+   */
+  onConflict: (conflictRevision: number | null) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   tags: readonly TagOption[];
@@ -91,6 +102,21 @@ export function PublishNoteDialog({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 记录已通知父组件的 conflictRevision，避免 useActionState 的 state
+  // 在对话框重新打开时残留 conflict 状态导致重复触发 onConflict。
+  const lastNotifiedConflictRef = useRef<number | null | undefined>(undefined);
+
+  // 检测到正文版本冲突时交由父组件处理：父组件会关闭发布对话框并打开
+  // 正文冲突合并对话框。发布元数据本身不做冲突合并。
+  useEffect(() => {
+    if (
+      state.status === "conflict" &&
+      lastNotifiedConflictRef.current !== state.conflictRevision
+    ) {
+      lastNotifiedConflictRef.current = state.conflictRevision;
+      onConflict(state.conflictRevision);
+    }
+  }, [state.status, state.conflictRevision, onConflict]);
 
   // 对话框打开时重置本地状态
   function handleOpenChange(next: boolean) {
@@ -100,6 +126,8 @@ export function PublishNoteDialog({
       setSummary(initialSummary);
       setUploadError(null);
       setUploadProgress(null);
+      // 重置冲突通知标记，允许下次冲突再次触发 onConflict
+      lastNotifiedConflictRef.current = undefined;
     }
     onOpenChange(next);
   }
@@ -123,7 +151,13 @@ export function PublishNoteDialog({
   }
 
   async function uploadCoverFile(file: File) {
-    if (!file.type.startsWith("image/")) {
+    // 复用编辑器上传路径的客户端预检：类型/大小/扩展名/MIME 一致
+    const validation = validateAssetFileClientSide(file);
+    if (!validation.ok) {
+      setUploadError(validation.error);
+      return;
+    }
+    if (!validation.mediaType.startsWith("image/")) {
       setUploadError("封面图必须是图片文件。");
       return;
     }
@@ -149,13 +183,30 @@ export function PublishNoteDialog({
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              const data = JSON.parse(xhr.responseText) as { asset: ArticleAsset };
-              resolve(data.asset);
+              // 上传请求结束、响应阶段进度直接标 100，避免视觉停在 99%
+              setUploadProgress(100);
+              const data = JSON.parse(xhr.responseText) as
+                | { asset: ArticleAsset }
+                | { error: string };
+              if ("asset" in data) {
+                resolve(data.asset);
+              } else {
+                reject(new Error("error" in data ? data.error : "上传失败，请稍后重试。"));
+              }
             } catch {
               reject(new Error("解析上传响应失败。"));
             }
           } else {
-            reject(new Error("上传失败，请稍后重试。"));
+            let message = "上传失败，请稍后重试。";
+            try {
+              const data = JSON.parse(xhr.responseText) as { error?: string };
+              if (data.error) {
+                message = data.error;
+              }
+            } catch {
+              // 非 JSON 响应使用默认消息
+            }
+            reject(new Error(message));
           }
         };
 

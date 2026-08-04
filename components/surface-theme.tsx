@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 export type ProductSurface = "site" | "admin";
@@ -32,7 +32,7 @@ export function SurfaceTheme({
       >
         {children}
       </div>
-      <Toaster className={cn("toaster group", surfaceClassName)} />
+      <Toaster />
     </SurfaceThemeContext.Provider>
   );
 }
