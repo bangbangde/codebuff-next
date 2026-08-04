@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import logo from "@/assets/brand/logo.svg";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminAccountMenu } from "./admin-account-menu";
@@ -62,9 +63,9 @@ export function AdminShell({
           <Image
             alt=""
             aria-hidden="true"
-            className="block size-8 shrink-0 rounded-md bg-white p-0.5"
+            className="block size-8 shrink-0"
             height={32}
-            src="/brand/mark.svg"
+            src={logo}
             unoptimized
             width={32}
           />
