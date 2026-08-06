@@ -1,5 +1,7 @@
 "use client";
 
+// CodeMirror 6 官方包（@codemirror/*，由 Marijn Haverbeke 维护）：
+// 编辑器核心、Markdown 语法、unified diff 合并视图。
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import {
@@ -11,7 +13,11 @@ import {
   unifiedMergeView,
 } from "@codemirror/merge";
 import { EditorView } from "@codemirror/view";
+// 第三方 React 封装：CodeMirror 官方未提供 React 适配，
+// @uiw/react-codemirror 是社区维护的事实标准方案。
 import CodeMirror from "@uiw/react-codemirror";
+
+// 第三方 UI / React
 import {
   CheckCheck,
   CheckIcon,
@@ -21,6 +27,7 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
+// 项目内部模块
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
