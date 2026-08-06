@@ -18,6 +18,9 @@ export type CreatedArticle = Readonly<{
 export type UpdateArticleInput = ArticleCreateValues &
   Readonly<{
     id: string;
+    // 编辑会话标识 + 单调序号，用于拒绝同会话内的旧序号保存请求。
+    sessionId: string;
+    sequence: number;
   }>;
 
 export type CategoryOption = Readonly<{
@@ -61,6 +64,7 @@ export type ArticleDetail = Readonly<{
 
 export type UpdateArticleResult =
   | Readonly<{ article: ArticleDetail; status: "updated" }>
+  | Readonly<{ status: "ignored" }>
   | Readonly<{ status: "not_found" }>;
 
 export type PublishArticleValues = Readonly<{

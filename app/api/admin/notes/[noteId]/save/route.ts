@@ -40,12 +40,15 @@ export async function POST(
     const result = await updateArticle({
       ...fields.data,
       id: parsedNoteId.data,
+      sessionId: String(formData.get("sessionId") ?? ""),
+      sequence: Number(formData.get("sequence") ?? 0),
     });
 
     if (result.status === "not_found") {
       return Response.json({ status: "not_found" }, { status: 404 });
     }
 
+    // ignored：同会话更新的请求已先写入，旧序号请求被忽略，视为已保存。
     revalidatePath("/admin/notes");
     revalidatePath(`/admin/notes/${parsedNoteId.data}`);
 

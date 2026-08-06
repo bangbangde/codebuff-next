@@ -348,14 +348,34 @@ export const drizzleArticleRepository: ArticleRepository = {
         .set({
           draftContent: input.bodyMarkdown,
           draftRevision: sql`${article.draftRevision} + 1`,
+          draftSequence: input.sequence,
+          draftSessionId: input.sessionId,
           draftTitle: input.title,
           draftUpdatedAt: new Date(),
         })
-        .where(eq(article.id, input.id))
+        .where(
+          and(
+            eq(article.id, input.id),
+            // 拒绝同一会话内的旧序号写入：若 DB 已记录该 session 的更高序号，
+            // 说明更新的请求已先到达，当前请求是过时的（如 pagehide 与
+            // autosave 乱序）。跨会话（sessionId 不同）恒允许，仍 last write wins。
+            sql`NOT (${article.draftSessionId} = ${input.sessionId} AND ${article.draftSequence} >= ${input.sequence})`,
+          ),
+        )
         .returning({ id: article.id });
 
       if (!updated) {
-        return { status: "not_found" as const };
+        // 区分 not_found 与 ignored：若文章存在但 WHERE 因序号条件未命中，
+        // 视为 ignored（旧序号请求）；若文章不存在，视为 not_found。
+        const [exists] = await transaction
+          .select({ id: article.id })
+          .from(article)
+          .where(eq(article.id, input.id))
+          .limit(1);
+
+        return exists
+          ? { status: "ignored" as const }
+          : { status: "not_found" as const };
       }
 
       // 同步资产引用状态：引用的 → active，不再引用的 → pending_delete

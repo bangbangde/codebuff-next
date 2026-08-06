@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftIcon, SendIcon } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { NoteMarkdownEditorHandle } from "./markdown-editor";
@@ -49,6 +49,7 @@ export function NoteEditor({
   tags: readonly TagOption[];
   initialValues: ArticleCreateValues;
 }) {
+  const router = useRouter();
   const editorRef = useRef<NoteMarkdownEditorHandle>(null);
   const [values, setValues] = useState<ArticleCreateValues>(initialValues);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -62,6 +63,17 @@ export function NoteEditor({
   const latestLastSavedRef = useRef(lastSavedValues);
   const latestSaveStatusRef = useRef(saveStatus);
 
+  // 编辑会话标识 + 单调序号：防止 pagehide keepalive 与 debounce autosave
+  // 乱序导致旧请求反向覆盖正文。每次发起保存请求时递增 sequence。
+  // useState 惰性初始化避免在 useRef 初始值中调用不纯函数（react-hooks/purity）。
+  const [sessionId] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2),
+  );
+  const sessionIdRef = useRef(sessionId);
+  const sequenceRef = useRef(0);
+
   useEffect(() => {
     latestValuesRef.current = values;
     latestLastSavedRef.current = lastSavedValues;
@@ -69,6 +81,7 @@ export function NoteEditor({
   }, [values, lastSavedValues, saveStatus]);
 
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [navigatingBack, setNavigatingBack] = useState(false);
 
   const performSave = useCallback(
     async (currentValues: ArticleCreateValues) => {
@@ -79,10 +92,14 @@ export function NoteEditor({
       setSaveStatus("saving");
       setFormError(null);
 
+      sequenceRef.current += 1;
+      const sequence = sequenceRef.current;
       const formData = new FormData();
       formData.append("articleId", article.id);
       formData.append("title", currentValues.title);
       formData.append("bodyMarkdown", currentValues.bodyMarkdown);
+      formData.append("sessionId", sessionIdRef.current);
+      formData.append("sequence", String(sequence));
 
       try {
         const result = await updateArticleAction(
@@ -95,11 +112,14 @@ export function NoteEditor({
           formData,
         );
 
-        setFormError(result.formError);
-        setSaveStatus(result.status);
-
+        // ignored（同会话旧序号被拒）对用户等同 saved，已被更新的请求覆盖。
         if (result.status === "saved") {
+          setFormError(null);
+          setSaveStatus("saved");
           setLastSavedValues(currentValues);
+        } else {
+          setFormError(result.formError);
+          setSaveStatus(result.status);
         }
       } catch {
         setFormError("保存请求未完成，请检查网络后重试。");
@@ -153,6 +173,37 @@ export function NoteEditor({
     void performSave(values);
   }
 
+  // 返回按钮改成受控导航：先保存最新值，成功后再 router.push。
+  // next/link 的客户端导航不触发 pagehide/beforeunload，若直接用 Link，
+  // 2s debounce 内点返回会丢失修改且不触发 cleanup。
+  async function handleBack() {
+    if (navigatingBack) {
+      return;
+    }
+
+    const dirty = !valuesEqual(latestValuesRef.current, latestLastSavedRef.current);
+
+    if (!dirty || latestSaveStatusRef.current === "not_found") {
+      router.push("/admin/notes");
+      return;
+    }
+
+    setNavigatingBack(true);
+    // 取消挂起的 debounce，立即 flush 保存最新值
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    await performSave(latestValuesRef.current);
+    setNavigatingBack(false);
+
+    // 保存成功才导航；失败留在当前页让用户处理错误。
+    const status = latestSaveStatusRef.current;
+    if (status === "saved" || status === "idle" || status === "saving") {
+      router.push("/admin/notes");
+    }
+  }
+
   // Ctrl+S / Cmd+S 立即保存，并拦截浏览器默认保存网页行为。
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -183,9 +234,10 @@ export function NoteEditor({
   // 离开页面前尽量提交未保存的草稿，并触发资源清理：
   // - 页面隐藏（切标签/最小化/移动端切换）：立即 flush 未触发的 debounce。
   // - 页面真正卸载（pagehide）：
-  //   1. 用 keepalive fetch 兜底保存脏草稿（last write wins）。
+  //   1. 用 keepalive fetch 兜底保存脏草稿（带 sessionId/sequence 防乱序）。
   //   2. 用 navigator.sendBeacon 触发全局资源清理（24h 无引用）。
   // - beforeunload：若有未保存修改，提示用户。
+  // - 组件卸载（客户端导航，如受控返回）：也触发 cleanup sendBeacon。
   useEffect(() => {
     function isDirty() {
       return !valuesEqual(latestValuesRef.current, latestLastSavedRef.current);
@@ -199,6 +251,16 @@ export function NoteEditor({
       }
     }
 
+    function triggerCleanup() {
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        try {
+          navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
+        } catch {
+          // 忽略：清理是尽力而为，失败不影响主流程。
+        }
+      }
+    }
+
     function handleVisibilityChange() {
       if (document.hidden && isDirty()) {
         const status = latestSaveStatusRef.current;
@@ -209,14 +271,17 @@ export function NoteEditor({
     }
 
     function handlePageHide() {
-      // 1. 兜底保存未保存的草稿
+      // 1. 兜底保存未保存的草稿（带 session/sequence 防乱序覆盖）
       if (isDirty()) {
         const status = latestSaveStatusRef.current;
         if (status !== "not_found") {
+          sequenceRef.current += 1;
           const formData = new FormData();
           formData.append("articleId", article.id);
           formData.append("title", latestValuesRef.current.title);
           formData.append("bodyMarkdown", latestValuesRef.current.bodyMarkdown);
+          formData.append("sessionId", sessionIdRef.current);
+          formData.append("sequence", String(sequenceRef.current));
 
           void fetch(`/api/admin/notes/${article.id}/save`, {
             body: formData,
@@ -229,14 +294,7 @@ export function NoteEditor({
       }
 
       // 2. 触发资源清理：删除无引用超过 24h 的 Garage 对象。
-      //    sendBeacon 带 cookie 鉴权，失败只会延迟回收，下次退出可再次触发。
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        try {
-          navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
-        } catch {
-          // 忽略：清理是尽力而为，失败不影响主流程。
-        }
-      }
+      triggerCleanup();
     }
 
     function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -254,12 +312,17 @@ export function NoteEditor({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      // 客户端导航（如受控返回）组件卸载时也触发 cleanup。
+      triggerCleanup();
     };
   }, [article.id, performSave]);
 
   const isDirty = !valuesEqual(values, lastSavedValues);
 
   const statusLabel = (() => {
+    if (navigatingBack) {
+      return "保存中…";
+    }
     switch (saveStatus) {
       case "saving":
         return "保存中…";
@@ -283,18 +346,23 @@ export function NoteEditor({
       <header className="shrink-0 border-b border-border bg-card text-card-foreground">
         <div className="flex min-h-14 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:px-4">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Link
+            <Button
               aria-label="返回笔记列表"
-              className={buttonVariants({
-                className:
-                  "h-9 w-9 shrink-0 text-muted-foreground sm:h-7 sm:w-7",
-                size: "icon-sm",
-                variant: "ghost",
-              })}
-              href="/admin/notes"
+              className={cn(
+                buttonVariants({
+                  className:
+                    "h-9 w-9 shrink-0 text-muted-foreground sm:h-7 sm:w-7",
+                  size: "icon-sm",
+                  variant: "ghost",
+                }),
+                navigatingBack && "pointer-events-none opacity-50",
+              )}
+              disabled={navigatingBack}
+              onClick={handleBack}
+              type="button"
             >
               <ArrowLeftIcon aria-hidden="true" />
-            </Link>
+            </Button>
             <input
               aria-label="笔记标题"
               className="h-9 min-w-0 flex-1 rounded-md border-0 bg-transparent px-2 text-lg font-semibold tracking-[-0.025em] text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -311,7 +379,7 @@ export function NoteEditor({
               "mr-auto min-w-0 truncate text-xs sm:mr-1 sm:max-w-52",
               isStatusError
                 ? "text-destructive"
-                : saveStatus === "saving"
+                : saveStatus === "saving" || navigatingBack
                   ? "text-foreground"
                   : "text-muted-foreground",
             )}

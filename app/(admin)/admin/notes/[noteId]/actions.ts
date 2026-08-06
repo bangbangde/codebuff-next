@@ -52,6 +52,8 @@ export async function updateArticleAction(
     result = await updateArticle({
       ...fields.data,
       id: articleId.data,
+      sessionId: String(formData.get("sessionId") ?? ""),
+      sequence: Number(formData.get("sequence") ?? 0),
     });
   } catch (error) {
     if (error instanceof ArticleAssetReferenceSyntaxError) {
@@ -91,6 +93,17 @@ export async function updateArticleAction(
       fieldErrors: {},
       formError: "这篇笔记已不存在，当前内容未保存。",
       status: "not_found",
+      values: fields.data,
+    };
+  }
+
+  // ignored：同会话内更新的请求已先写入，当前旧序号请求被忽略。
+  // 对用户而言等同于已保存（最新内容已在服务端），返回 saved。
+  if (result.status === "ignored") {
+    return {
+      fieldErrors: {},
+      formError: null,
+      status: "saved",
       values: fields.data,
     };
   }
