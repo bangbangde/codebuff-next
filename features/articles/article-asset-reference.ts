@@ -6,8 +6,9 @@ const canonicalAssetReferencePattern =
 
 // 匹配所有形如 [text](cq-asset://...) 的 Markdown 链接（可能 UUID 不合法），
 // 用于语法检查：只要存在 "cq-asset://" URL 但未被合法正则捕获，即视为语法错误。
+// 注意：不使用全局标志 g，避免 .test() 在多次调用间残留 lastIndex 导致漏检。
 const anyAssetLikeReferencePattern =
-  /!?\[[^\]\r\n]*\]\(cq-asset:\/\/[^)\s]+\s*(?:"[^"]*"\s*)?\)/gi;
+  /!?\[[^\]\r\n]*\]\(cq-asset:\/\/[^)\s]+\s*(?:"[^"]*"\s*)?\)/i;
 
 export class ArticleAssetReferenceSyntaxError extends Error {
   constructor() {
@@ -73,4 +74,17 @@ export const UPLOADING_SCHEME = "cq-upload";
  */
 export function formatUploadPlaceholder(taskId: string): string {
   return `<!-- ${UPLOADING_SCHEME}:${taskId} -->`;
+}
+
+// 匹配上传占位符注释，用于清理残留（上传失败后未 discard、或页面刷新后的 stale 占位符）
+const staleUploadPlaceholderPattern =
+  new RegExp(`<!-- ${UPLOADING_SCHEME}:[0-9a-fA-F-]+ -->\\n?`, "g");
+
+/**
+ * 清理正文中残留的上传占位符注释。
+ * 用于编辑器初次加载时移除上次会话遗留的 stale 占位符（页面刷新后
+ * 上传任务已丢失，占位符注释无对应任务，无法完成替换）。
+ */
+export function stripStaleUploadPlaceholders(bodyMarkdown: string): string {
+  return bodyMarkdown.replace(staleUploadPlaceholderPattern, "");
 }

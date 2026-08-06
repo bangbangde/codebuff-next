@@ -14,6 +14,7 @@ import { useUploadTasks, useUploadActions } from "@/features/article-assets/use-
 import {
   formatCanonicalAssetReference,
   formatUploadPlaceholder,
+  stripStaleUploadPlaceholders,
 } from "@/features/articles/article-asset-reference";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
@@ -150,7 +151,17 @@ export function NoteBodyEditor({
   editorRef: React.RefObject<NoteMarkdownEditorHandle | null>;
   onValueChange?: (value: string) => void;
 }) {
-  const [value, setValue] = useState(defaultValue);
+  const [value, setValue] = useState(() =>
+    stripStaleUploadPlaceholders(defaultValue),
+  );
+
+  // 首次挂载时若清理了 stale 占位符，需通知父组件更新脏值以触发自动保存
+  useEffect(() => {
+    if (value !== defaultValue) {
+      onValueChange?.(value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleChange(next: string) {
     setValue(next);
@@ -317,6 +328,30 @@ export function NoteBodyEditor({
     }
   }, [tasks, editorRef]);
 
+  // 失败上传被用户 discard 后清理占位符。
+  // 跟踪所有进入 error 状态的任务 ID；当任务从 store 消失（被 discard 移除）
+  // 时，移除其占位符注释。retry 不触发此逻辑（retry 不删除任务，只改状态）。
+  const errorTaskIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const currentIds = new Set(tasks.map((t) => t.id));
+
+    for (const task of tasks) {
+      if (task.status === "error") {
+        errorTaskIdsRef.current.add(task.id);
+      }
+    }
+
+    for (const taskId of errorTaskIdsRef.current) {
+      if (!currentIds.has(taskId)) {
+        editorRef.current?.replaceText(
+          formatUploadPlaceholder(taskId),
+          "",
+        );
+        errorTaskIdsRef.current.delete(taskId);
+      }
+    }
+  }, [tasks, editorRef]);
+
   const resolveAssetUrl = useMemo(
     () => resolveAssetUrlFactory(articleId),
     [articleId],
@@ -345,13 +380,22 @@ export function NoteBodyEditor({
     }
   }
 
+  // dragenter 计数器：每次进入元素（含子元素）时 +1，dragleave 时 -1。
+  // 不能用 dragover 计数：dragover 持续触发会导致 counter 无限增长。
+  function handleDragEnterCapture(event: React.DragEvent) {
+    if (event.dataTransfer?.types.includes("Files")) {
+      event.preventDefault();
+      dragDepthRef.current += 1;
+      if (dragDepthRef.current === 1) {
+        setIsDragOver(true);
+      }
+    }
+  }
+
+  // dragover 仅用于 preventDefault 允许 drop，不修改计数器。
   function handleDragOverCapture(event: React.DragEvent) {
     if (event.dataTransfer?.types.includes("Files")) {
       event.preventDefault();
-      if (dragDepthRef.current === 0) {
-        setIsDragOver(true);
-      }
-      dragDepthRef.current += 1;
     }
   }
 
@@ -457,6 +501,7 @@ export function NoteBodyEditor({
                 ? "ring-2 ring-inset ring-brand-accent/50"
                 : null,
             )}
+            onDragEnterCapture={handleDragEnterCapture}
             onDragLeave={handleDragLeave}
             onDragOverCapture={handleDragOverCapture}
             onDropCapture={handleDropCapture}

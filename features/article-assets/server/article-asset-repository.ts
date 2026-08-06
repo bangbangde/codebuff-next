@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, ne } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
 import { article, articleAsset } from "@/lib/db/schema";
@@ -68,10 +68,18 @@ export async function findAssetById(
 export async function listAssetsByArticle(
   articleId: string,
 ): Promise<readonly ArticleAsset[]> {
+  // 过滤已删除和正在删除的资产：Garage 对象已不存在或正在被移除，
+  // 不应出现在封面候选列表中。
   const rows = await getDatabase()
     .select()
     .from(articleAsset)
-    .where(eq(articleAsset.articleId, articleId))
+    .where(
+      and(
+        eq(articleAsset.articleId, articleId),
+        ne(articleAsset.status, "deleted"),
+        ne(articleAsset.status, "deleting"),
+      ),
+    )
     .orderBy(asc(articleAsset.createdAt));
 
   return rows.map(toArticleAsset);

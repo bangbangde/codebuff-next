@@ -490,6 +490,24 @@ function remove(taskId: string) {
 }
 
 /**
+ * 丢弃已失败的任务并从列表移除。
+ * 与 remove 的区别：discard 语义上表示用户主动放弃失败的上传，
+ * 调用方应同时清理编辑器中对应的占位符注释。
+ */
+function discard(taskId: string) {
+  const entry = entries.get(taskId);
+  if (!entry) {
+    return;
+  }
+  const status = entry.snapshot.status;
+  if (status !== "error" && status !== "canceled") {
+    return;
+  }
+  entries.delete(taskId);
+  emit();
+}
+
+/**
  * 清除所有终态任务。
  */
 function clearCompleted() {
@@ -534,6 +552,7 @@ export const uploadTaskManager = {
   retry,
   cancel,
   remove,
+  discard,
   clearCompleted,
   getTask,
   getSnapshot,

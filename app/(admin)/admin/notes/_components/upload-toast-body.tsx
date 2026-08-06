@@ -1,8 +1,7 @@
 "use client";
 
-import { FileIcon, ImageIcon, RotateCcw, X } from "lucide-react";
+import { FileIcon, ImageIcon, RotateCcw, Trash2, X } from "lucide-react";
 
-import { toast } from "@/components/ui/toast";
 import { useUploadActions, useUploadTask } from "@/features/article-assets/use-upload-tasks";
 import {
   Attachment,
@@ -35,7 +34,7 @@ function getMediaTypeLabel(mediaType: string): string {
  */
 export function UploadToastBody({ taskId }: { taskId: string }) {
   const task = useUploadTask(taskId);
-  const { cancel, retry } = useUploadActions();
+  const { cancel, retry, discard } = useUploadActions();
 
   if (!task) return null;
 
@@ -88,8 +87,10 @@ export function UploadToastBody({ taskId }: { taskId: string }) {
     retry(taskId);
   }
 
-  function handleDismiss() {
-    toast.close(taskId);
+  function handleDiscard() {
+    // discard 触发任务从 store 移除，bridge 的 onRemove 会关闭 toast；
+    // note-body-editor 的 effect 检测到 error 任务消失后清理占位符。
+    discard(taskId);
   }
 
   return (
@@ -124,8 +125,8 @@ export function UploadToastBody({ taskId }: { taskId: string }) {
             <AttachmentAction aria-label="重试上传" onClick={handleRetry}>
               <RotateCcw />
             </AttachmentAction>
-            <AttachmentAction aria-label="关闭" onClick={handleDismiss}>
-              <X />
+            <AttachmentAction aria-label="丢弃并移除占位符" onClick={handleDiscard}>
+              <Trash2 />
             </AttachmentAction>
           </>
         ) : null}

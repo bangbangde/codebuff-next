@@ -56,9 +56,13 @@ export function useUploadActions() {
     (taskId: string) => uploadTaskManager.remove(taskId),
     [],
   );
+  const discard = useCallback(
+    (taskId: string) => uploadTaskManager.discard(taskId),
+    [],
+  );
   const clearCompleted = useCallback(
     () => uploadTaskManager.clearCompleted(),
     [],
   );
-  return { enqueue, retry, cancel, remove, clearCompleted };
+  return { enqueue, retry, cancel, remove, discard, clearCompleted };
 }
