@@ -20,6 +20,9 @@ import { article } from "./article";
  * - `temporary`：上传成功并落库，但尚未被文章正文或封面正式引用。
  * - `active`：已被文章草稿正文、线上正文或封面正式引用。
  * - `pending_delete`：引用已移除，等待后台清理任务安全删除 Garage 对象。
+ * - `deleting`：cleanup 已 claim 的独占中间态，正在删除 Garage 对象。
+ *   保存/发布事务不会将 `deleting` 复活为 `active`；若正文仍引用 `deleting`
+ *   资产，保存/发布校验视为不可用。
  * - `deleted`：Garage 对象已删除，记录保留用于审计/修复。
  */
 export const articleAssetStatuses = [
@@ -27,6 +30,7 @@ export const articleAssetStatuses = [
   "temporary",
   "active",
   "pending_delete",
+  "deleting",
   "deleted",
 ] as const;
 
@@ -77,7 +81,7 @@ export const articleAsset = pgTable(
     ),
     check(
       "article_asset_status_check",
-      sql`${table.status} in ('uploading', 'temporary', 'active', 'pending_delete', 'deleted')`,
+      sql`${table.status} in ('uploading', 'temporary', 'active', 'pending_delete', 'deleting', 'deleted')`,
     ),
   ],
 );

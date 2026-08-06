@@ -105,17 +105,15 @@ export async function listAssetsPendingCleanup(
 }
 
 /**
- * 原子性地 claim 一个资产可被安全删除（仅在状态仍为 temporary/pending_delete 时成功）。
- * 用于 cleanup 任务：在真正删除 Garage 对象之前 claim 成功，
- * 才能避免 TOCTOU：即 listAssetsPendingCleanup 选中后，用户保存文章
- * 将资产从 pending_delete 复活为 active；若无 claim，后续 store.delete
- * 会删掉正在被引用的对象。
+ * 原子性地 claim 一个资产进入 `deleting` 独占态（仅在状态仍为
+ * temporary/pending_delete 时成功）。用于 cleanup 任务：在真正删除
+ * Garage 对象之前 claim 成 `deleting` 中间态，让保存/发布事务无法
+ * 将该资产复活为 `active`，从而避免 TOCTOU。
  *
- * 这里采用"先 claim 成中间态再删除"的保守做法：直接把符合条件的行
- * UPDATE 为同一个 status（强制 bump statusUpdatedAt）并 returning。
- * 若 0 行返回，说明该资产已不再处于可清理状态，调用方跳过。
- * （PG 不支持 "UPDATE ... WHERE ... RETURNING" 时无行变化，所以
- * 我们复用 WHERE 条件作为 claim 判定。）
+ * claim 成 `deleting` 后，调用方负责删除 Garage 对象并调用
+ * `markAssetAsDeleted`（成功）或 `releaseAssetClaim`（失败回退）。
+ *
+ * @returns claim 成功的资产记录；若状态已变更（如被引用方复活）返回 null。
  */
 export async function claimAssetForDeletion(
   assetId: string,
@@ -123,7 +121,7 @@ export async function claimAssetForDeletion(
 ): Promise<ArticleAsset | null> {
   const [updated] = await getDatabase()
     .update(articleAsset)
-    .set({ statusUpdatedAt: new Date() })
+    .set({ status: "deleting", statusUpdatedAt: new Date() })
     .where(
       and(
         eq(articleAsset.id, assetId),
@@ -136,13 +134,10 @@ export async function claimAssetForDeletion(
 }
 
 /**
- * 将资产状态标记为 `deleted`（Garage 对象已删除，记录保留用于审计）。
+ * 将 `deleting` 资产标记为 `deleted`（Garage 对象已删除，记录保留用于审计）。
  * 仅在 Garage 对象成功删除后调用。
- * 加 `WHERE status IN ('pending_delete', 'temporary')`：
- * 若在此期间用户保存文章并将资产从 pending_delete 重新提升为 active，
- * 该 UPDATE 不会命中，调用方据此跳过标记，避免误删正在被引用的资产。
  *
- * @returns 更新后的资产记录，若无匹配行返回 null（表示状态已被改变，不应继续标记）。
+ * @returns 更新后的资产记录；若状态已不在 `deleting`（被其他流程变更）返回 null。
  */
 export async function markAssetAsDeleted(
   assetId: string,
@@ -153,7 +148,29 @@ export async function markAssetAsDeleted(
     .where(
       and(
         eq(articleAsset.id, assetId),
-        inArray(articleAsset.status, ["pending_delete", "temporary"]),
+        eq(articleAsset.status, "deleting"),
+      ),
+    )
+    .returning();
+
+  return updated ? toArticleAsset(updated) : null;
+}
+
+/**
+ * Garage 删除失败时将 `deleting` 资产回退为 `pending_delete`，
+ * 等待下一次 cleanup 重试。回退到 `pending_delete`（而非 temporary）
+ * 是保守选择：即使资产原本是 temporary 孤儿，回退后仍受 24h 宽限保护。
+ */
+export async function releaseAssetClaim(
+  assetId: string,
+): Promise<ArticleAsset | null> {
+  const [updated] = await getDatabase()
+    .update(articleAsset)
+    .set({ status: "pending_delete", statusUpdatedAt: new Date() })
+    .where(
+      and(
+        eq(articleAsset.id, assetId),
+        eq(articleAsset.status, "deleting"),
       ),
     )
     .returning();

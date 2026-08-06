@@ -335,7 +335,9 @@ export const drizzleArticleRepository: ArticleRepository = {
         if (
           referencedAssets.length !== assetIds.length ||
           referencedAssets.some((asset) => asset.articleId !== input.id) ||
-          referencedAssets.some((asset) => asset.status === "deleted")
+          referencedAssets.some((asset) =>
+            asset.status === "deleting" || asset.status === "deleted",
+          )
         ) {
           throw new ArticleAssetUnavailableError();
         }
@@ -374,9 +376,32 @@ export const drizzleArticleRepository: ArticleRepository = {
 
   async publish(
     input: PublishArticleInput,
-    assetIds: readonly string[],
   ): Promise<PublishArticleResult> {
     return getDatabase().transaction(async (transaction) => {
+      // 锁定文章行并读取当前草稿快照，确保资产校验与发布基于同一正文。
+      // 移除 revision 乐观锁后，FOR UPDATE 防止其他事务在两步之间修改草稿。
+      const [locked] = await transaction
+        .select({
+          draftContent: article.draftContent,
+          id: article.id,
+        })
+        .from(article)
+        .where(eq(article.id, input.id))
+        .for("update")
+        .limit(1);
+
+      if (!locked) {
+        return { status: "not_found" as const };
+      }
+
+      // 在事务内从确切快照解析资产引用，避免事务外读取导致的过期校验。
+      const assetIds = [
+        ...new Set([
+          ...parseCanonicalAssetReferenceIds(locked.draftContent),
+          ...(input.coverAssetId ? [input.coverAssetId] : []),
+        ]),
+      ];
+
       if (assetIds.length > 0) {
         const referencedAssets = await transaction
           .select({
@@ -391,7 +416,9 @@ export const drizzleArticleRepository: ArticleRepository = {
         if (
           referencedAssets.length !== assetIds.length ||
           referencedAssets.some((asset) => asset.articleId !== input.id) ||
-          referencedAssets.some((asset) => asset.status === "deleted")
+          referencedAssets.some((asset) =>
+            asset.status === "deleting" || asset.status === "deleted",
+          )
         ) {
           throw new ArticleAssetUnavailableError();
         }
@@ -411,12 +438,12 @@ export const drizzleArticleRepository: ArticleRepository = {
           : null;
       const tagIds = await resolveTagIds(transaction, input.tagNames);
 
-      // 将当前草稿复制到线上槽位，publishedAt 仅在首次发布时写入。
+      // 将锁定的草稿快照复制到线上槽位，publishedAt 仅在首次发布时写入。
       // publishedFromRevision 记录发布时的草稿修订（与 draftRevision 相等）。
       const [updated] = await transaction
         .update(article)
         .set({
-          content: sql`${article.draftContent}`,
+          content: locked.draftContent,
           coverAssetId: input.coverAssetId,
           publishedAt: sql`coalesce(${article.publishedAt}, now())`,
           publishedFromRevision: sql`${article.draftRevision}`,

@@ -108,19 +108,26 @@ async function processBatch(
 
   for (const asset of assets) {
     try {
-      // 在删除 Garage 对象前先 claim：若其他事务在此期间将资产复活
-      // 为 active（例如用户保存/发布文章时 syncAssetStatuses），
-      // claimAssetForDeletion 会返回 null，此处跳过，不再删除对象。
+      // claim 成 `deleting` 独占态：保存/发布事务无法再将该资产复活为 active，
+      // 避免删除 Garage 对象后正文仍引用的 TOCTOU。若 claim 返回 null，
+      // 说明状态已变更（被引用方复活），跳过本次删除。
       const claimed = await repository.claimAssetForDeletion(asset.id, expectedStatuses);
       if (!claimed) {
         skipped += 1;
         continue;
       }
 
-      await store.delete(asset.objectKey);
+      try {
+        await store.delete(asset.objectKey);
+      } catch (deleteError) {
+        // Garage 删除失败：回退 claim（deleting → pending_delete），下次重试。
+        await repository.releaseAssetClaim(asset.id);
+        throw deleteError;
+      }
+
       const marked = await repository.markAssetAsDeleted(asset.id);
       if (!marked) {
-        // claim 成功但 mark 删除时状态被其他事务变更，保留已被复活
+        // claim 成功但 mark 时状态已不在 deleting（理论上的并发边界），跳过。
         skipped += 1;
         continue;
       }
