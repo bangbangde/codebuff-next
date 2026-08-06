@@ -113,6 +113,33 @@ export async function listAssetsPendingCleanup(
 }
 
 /**
+ * 列出停留在 `deleting` 状态超过阈值的资产（stale claim 恢复）。
+ *
+ * 进程在 claim 为 `deleting` 后崩溃/重启会导致记录永久卡住。
+ * 此函数查询这类 stale 记录，供 cleanup 重新尝试删除或回退。
+ *
+ * @param olderThan statusUpdatedAt 早于此时间的 deleting 资产视为 stale。
+ */
+export async function listStaleDeletingAssets(
+  olderThan: Date,
+  limit: number,
+): Promise<readonly ArticleAsset[]> {
+  const rows = await getDatabase()
+    .select()
+    .from(articleAsset)
+    .where(
+      and(
+        eq(articleAsset.status, "deleting"),
+        lte(articleAsset.statusUpdatedAt, olderThan),
+      ),
+    )
+    .orderBy(asc(articleAsset.statusUpdatedAt))
+    .limit(limit);
+
+  return rows.map(toArticleAsset);
+}
+
+/**
  * 原子性地 claim 一个资产进入 `deleting` 独占态（仅在状态仍为
  * temporary/pending_delete 时成功）。用于 cleanup 任务：在真正删除
  * Garage 对象之前 claim 成 `deleting` 中间态，让保存/发布事务无法

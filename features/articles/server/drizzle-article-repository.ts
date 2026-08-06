@@ -190,6 +190,63 @@ type DbTransaction = Parameters<
 >[0];
 
 /**
+ * 在事务内锁定并校验被引用的资产行。
+ *
+ * 使用 SELECT ... FOR UPDATE 锁定资产行，防止 cleanup 在校验后、
+ * 事务提交前将资产 claim 为 `deleting` 并删除 Garage 对象。
+ *
+ * assetIds 会被去重并排序，保证多事务间的锁顺序一致，降低死锁概率。
+ *
+ * 校验规则：
+ * - 所有 assetId 必须存在且属于当前文章；
+ * - 资产状态不能是 `deleting` 或 `deleted`（Garage 对象已不存在）。
+ *
+ * @param requireImageAssetId 若提供，则校验该资产必须是图片类型（封面图）。
+ * @throws ArticleAssetUnavailableError 校验失败时抛出。
+ */
+async function lockAndValidateAssets(
+  transaction: DbTransaction,
+  articleId: string,
+  assetIds: readonly string[],
+  requireImageAssetId?: string | null,
+): Promise<void> {
+  if (assetIds.length === 0) {
+    return;
+  }
+
+  // 去重并排序，保证锁顺序一致
+  const sortedIds = [...new Set(assetIds)].sort();
+
+  const rows = await transaction
+    .select({
+      articleId: articleAsset.articleId,
+      id: articleAsset.id,
+      mediaType: articleAsset.mediaType,
+      status: articleAsset.status,
+    })
+    .from(articleAsset)
+    .where(inArray(articleAsset.id, sortedIds))
+    .for("update");
+
+  if (
+    rows.length !== sortedIds.length ||
+    rows.some((asset) => asset.articleId !== articleId) ||
+    rows.some((asset) =>
+      asset.status === "deleting" || asset.status === "deleted",
+    )
+  ) {
+    throw new ArticleAssetUnavailableError();
+  }
+
+  if (requireImageAssetId) {
+    const coverAsset = rows.find((asset) => asset.id === requireImageAssetId);
+    if (coverAsset && !coverAsset.mediaType.startsWith("image/")) {
+      throw new ArticleAssetUnavailableError();
+    }
+  }
+}
+
+/**
  * 同步文章资产引用状态：
  * 1. 将被引用的资产从 temporary/pending_delete 提升为 active
  * 2. 将不再被引用的 active 资产降级为 pending_delete
@@ -322,26 +379,21 @@ export const drizzleArticleRepository: ArticleRepository = {
     assetIds: readonly string[],
   ): Promise<UpdateArticleResult> {
     return getDatabase().transaction(async (transaction) => {
-      if (assetIds.length > 0) {
-        const referencedAssets = await transaction
-          .select({
-            articleId: articleAsset.articleId,
-            id: articleAsset.id,
-            status: articleAsset.status,
-          })
-          .from(articleAsset)
-          .where(inArray(articleAsset.id, [...assetIds]));
+      // 锁定文章行，建立统一锁顺序（article → assets），防止与 cleanup/publish 死锁。
+      const [locked] = await transaction
+        .select({ id: article.id })
+        .from(article)
+        .where(eq(article.id, input.id))
+        .for("update")
+        .limit(1);
 
-        if (
-          referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id) ||
-          referencedAssets.some((asset) =>
-            asset.status === "deleting" || asset.status === "deleted",
-          )
-        ) {
-          throw new ArticleAssetUnavailableError();
-        }
+      if (!locked) {
+        return { status: "not_found" as const };
       }
+
+      // 锁定并校验引用的资产行（FOR UPDATE），防止 cleanup 在校验后
+      // claim 为 deleting 并删除 Garage 对象。
+      await lockAndValidateAssets(transaction, input.id, assetIds);
 
       const [updated] = await transaction
         .update(article)
@@ -365,17 +417,8 @@ export const drizzleArticleRepository: ArticleRepository = {
         .returning({ id: article.id });
 
       if (!updated) {
-        // 区分 not_found 与 ignored：若文章存在但 WHERE 因序号条件未命中，
-        // 视为 ignored（旧序号请求）；若文章不存在，视为 not_found。
-        const [exists] = await transaction
-          .select({ id: article.id })
-          .from(article)
-          .where(eq(article.id, input.id))
-          .limit(1);
-
-        return exists
-          ? { status: "ignored" as const }
-          : { status: "not_found" as const };
+        // 文章已锁定确认存在，WHERE 因序号条件未命中，视为 ignored。
+        return { status: "ignored" as const };
       }
 
       // 同步资产引用状态：引用的 → active，不再引用的 → pending_delete
@@ -423,33 +466,13 @@ export const drizzleArticleRepository: ArticleRepository = {
       ];
 
       if (assetIds.length > 0) {
-        const referencedAssets = await transaction
-          .select({
-            articleId: articleAsset.articleId,
-            id: articleAsset.id,
-            mediaType: articleAsset.mediaType,
-            status: articleAsset.status,
-          })
-          .from(articleAsset)
-          .where(inArray(articleAsset.id, [...assetIds]));
-
-        if (
-          referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id) ||
-          referencedAssets.some((asset) =>
-            asset.status === "deleting" || asset.status === "deleted",
-          )
-        ) {
-          throw new ArticleAssetUnavailableError();
-        }
-
-        // 封面图必须是图片类型
-        const coverAsset = referencedAssets.find(
-          (asset) => asset.id === input.coverAssetId,
+        // 锁定并校验引用的资产行（FOR UPDATE），与 update 方法复用同一逻辑。
+        await lockAndValidateAssets(
+          transaction,
+          input.id,
+          assetIds,
+          input.coverAssetId,
         );
-        if (coverAsset && !coverAsset.mediaType.startsWith("image/")) {
-          throw new ArticleAssetUnavailableError();
-        }
       }
 
       const categoryId =

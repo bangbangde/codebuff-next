@@ -400,12 +400,10 @@ export function NoteBodyEditor({
   }
 
   function handleDragLeave(event: React.DragEvent) {
-    // 用 counter + contains 双重检测：
-    // - counter 处理父子元素之间 dragenter/dragleave 抖动
-    // - contains 处理 relatedTarget === null 但只是离开子元素的情形
-    const currentTarget = event.currentTarget as HTMLElement;
-    const relatedTarget = event.relatedTarget as Node | null;
-    if (relatedTarget === null || !currentTarget.contains(relatedTarget)) {
+    // 纯计数器方案：每次 dragleave 递减，不用 contains() 过滤。
+    // dragenter 和 dragleave 在父子元素间成对触发，计数器自然平衡。
+    // drop 时强制归零兜底。
+    if (event.dataTransfer?.types.includes("Files")) {
       dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
       if (dragDepthRef.current === 0) {
         setIsDragOver(false);
