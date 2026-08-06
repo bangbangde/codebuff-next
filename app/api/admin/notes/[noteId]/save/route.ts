@@ -4,7 +4,6 @@ import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-as
 import { ArticleAssetUnavailableError } from "@/features/articles/article-errors";
 import {
   articleCreateSchema,
-  articleMutationReferenceSchema,
   readArticleValues,
 } from "@/features/articles/article-validation";
 import { updateArticle } from "@/features/articles/server/article-service";
@@ -14,8 +13,8 @@ import { requireAdmin } from "@/lib/auth/session";
 export const runtime = "nodejs";
 
 // 卸载阶段（pagehide/beforeunload）用于兜底保存草稿的端点。
-// 客户端以 fetch + keepalive 发起，服务端复用 updateArticle 服务逻辑，
-// 返回最小 JSON 以便（若页面未真正卸载）同步修订号。
+// 客户端以 fetch + keepalive 发起，服务端复用 updateArticle 服务逻辑。
+// 保存采用 last write wins，不再做乐观锁冲突检测。
 export async function POST(
   request: Request,
   context: { params: Promise<{ noteId: string }> },
@@ -31,37 +30,26 @@ export async function POST(
 
   const formData = await request.formData();
   const values = readArticleValues(formData);
-  const reference = articleMutationReferenceSchema.safeParse({
-    articleId: parsedNoteId.data,
-    expectedRevision: formData.get("expectedRevision"),
-  });
   const fields = articleCreateSchema.safeParse(values);
 
-  if (!reference.success || !fields.success) {
+  if (!fields.success) {
     return Response.json({ error: "校验未通过。" }, { status: 400 });
   }
 
   try {
     const result = await updateArticle({
       ...fields.data,
-      expectedRevision: reference.data.expectedRevision,
-      id: reference.data.articleId,
+      id: parsedNoteId.data,
     });
 
-    if (result.status === "conflict" || result.status === "not_found") {
-      return Response.json(
-        { status: result.status, savedRevision: null },
-        { status: 409 },
-      );
+    if (result.status === "not_found") {
+      return Response.json({ status: "not_found" }, { status: 404 });
     }
 
     revalidatePath("/admin/notes");
-    revalidatePath(`/admin/notes/${reference.data.articleId}`);
+    revalidatePath(`/admin/notes/${parsedNoteId.data}`);
 
-    return Response.json({
-      status: "saved",
-      savedRevision: result.article.draftRevision,
-    });
+    return Response.json({ status: "saved" });
   } catch (error) {
     if (error instanceof ArticleAssetReferenceSyntaxError) {
       return Response.json({ error: "资产引用格式无效。" }, { status: 400 });

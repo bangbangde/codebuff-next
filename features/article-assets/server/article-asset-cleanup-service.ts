@@ -14,7 +14,7 @@ function defaultDependencies(): ArticleAssetCleanupDependencies {
 }
 
 export type ArticleAssetCleanupOptions = Readonly<{
-  /** pending_delete 资产视为可清理前的最短停留时间，默认 0（立即清理）。 */
+  /** pending_delete 资产视为可清理前的最短停留时间，默认 24 小时。 */
   pendingDeleteGraceMs?: number;
   /** temporary 资产视为孤儿前的最短停留时间，默认 24 小时。 */
   temporaryGraceMs?: number;
@@ -38,17 +38,19 @@ export type ArticleAssetCleanupSummary = Readonly<{
 /**
  * 清理 Garage 临时资源和孤儿资源：
  *
- * 1. `pending_delete` 资产：引用已被移除，安全删除 Garage 对象并标记为 `deleted`。
+ * 1. `pending_delete` 资产：引用已被移除，停留超过宽限期后删除 Garage 对象并标记为 `deleted`。
  * 2. `temporary` 资产：上传后超过宽限期仍未被引用，视为孤儿，同样清理。
  *
- * 对每个资产，先删除 Garage 对象（幂等），成功后再更新 DB 状态为 `deleted`。
- * Garage 删除失败的资产跳过，等待下一次运行重试。
+ * 两类资源默认宽限期均为 24 小时，确保用户有充足的撤销窗口。
+ * 对每个资产，先 claim（基于数据库状态重新确认仍可清理），再删除 Garage 对象
+ * （幂等），成功后更新 DB 状态为 `deleted`。Garage 删除失败的资产跳过，
+ * 等待下一次运行重试。清理动作幂等，单次限量，失败只会延迟回收。
  */
 export async function cleanupArticleAssets(
   options: ArticleAssetCleanupOptions = {},
 ): Promise<ArticleAssetCleanupSummary> {
   const {
-    pendingDeleteGraceMs = 0,
+    pendingDeleteGraceMs = 24 * 60 * 60 * 1000,
     temporaryGraceMs = 24 * 60 * 60 * 1000,
     batchLimit = 100,
     dependencies = defaultDependencies(),

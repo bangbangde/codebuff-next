@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import { UploadIcon } from "lucide-react";
 
 import { NoteTaxonomyFields } from "./note-taxonomy-fields";
@@ -45,14 +45,12 @@ export function PublishNoteDialog({
   initialCoverAssetId,
   initialSummary,
   initialTagNames,
-  onConflict,
   onOpenChange,
   open,
   tags,
 }: {
   article: {
     id: string;
-    revision: number;
     publishedAt: string | null;
     publishedFromRevision: number | null;
   };
@@ -63,13 +61,6 @@ export function PublishNoteDialog({
   initialCoverAssetId: string | null;
   initialSummary: string;
   initialTagNames: readonly string[];
-  /**
-   * 发布时检测到正文版本冲突（草稿 revision 不匹配）时调用。
-   * 父组件负责关闭发布对话框并打开正文冲突合并对话框；
-   * 发布元数据（封面/分类/标签/摘要）本身不做冲突合并，
-   * 用户解决正文冲突后可再次打开发布对话框发布。
-   */
-  onConflict: (conflictRevision: number | null) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   tags: readonly TagOption[];
@@ -102,21 +93,6 @@ export function PublishNoteDialog({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // 记录已通知父组件的 conflictRevision，避免 useActionState 的 state
-  // 在对话框重新打开时残留 conflict 状态导致重复触发 onConflict。
-  const lastNotifiedConflictRef = useRef<number | null | undefined>(undefined);
-
-  // 检测到正文版本冲突时交由父组件处理：父组件会关闭发布对话框并打开
-  // 正文冲突合并对话框。发布元数据本身不做冲突合并。
-  useEffect(() => {
-    if (
-      state.status === "conflict" &&
-      lastNotifiedConflictRef.current !== state.conflictRevision
-    ) {
-      lastNotifiedConflictRef.current = state.conflictRevision;
-      onConflict(state.conflictRevision);
-    }
-  }, [state.status, state.conflictRevision, onConflict]);
 
   // 对话框打开时重置本地状态
   function handleOpenChange(next: boolean) {
@@ -126,8 +102,6 @@ export function PublishNoteDialog({
       setSummary(initialSummary);
       setUploadError(null);
       setUploadProgress(null);
-      // 重置冲突通知标记，允许下次冲突再次触发 onConflict
-      lastNotifiedConflictRef.current = undefined;
     }
     onOpenChange(next);
   }
@@ -138,8 +112,6 @@ export function PublishNoteDialog({
   }, [imageAssets, extraAssets]);
 
   const isPublished = article.publishedAt !== null;
-  const isPublishedRevisionCurrent =
-    isPublished && article.publishedFromRevision === article.revision;
   const summaryErrorId = "publish-summary-error";
   const isUploading = uploadProgress !== null;
 
@@ -253,21 +225,14 @@ export function PublishNoteDialog({
             发布后笔记将对访客可见。填写分类、标签、封面图与摘要。
           </SheetDescription>
           <p className="text-xs text-muted-foreground" role="status">
-            {isPublishedRevisionCurrent
-              ? "线上版本已对应当前草稿修订。"
-              : isPublished
-                ? "当前草稿比线上版本更新。"
-                : "这篇笔记尚未公开。"}
+            {isPublished
+              ? "当前草稿比线上版本更新。"
+              : "这篇笔记尚未公开。"}
           </p>
         </SheetHeader>
 
         <form action={action} className="grid flex-1 gap-5 overflow-y-auto">
           <input name="articleId" type="hidden" value={article.id} />
-          <input
-            name="expectedRevision"
-            type="hidden"
-            value={article.revision}
-          />
           <input name="coverAssetId" type="hidden" value={selectedCoverId} />
 
           <div>

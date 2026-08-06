@@ -23,11 +23,6 @@ export const articleCreateSchema = z.object({
 
 export const articleIdSchema = z.string().uuid();
 
-export const articleMutationReferenceSchema = z.object({
-  articleId: articleIdSchema,
-  expectedRevision: z.coerce.number().int().positive(),
-});
-
 export const tagNameSchema = z
   .string()
   .min(1, "标签不能为空。")

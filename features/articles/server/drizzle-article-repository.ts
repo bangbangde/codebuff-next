@@ -27,16 +27,6 @@ import { ArticleAssetUnavailableError } from "../article-errors";
 import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import type { ArticleRepository } from "../article-repository";
 
-async function readCurrentRevision(id: string) {
-  const [current] = await getDatabase()
-    .select({ revision: article.draftRevision })
-    .from(article)
-    .where(eq(article.id, id))
-    .limit(1);
-
-  return current?.revision ?? null;
-}
-
 async function resolveCategoryId(
   transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
   categoryName: string,
@@ -359,23 +349,11 @@ export const drizzleArticleRepository: ArticleRepository = {
           draftTitle: input.title,
           draftUpdatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(article.id, input.id),
-            eq(article.draftRevision, input.expectedRevision),
-          ),
-        )
+        .where(eq(article.id, input.id))
         .returning({ id: article.id });
 
       if (!updated) {
-        const currentRevision = await readCurrentRevision(input.id);
-
-        return currentRevision === null
-          ? { status: "not_found" as const }
-          : {
-              currentRevision,
-              status: "conflict" as const,
-            };
+        return { status: "not_found" as const };
       }
 
       // 同步资产引用状态：引用的 → active，不再引用的 → pending_delete
@@ -447,23 +425,11 @@ export const drizzleArticleRepository: ArticleRepository = {
           title: sql`${article.draftTitle}`,
           categoryId,
         })
-        .where(
-          and(
-            eq(article.id, input.id),
-            eq(article.draftRevision, input.expectedRevision),
-          ),
-        )
+        .where(eq(article.id, input.id))
         .returning({ id: article.id });
 
       if (!updated) {
-        const currentRevision = await readCurrentRevision(input.id);
-
-        return currentRevision === null
-          ? { status: "not_found" as const }
-          : {
-              currentRevision,
-              status: "conflict" as const,
-            };
+        return { status: "not_found" as const };
       }
 
       await transaction
