@@ -76,15 +76,18 @@ export function formatUploadPlaceholder(taskId: string): string {
   return `<!-- ${UPLOADING_SCHEME}:${taskId} -->`;
 }
 
-// 匹配上传占位符注释，用于清理残留（上传失败后未 discard、或页面刷新后的 stale 占位符）
-const staleUploadPlaceholderPattern =
+// 匹配上传占位符注释，用于保存前从 bodyMarkdown 中剔除。
+// 占位符只存在于前端编辑器状态，不进入数据库。
+const uploadPlaceholderPattern =
   new RegExp(`<!-- ${UPLOADING_SCHEME}:[0-9a-fA-F-]+ -->\\n?`, "g");
 
 /**
- * 清理正文中残留的上传占位符注释。
- * 用于编辑器初次加载时移除上次会话遗留的 stale 占位符（页面刷新后
- * 上传任务已丢失，占位符注释无对应任务，无法完成替换）。
+ * 从正文中剔除所有上传占位符注释。
+ *
+ * 保存前必须调用此函数，确保占位符不会持久化到数据库。
+ * 上传完成后占位符已被替换为正式 cq-asset:// 引用，因此正常流程下
+ * 不会残留；此函数作为保证手段，在客户端和服务端均执行。
  */
-export function stripStaleUploadPlaceholders(bodyMarkdown: string): string {
-  return bodyMarkdown.replace(staleUploadPlaceholderPattern, "");
+export function stripUploadPlaceholders(bodyMarkdown: string): string {
+  return bodyMarkdown.replace(uploadPlaceholderPattern, "");
 }

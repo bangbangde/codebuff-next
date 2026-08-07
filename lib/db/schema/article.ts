@@ -25,7 +25,7 @@ export const article = pgTable(
       .defaultNow()
       .notNull(),
     // 编辑会话标识 + 单调序号，用于拒绝同一会话内的旧序号保存请求，
-    // 避免 pagehide keepalive 与 debounce autosave 乱序导致正文回退。
+    // 防止并发保存请求的网络乱序导致旧请求覆盖正文。
     // 跨会话仍 last write wins（见 repository.update 的 WHERE 条件）。
     draftSessionId: text("draft_session_id"),
     draftSequence: integer("draft_sequence").default(0).notNull(),

@@ -14,7 +14,6 @@ import { useUploadTasks, useUploadActions } from "@/features/article-assets/use-
 import {
   formatCanonicalAssetReference,
   formatUploadPlaceholder,
-  stripStaleUploadPlaceholders,
 } from "@/features/articles/article-asset-reference";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/lib/content/markdown-renderer";
@@ -151,17 +150,9 @@ export function NoteBodyEditor({
   editorRef: React.RefObject<NoteMarkdownEditorHandle | null>;
   onValueChange?: (value: string) => void;
 }) {
-  const [value, setValue] = useState(() =>
-    stripStaleUploadPlaceholders(defaultValue),
-  );
-
-  // 首次挂载时若清理了 stale 占位符，需通知父组件更新脏值以触发自动保存
-  useEffect(() => {
-    if (value !== defaultValue) {
-      onValueChange?.(value);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 占位符不再持久化到数据库（保存前客户端和服务端均剔除），
+  // 因此初次加载时不会出现 stale 占位符，直接使用 defaultValue。
+  const [value, setValue] = useState(defaultValue);
 
   function handleChange(next: string) {
     setValue(next);

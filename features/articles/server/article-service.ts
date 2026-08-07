@@ -9,7 +9,7 @@ import type {
   TagOption,
   UpdateArticleInput,
 } from "../article-dto";
-import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
+import { parseCanonicalAssetReferenceIds, stripUploadPlaceholders } from "../article-asset-reference";
 import { drizzleArticleRepository } from "./drizzle-article-repository";
 
 export function createDraft() {
@@ -33,9 +33,15 @@ export function getArticleById(id: string) {
 }
 
 export function updateArticle(input: UpdateArticleInput) {
+  // 防御性剔除上传占位符：占位符只存在于前端编辑器状态，不应进入数据库。
+  // 即使客户端已剔除，服务端也再执行一次，防止其他调用方写入内部占位符。
+  const cleanedInput = {
+    ...input,
+    bodyMarkdown: stripUploadPlaceholders(input.bodyMarkdown),
+  };
   return drizzleArticleRepository.update(
-    input,
-    parseCanonicalAssetReferenceIds(input.bodyMarkdown),
+    cleanedInput,
+    parseCanonicalAssetReferenceIds(cleanedInput.bodyMarkdown),
   );
 }
 
