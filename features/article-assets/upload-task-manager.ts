@@ -181,10 +181,7 @@ function uploadFileViaXhr(
             resolve(data.asset);
           } else {
             reject(
-              new UploadResponseError(
-                data.error ?? "上传失败。",
-                xhr.status,
-              ),
+              new UploadResponseError(data.error ?? "上传失败。", xhr.status),
             );
           }
         } catch {
@@ -348,8 +345,7 @@ async function runUpload(taskId: string) {
     } else {
       updateTask(taskId, {
         status: "error",
-        error:
-          error instanceof Error ? error.message : "上传失败。",
+        error: error instanceof Error ? error.message : "上传失败。",
         completedAt: Date.now(),
       });
     }
@@ -402,11 +398,7 @@ function enqueue(articleId: string, file: File): string {
   for (const [taskId, entry] of entries) {
     if (entry.snapshot.articleId !== articleId) {
       const status = entry.snapshot.status;
-      if (
-        status === "success" ||
-        status === "error" ||
-        status === "canceled"
-      ) {
+      if (status === "success" || status === "error" || status === "canceled") {
         entries.delete(taskId);
         _changed = true;
       }
@@ -478,11 +470,7 @@ function remove(taskId: string) {
     return;
   }
   const status = entry.snapshot.status;
-  if (
-    status !== "success" &&
-    status !== "error" &&
-    status !== "canceled"
-  ) {
+  if (status !== "success" && status !== "error" && status !== "canceled") {
     return;
   }
   entries.delete(taskId);
@@ -514,11 +502,7 @@ function clearCompleted() {
   let changed = false;
   for (const [id, entry] of entries) {
     const status = entry.snapshot.status;
-    if (
-      status === "success" ||
-      status === "error" ||
-      status === "canceled"
-    ) {
+    if (status === "success" || status === "error" || status === "canceled") {
       entries.delete(id);
       changed = true;
     }

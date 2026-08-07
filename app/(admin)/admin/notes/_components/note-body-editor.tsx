@@ -10,7 +10,10 @@ import {
 } from "react";
 
 import { uploadTaskManager } from "@/features/article-assets/upload-task-manager";
-import { useUploadTasks, useUploadActions } from "@/features/article-assets/use-upload-tasks";
+import {
+  useUploadTasks,
+  useUploadActions,
+} from "@/features/article-assets/use-upload-tasks";
 import {
   formatCanonicalAssetReference,
   formatUploadPlaceholder,
@@ -53,9 +56,7 @@ function getEditorModeSnapshot(): EditorMode {
     return DEFAULT_EDITOR_MODE;
   }
   const stored = localStorage.getItem(EDITOR_MODE_STORAGE_KEY);
-  return stored === "edit" || stored === "split"
-    ? stored
-    : DEFAULT_EDITOR_MODE;
+  return stored === "edit" || stored === "split" ? stored : DEFAULT_EDITOR_MODE;
 }
 
 function getEditorModeServerSnapshot(): EditorMode {
@@ -102,10 +103,7 @@ function getSplitRatioServerSnapshot(): number {
 
 function persistSplitRatio(next: number) {
   if (typeof window !== "undefined") {
-    const clamped = Math.min(
-      MAX_SPLIT_RATIO,
-      Math.max(MIN_SPLIT_RATIO, next),
-    );
+    const clamped = Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, next));
     localStorage.setItem(SPLIT_RATIO_STORAGE_KEY, String(clamped));
     splitRatioListeners.forEach((listener) => listener());
   }
@@ -150,8 +148,6 @@ export function NoteBodyEditor({
   editorRef: React.RefObject<NoteMarkdownEditorHandle | null>;
   onValueChange?: (value: string) => void;
 }) {
-  // 占位符不再持久化到数据库（保存前客户端和服务端均剔除），
-  // 因此初次加载时不会出现 stale 占位符，直接使用 defaultValue。
   const [value, setValue] = useState(defaultValue);
 
   function handleChange(next: string) {
@@ -202,9 +198,7 @@ export function NoteBodyEditor({
     function onPointerMove(ev: PointerEvent) {
       if (!container) return;
       const next = (ev.clientX - rect.left) / rect.width;
-      setDragRatio(
-        Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, next)),
-      );
+      setDragRatio(Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, next)));
     }
 
     function onPointerUp(ev: PointerEvent) {
@@ -311,10 +305,7 @@ export function NoteBodyEditor({
         !handledCancellationsRef.current.has(task.id)
       ) {
         handledCancellationsRef.current.add(task.id);
-        editorRef.current?.replaceText(
-          formatUploadPlaceholder(task.id),
-          "",
-        );
+        editorRef.current?.replaceText(formatUploadPlaceholder(task.id), "");
       }
     }
   }, [tasks, editorRef]);
@@ -334,10 +325,7 @@ export function NoteBodyEditor({
 
     for (const taskId of errorTaskIdsRef.current) {
       if (!currentIds.has(taskId)) {
-        editorRef.current?.replaceText(
-          formatUploadPlaceholder(taskId),
-          "",
-        );
+        editorRef.current?.replaceText(formatUploadPlaceholder(taskId), "");
         errorTaskIdsRef.current.delete(taskId);
       }
     }
@@ -486,16 +474,18 @@ export function NoteBodyEditor({
             className={cn(
               "relative flex min-w-0 flex-col overflow-hidden bg-background transition-shadow",
               !isSplit && "flex-1",
-              isDragOver
-                ? "ring-2 ring-inset ring-brand-accent/50"
-                : null,
+              isDragOver ? "ring-2 ring-inset ring-brand-accent/50" : null,
             )}
             onDragEnterCapture={handleDragEnterCapture}
             onDragLeave={handleDragLeave}
             onDragOverCapture={handleDragOverCapture}
             onDropCapture={handleDropCapture}
             onPasteCapture={handlePasteCapture}
-            style={isSplit ? { flexBasis: editorBasis, flexGrow: 0, flexShrink: 0 } : undefined}
+            style={
+              isSplit
+                ? { flexBasis: editorBasis, flexGrow: 0, flexShrink: 0 }
+                : undefined
+            }
           >
             {isDragOver ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/80">
@@ -534,9 +524,7 @@ export function NoteBodyEditor({
         ) : null}
 
         {showPreview ? (
-          <div
-            className="min-w-0 flex-1 bg-background dark:prose-invert"
-          >
+          <div className="min-w-0 flex-1 bg-background dark:prose-invert">
             <div
               className="prose prose-sm h-full max-w-none overflow-auto p-5 sm:p-7"
               ref={previewRef}

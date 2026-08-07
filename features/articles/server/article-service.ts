@@ -11,6 +11,7 @@ import type {
 } from "../article-dto";
 import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import { drizzleArticleRepository } from "./drizzle-article-repository";
+import { cleanupArticleAssets } from "@/features/article-assets/server/article-asset-cleanup-service";
 
 export function createDraft() {
   return drizzleArticleRepository.createDraft();
@@ -33,6 +34,8 @@ export function getArticleById(id: string) {
 }
 
 export function updateArticle(input: UpdateArticleInput) {
+  // 异步触发清理服务
+  cleanupArticleAssets();
   return drizzleArticleRepository.update(
     input,
     parseCanonicalAssetReferenceIds(input.bodyMarkdown),

@@ -9,9 +9,7 @@ import type {
   CreateArticleAssetInput,
 } from "../article-asset-dto";
 
-function toArticleAsset(
-  row: typeof articleAsset.$inferSelect,
-): ArticleAsset {
+function toArticleAsset(row: typeof articleAsset.$inferSelect): ArticleAsset {
   return {
     ...row,
     createdAt: row.createdAt.toISOString(),
@@ -55,10 +53,7 @@ export async function findAssetById(
     .select()
     .from(articleAsset)
     .where(
-      and(
-        eq(articleAsset.id, assetId),
-        eq(articleAsset.articleId, articleId),
-      ),
+      and(eq(articleAsset.id, assetId), eq(articleAsset.articleId, articleId)),
     )
     .limit(1);
 
@@ -77,7 +72,6 @@ export async function listAssetsByArticle(
       and(
         eq(articleAsset.articleId, articleId),
         ne(articleAsset.status, "deleted"),
-        ne(articleAsset.status, "deleting"),
       ),
     )
     .orderBy(asc(articleAsset.createdAt));
@@ -86,129 +80,44 @@ export async function listAssetsByArticle(
 }
 
 /**
- * 列出等待清理的资产：
- * - `pending_delete`：引用已移除，可安全删除 Garage 对象
- * - `temporary`：上传后从未被引用，超过阈值后视为孤儿
+ * 将资产标记为 `deleted`（记录保留用于审计）。
+ * 在删除 Garage 对象前调用，不保证 Garage 对象已删除。
  *
- * 按状态更新时间升序排列，优先清理最旧的记录。
+ * @returns 更新后的资产记录；若状态已不在 `pending_delete`（被其他流程变更）返回空数组。
  */
-export async function listAssetsPendingCleanup(
-  statuses: readonly ArticleAsset["status"][],
+export async function markAssetsAsDeleted(
   olderThan: Date,
   limit: number,
-): Promise<readonly ArticleAsset[]> {
-  const rows = await getDatabase()
-    .select()
-    .from(articleAsset)
-    .where(
-      and(
-        inArray(articleAsset.status, [...statuses]),
-        lte(articleAsset.statusUpdatedAt, olderThan),
-      ),
-    )
-    .orderBy(asc(articleAsset.statusUpdatedAt))
-    .limit(limit);
+): Promise<ArticleAsset[]> {
+  return getDatabase().transaction(async (transaction) => {
+    const rows = await transaction
+      .select({ id: articleAsset.id })
+      .from(articleAsset)
+      .where(
+        and(
+          eq(articleAsset.status, "pending_delete"),
+          lte(articleAsset.statusUpdatedAt, olderThan),
+        ),
+      )
+      .orderBy(asc(articleAsset.statusUpdatedAt), asc(articleAsset.id))
+      .for("update")
+      .limit(limit);
 
-  return rows.map(toArticleAsset);
-}
+    if (rows.length === 0) {
+      return [];
+    }
 
-/**
- * 列出停留在 `deleting` 状态超过阈值的资产（stale claim 恢复）。
- *
- * 进程在 claim 为 `deleting` 后崩溃/重启会导致记录永久卡住。
- * 此函数查询这类 stale 记录，供 cleanup 重新尝试删除或回退。
- *
- * @param olderThan statusUpdatedAt 早于此时间的 deleting 资产视为 stale。
- */
-export async function listStaleDeletingAssets(
-  olderThan: Date,
-  limit: number,
-): Promise<readonly ArticleAsset[]> {
-  const rows = await getDatabase()
-    .select()
-    .from(articleAsset)
-    .where(
-      and(
-        eq(articleAsset.status, "deleting"),
-        lte(articleAsset.statusUpdatedAt, olderThan),
-      ),
-    )
-    .orderBy(asc(articleAsset.statusUpdatedAt))
-    .limit(limit);
+    const result = await transaction
+      .update(articleAsset)
+      .set({ status: "deleted", statusUpdatedAt: new Date() })
+      .where(
+        inArray(
+          articleAsset.id,
+          rows.map((row) => row.id),
+        ),
+      )
+      .returning();
 
-  return rows.map(toArticleAsset);
-}
-
-/**
- * 原子性地 claim 一个资产进入 `deleting` 独占态（仅在状态仍为
- * temporary/pending_delete 时成功）。用于 cleanup 任务：在真正删除
- * Garage 对象之前 claim 成 `deleting` 中间态，让保存/发布事务无法
- * 将该资产复活为 `active`，从而避免 TOCTOU。
- *
- * claim 成 `deleting` 后，调用方负责删除 Garage 对象并调用
- * `markAssetAsDeleted`（成功）或 `releaseAssetClaim`（失败回退）。
- *
- * @returns claim 成功的资产记录；若状态已变更（如被引用方复活）返回 null。
- */
-export async function claimAssetForDeletion(
-  assetId: string,
-  expectedStatuses: readonly ("pending_delete" | "temporary")[],
-): Promise<ArticleAsset | null> {
-  const [updated] = await getDatabase()
-    .update(articleAsset)
-    .set({ status: "deleting", statusUpdatedAt: new Date() })
-    .where(
-      and(
-        eq(articleAsset.id, assetId),
-        inArray(articleAsset.status, [...expectedStatuses]),
-      ),
-    )
-    .returning();
-
-  return updated ? toArticleAsset(updated) : null;
-}
-
-/**
- * 将 `deleting` 资产标记为 `deleted`（Garage 对象已删除，记录保留用于审计）。
- * 仅在 Garage 对象成功删除后调用。
- *
- * @returns 更新后的资产记录；若状态已不在 `deleting`（被其他流程变更）返回 null。
- */
-export async function markAssetAsDeleted(
-  assetId: string,
-): Promise<ArticleAsset | null> {
-  const [updated] = await getDatabase()
-    .update(articleAsset)
-    .set({ status: "deleted", statusUpdatedAt: new Date() })
-    .where(
-      and(
-        eq(articleAsset.id, assetId),
-        eq(articleAsset.status, "deleting"),
-      ),
-    )
-    .returning();
-
-  return updated ? toArticleAsset(updated) : null;
-}
-
-/**
- * Garage 删除失败时将 `deleting` 资产回退为 `pending_delete`，
- * 等待下一次 cleanup 重试。回退到 `pending_delete`（而非 temporary）
- * 是保守选择：即使资产原本是 temporary 孤儿，回退后仍受 24h 宽限保护。
- */
-export async function releaseAssetClaim(
-  assetId: string,
-): Promise<ArticleAsset | null> {
-  const [updated] = await getDatabase()
-    .update(articleAsset)
-    .set({ status: "pending_delete", statusUpdatedAt: new Date() })
-    .where(
-      and(
-        eq(articleAsset.id, assetId),
-        eq(articleAsset.status, "deleting"),
-      ),
-    )
-    .returning();
-
-  return updated ? toArticleAsset(updated) : null;
+    return result.map(toArticleAsset);
+  });
 }

@@ -16,7 +16,6 @@ export type ArticleAssetStatus =
   | "temporary"
   | "active"
   | "pending_delete"
-  | "deleting"
   | "deleted";
 
 export type ArticleAsset = Readonly<{

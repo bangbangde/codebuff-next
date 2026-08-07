@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 
 export type GarageObjectStoreConfig = Readonly<{
@@ -25,6 +26,7 @@ export type PutGarageObjectInput = Readonly<{
 
 export interface GarageObjectStore {
   delete(objectKey: string): Promise<void>;
+  deleteBatch(objectKeys: string[]): Promise<void>;
   get(objectKey: string): Promise<Uint8Array>;
   put(input: PutGarageObjectInput): Promise<void>;
 }
@@ -48,6 +50,17 @@ export function createGarageObjectStore(
         new DeleteObjectCommand({
           Bucket: config.bucket,
           Key: objectKey,
+        }),
+      );
+    },
+
+    async deleteBatch(objectKeys: string[]) {
+      await client.send(
+        new DeleteObjectsCommand({
+          Bucket: config.bucket,
+          Delete: {
+            Objects: objectKeys.map((key) => ({ Key: key })),
+          },
         }),
       );
     },

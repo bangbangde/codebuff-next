@@ -21,9 +21,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { ArticleAsset } from "@/features/article-assets/article-asset-dto";
-import {
-  validateAssetFileClientSide,
-} from "@/features/article-assets/upload-task-manager";
+import { validateAssetFileClientSide } from "@/features/article-assets/upload-task-manager";
 import {
   articleFieldLimits,
   type CategoryOption,
@@ -73,6 +71,7 @@ export function PublishNoteDialog({
   onFinalSave: () => Promise<boolean>;
   onOpenChange: (open: boolean) => void;
   onPublishSuccess: () => void;
+  onBlockingStateChange: (blocking: boolean) => void;
   open: boolean;
   tags: readonly TagOption[];
 }) {
@@ -99,8 +98,7 @@ export function PublishNoteDialog({
   // 发布全屏 loading：覆盖"最终保存 + 发布"全过程。
   // 发布进行中保持为 true，消息从"正在保存草稿并发布…"切换为"发布成功，正在跳转…"。
   const [publishingOverlay, setPublishingOverlay] = useState<
-    | { open: false }
-    | { open: true; message: string }
+    { open: false } | { open: true; message: string }
   >({ open: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,7 +176,11 @@ export function PublishNoteDialog({
               if ("asset" in data) {
                 resolve(data.asset);
               } else {
-                reject(new Error("error" in data ? data.error : "上传失败，请稍后重试。"));
+                reject(
+                  new Error(
+                    "error" in data ? data.error : "上传失败，请稍后重试。",
+                  ),
+                );
               }
             } catch {
               reject(new Error("解析上传响应失败。"));
@@ -308,208 +310,209 @@ export function PublishNoteDialog({
 
   return (
     <Fragment>
-    <Sheet onOpenChange={handleOpenChange} open={open}>
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle>{isPublished ? "更新线上版本" : "发布笔记"}</SheetTitle>
-          <SheetDescription>
-            发布后笔记将对访客可见。填写分类、标签、封面图与摘要。
-          </SheetDescription>
-          <p className="text-xs text-muted-foreground" role="status">
-            {isPublished
-              ? "当前草稿比线上版本更新。"
-              : "这篇笔记尚未公开。"}
-          </p>
-        </SheetHeader>
+      <Sheet onOpenChange={handleOpenChange} open={open}>
+        <SheetContent className="flex flex-col">
+          <SheetHeader>
+            <SheetTitle>{isPublished ? "更新线上版本" : "发布笔记"}</SheetTitle>
+            <SheetDescription>
+              发布后笔记将对访客可见。填写分类、标签、封面图与摘要。
+            </SheetDescription>
+            <p className="text-xs text-muted-foreground" role="status">
+              {isPublished ? "当前草稿比线上版本更新。" : "这篇笔记尚未公开。"}
+            </p>
+          </SheetHeader>
 
-        <div className="grid flex-1 gap-5 overflow-y-auto">
-          <div>
-            <div className="flex items-center justify-between">
-              <label className={labelClassName} htmlFor="publish-summary">
-                摘要
-                <span className="ml-2 font-normal text-muted-foreground">必填</span>
-              </label>
-              <Button
-                onClick={handleAutoExtractSummary}
-                size="xs"
-                type="button"
-                variant="ghost"
-              >
-                自动提取
-              </Button>
-            </div>
-            <textarea
-              aria-describedby={summaryErrorId}
-              className={textareaClassName}
-              id="publish-summary"
-              maxLength={articleFieldLimits.summary}
-              name="summary"
-              onChange={(event) => setSummary(event.target.value)}
-              placeholder="一句话概述这篇笔记，用于列表与分享卡片。"
-              value={summary}
-            />
-          </div>
-
-          <NoteTaxonomyFields
-            categories={categories}
-            fieldErrors={{}}
-            initialCategoryName={initialCategoryName}
-            initialTagNames={initialTagNames}
-            onCategoryChange={setSelectedCategoryName}
-            onTagsChange={setSelectedTagNames}
-            tags={tags}
-          />
-
-          <div>
-            <span className={labelClassName}>
-              封面图
-              <span className="ml-2 font-normal text-muted-foreground">必填</span>
-            </span>
-
-            {/* 拖拽上传区域 */}
-            <div
-              className={cn(
-                "mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 transition-colors",
-                isDragOver
-                  ? "border-brand-accent bg-brand-accent-soft"
-                  : "border-border hover:border-muted-foreground",
-                isUploading && "pointer-events-none opacity-60",
-              )}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
-              role="button"
-              tabIndex={0}
-            >
-              <UploadIcon aria-hidden="true" className="size-6 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                {isUploading
-                  ? `上传中… ${uploadProgress}%`
-                  : "点击或拖拽图片到此处上传"}
-              </p>
-              <input
-                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                className="hidden"
-                disabled={isUploading}
-                onChange={handleFileInputChange}
-                ref={fileInputRef}
-                type="file"
+          <div className="grid flex-1 gap-5 overflow-y-auto">
+            <div>
+              <div className="flex items-center justify-between">
+                <label className={labelClassName} htmlFor="publish-summary">
+                  摘要
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    必填
+                  </span>
+                </label>
+                <Button
+                  onClick={handleAutoExtractSummary}
+                  size="xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  自动提取
+                </Button>
+              </div>
+              <textarea
+                aria-describedby={summaryErrorId}
+                className={textareaClassName}
+                id="publish-summary"
+                maxLength={articleFieldLimits.summary}
+                name="summary"
+                onChange={(event) => setSummary(event.target.value)}
+                placeholder="一句话概述这篇笔记，用于列表与分享卡片。"
+                value={summary}
               />
             </div>
 
-            {/* 上传进度条 */}
-            {isUploading ? (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-150"
-                  style={{ width: `${uploadProgress}%` }}
+            <NoteTaxonomyFields
+              categories={categories}
+              fieldErrors={{}}
+              initialCategoryName={initialCategoryName}
+              initialTagNames={initialTagNames}
+              onCategoryChange={setSelectedCategoryName}
+              onTagsChange={setSelectedTagNames}
+              tags={tags}
+            />
+
+            <div>
+              <span className={labelClassName}>
+                封面图
+                <span className="ml-2 font-normal text-muted-foreground">
+                  必填
+                </span>
+              </span>
+
+              {/* 拖拽上传区域 */}
+              <div
+                className={cn(
+                  "mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 transition-colors",
+                  isDragOver
+                    ? "border-brand-accent bg-brand-accent-soft"
+                    : "border-border hover:border-muted-foreground",
+                  isUploading && "pointer-events-none opacity-60",
+                )}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleDrop}
+                role="button"
+                tabIndex={0}
+              >
+                <UploadIcon
+                  aria-hidden="true"
+                  className="size-6 text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {isUploading
+                    ? `上传中… ${uploadProgress}%`
+                    : "点击或拖拽图片到此处上传"}
+                </p>
+                <input
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={handleFileInputChange}
+                  ref={fileInputRef}
+                  type="file"
                 />
               </div>
-            ) : null}
 
-            {uploadError ? (
-              <p className="mt-1 text-xs text-destructive" role="alert">
-                {uploadError}
+              {/* 上传进度条 */}
+              {isUploading ? (
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-150"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              ) : null}
+
+              {uploadError ? (
+                <p className="mt-1 text-xs text-destructive" role="alert">
+                  {uploadError}
+                </p>
+              ) : null}
+
+              {/* 封面图选择器 */}
+              {allImageAssets.length > 0 ? (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {allImageAssets.map((asset) => (
+                    <button
+                      className={cn(
+                        "relative overflow-hidden rounded-md border-2 transition-colors",
+                        selectedCoverId === asset.id
+                          ? "border-brand-accent"
+                          : "border-border hover:border-muted-foreground",
+                      )}
+                      key={asset.id}
+                      onClick={() => setSelectedCoverId(asset.id)}
+                      title={asset.originalFilename}
+                      type="button"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt={asset.originalFilename}
+                        className="aspect-[16/9] w-full object-cover"
+                        loading="lazy"
+                        src={resolveAssetUrl(article.id, asset.id)}
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  还没有图片资源，请先上传一张图片作为封面。
+                </p>
+              )}
+            </div>
+
+            {publishError ? (
+              <p
+                aria-live="polite"
+                className="text-sm text-destructive"
+                role="alert"
+              >
+                {publishError}
               </p>
             ) : null}
-
-            {/* 封面图选择器 */}
-            {allImageAssets.length > 0 ? (
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {allImageAssets.map((asset) => (
-                  <button
-                    className={cn(
-                      "relative overflow-hidden rounded-md border-2 transition-colors",
-                      selectedCoverId === asset.id
-                        ? "border-brand-accent"
-                        : "border-border hover:border-muted-foreground",
-                    )}
-                    key={asset.id}
-                    onClick={() => setSelectedCoverId(asset.id)}
-                    title={asset.originalFilename}
-                    type="button"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      alt={asset.originalFilename}
-                      className="aspect-[16/9] w-full object-cover"
-                      loading="lazy"
-                      src={resolveAssetUrl(article.id, asset.id)}
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">
-                还没有图片资源，请先上传一张图片作为封面。
-              </p>
-            )}
           </div>
 
-          {publishError ? (
-            <p
-              aria-live="polite"
-              className="text-sm text-destructive"
-              role="alert"
+          <SheetFooter>
+            <Button
+              disabled={
+                isPublishing || selectedCoverId.length === 0 || isUploading
+              }
+              onClick={handlePublish}
+              title={
+                selectedCoverId.length === 0 ? "请先选择封面图" : undefined
+              }
+              type="button"
             >
-              {publishError}
-            </p>
-          ) : null}
-        </div>
+              {isPublishing ? "发布中…" : isPublished ? "更新线上版本" : "发布"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-        <SheetFooter>
-          <Button
-            disabled={
-              isPublishing ||
-              selectedCoverId.length === 0 ||
-              isUploading
-            }
-            onClick={handlePublish}
-            title={selectedCoverId.length === 0 ? "请先选择封面图" : undefined}
-            type="button"
-          >
-            {isPublishing
-              ? "发布中…"
-              : isPublished
-                ? "更新线上版本"
-                : "发布"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-
-    {/* ─── 发布全屏 loading（使用 shadcn Dialog 承载 overlay）──────── */}
-    <Dialog
-      onOpenChange={(nextOpen) => {
-        // 禁止用户通过 Esc/点击遮罩关闭：发布是不可中断的原子流程。
-        // 唯一关闭路径：handlePublish 失败分支，或成功后跳转卸载组件。
-        if (!nextOpen && publishingOverlay.open) return;
-      }}
-      open={publishingOverlay.open}
-    >
-      <DialogContent
-        className="!max-w-xs border-none bg-transparent p-0 shadow-none ring-0"
-        showCloseButton={false}
+      {/* ─── 发布全屏 loading（使用 shadcn Dialog 承载 overlay）──────── */}
+      <Dialog
+        onOpenChange={(nextOpen) => {
+          // 禁止用户通过 Esc/点击遮罩关闭：发布是不可中断的原子流程。
+          // 唯一关闭路径：handlePublish 失败分支，或成功后跳转卸载组件。
+          if (!nextOpen && publishingOverlay.open) return;
+        }}
+        open={publishingOverlay.open}
       >
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Spinner aria-hidden="true" className="!size-8 text-foreground" />
-          <DialogTitle className="sr-only">
-            {publishingOverlay.open ? publishingOverlay.message : "发布中"}
-          </DialogTitle>
-          <DialogDescription
-            aria-live="assertive"
-            className="!text-sm !font-medium !text-foreground"
-            role="status"
-          >
-            {publishingOverlay.open ? publishingOverlay.message : ""}
-          </DialogDescription>
-        </div>
-      </DialogContent>
-    </Dialog>
+        <DialogContent
+          className="!max-w-xs border-none bg-transparent p-0 shadow-none ring-0"
+          showCloseButton={false}
+        >
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Spinner aria-hidden="true" className="!size-8 text-foreground" />
+            <DialogTitle className="sr-only">
+              {publishingOverlay.open ? publishingOverlay.message : "发布中"}
+            </DialogTitle>
+            <DialogDescription
+              aria-live="assertive"
+              className="!text-sm !font-medium !text-foreground"
+              role="status"
+            >
+              {publishingOverlay.open ? publishingOverlay.message : ""}
+            </DialogDescription>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Fragment>
   );
 }

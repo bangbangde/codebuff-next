@@ -88,6 +88,9 @@ export function NoteEditor({
     (t) => t.articleId === article.id && ACTIVE_UPLOAD_STATUSES.has(t.status),
   );
   const hasActiveUploadsRef = useRef(hasActiveUploads);
+  const hasBlockingPublishWorkRef = useRef(false);
+  const handleBlockingStateChange = (hasBlocking: boolean) =>
+    (hasBlockingPublishWorkRef.current = hasBlocking);
 
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   // 发布/删除全屏 loading
@@ -206,7 +209,7 @@ export function NoteEditor({
         debounceTimerRef.current = null;
       }
     };
-  }, [values, values, lastSavedValues, saveStatus, requestSave]);
+  }, [values, lastSavedValues, saveStatus, requestSave]);
 
   // ─── 输入处理 ────────────────────────────────────────────────
 
@@ -251,10 +254,6 @@ export function NoteEditor({
   }, [handleManualSave]);
 
   // ─── 页面离开保护（仅 beforeunload）──────────────────────────
-  //
-  // 不在卸载阶段发起任何兜底保存。仅使用 beforeunload 原生提示。
-  // pagehide 仅用于触发资源清理（sendBeacon），不执行保存。
-
   useEffect(() => {
     function shouldWarnBeforeUnload() {
       const dirty = !valuesEqual(
@@ -263,41 +262,22 @@ export function NoteEditor({
       );
       const saving = latestSaveStatusRef.current === "saving";
       const activeUploads = hasActiveUploadsRef.current;
-      return dirty || saving || activeUploads;
+      const publishBlocking = hasBlockingPublishWorkRef.current;
+      return dirty || saving || activeUploads || publishBlocking;
     }
 
     function handleBeforeUnload(event: BeforeUnloadEvent) {
       if (shouldWarnBeforeUnload()) {
         event.preventDefault();
-        event.returnValue = "";
-      }
-    }
-
-    function handlePageHide() {
-      // 仅触发资源清理（删除无引用超过 24h 的 Garage 对象），不执行保存。
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        try {
-          navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
-        } catch {
-          // 忽略：清理是尽力而为。
-        }
+      } else {
+        navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
       }
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("pagehide", handlePageHide);
-
+    navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("pagehide", handlePageHide);
-      // 客户端导航（如发布/删除成功跳转）组件卸载时也触发 cleanup。
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        try {
-          navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
-        } catch {
-          // 忽略。
-        }
-      }
     };
   }, []);
 
@@ -413,7 +393,7 @@ export function NoteEditor({
               type="button"
             >
               <SendIcon aria-hidden="true" />
-              {isPublished ? "更新" : "发布"}
+              {isPublished ? "发布更新" : "发布"}
             </Button>
           </div>
         </div>
@@ -444,6 +424,7 @@ export function NoteEditor({
         onPublishSuccess={handlePublishSuccess}
         open={publishDialogOpen}
         tags={tags}
+        onBlockingStateChange={handleBlockingStateChange}
       />
     </>
   );

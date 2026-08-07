@@ -28,7 +28,9 @@ import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import type { ArticleRepository } from "../article-repository";
 
 async function resolveCategoryId(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   categoryName: string,
 ): Promise<string> {
   const lowerName = categoryName.toLowerCase();
@@ -68,7 +70,9 @@ async function resolveCategoryId(
 }
 
 async function resolveTagIds(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   tagNames: readonly string[],
 ): Promise<readonly string[]> {
   if (tagNames.length === 0) {
@@ -128,7 +132,9 @@ async function resolveTagIds(
 }
 
 async function readArticleDetail(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   id: string,
 ): Promise<ArticleDetail | null> {
   const [row] = await transaction
@@ -193,13 +199,13 @@ type DbTransaction = Parameters<
  * 在事务内锁定并校验被引用的资产行。
  *
  * 使用 SELECT ... FOR UPDATE 锁定资产行，防止 cleanup 在校验后、
- * 事务提交前将资产 claim 为 `deleting` 并删除 Garage 对象。
+ * 事务提交前将资产 claim 为 `deleted` 并删除 Garage 对象。
  *
  * assetIds 会被去重并排序，保证多事务间的锁顺序一致，降低死锁概率。
  *
  * 校验规则：
  * - 所有 assetId 必须存在且属于当前文章；
- * - 资产状态不能是 `deleting` 或 `deleted`（Garage 对象已不存在）。
+ * - 资产状态不能是`deleted`
  *
  * @param requireImageAssetId 若提供，则校验该资产必须是图片类型（封面图）。
  * @throws ArticleAssetUnavailableError 校验失败时抛出。
@@ -231,9 +237,7 @@ async function lockAndValidateAssets(
   if (
     rows.length !== sortedIds.length ||
     rows.some((asset) => asset.articleId !== articleId) ||
-    rows.some((asset) =>
-      asset.status === "deleting" || asset.status === "deleted",
-    )
+    rows.some((asset) => asset.status === "deleted")
   ) {
     throw new ArticleAssetUnavailableError();
   }
@@ -294,16 +298,17 @@ async function syncAssetStatuses(
       );
   }
 
-  const unreferencedActiveCondition = referencedList.length > 0
-    ? and(
-        eq(articleAsset.articleId, articleId),
-        eq(articleAsset.status, "active"),
-        not(inArray(articleAsset.id, referencedList)),
-      )
-    : and(
-        eq(articleAsset.articleId, articleId),
-        eq(articleAsset.status, "active"),
-      );
+  const unreferencedActiveCondition =
+    referencedList.length > 0
+      ? and(
+          eq(articleAsset.articleId, articleId),
+          eq(articleAsset.status, "active"),
+          not(inArray(articleAsset.id, referencedList)),
+        )
+      : and(
+          eq(articleAsset.articleId, articleId),
+          eq(articleAsset.status, "active"),
+        );
 
   await transaction
     .update(articleAsset)
@@ -342,10 +347,7 @@ export const drizzleArticleRepository: ArticleRepository = {
         publishedAt: article.publishedAt,
       })
       .from(article)
-      .orderBy(
-        desc(article.draftUpdatedAt),
-        asc(article.draftTitle),
-      );
+      .orderBy(desc(article.draftUpdatedAt), asc(article.draftTitle));
 
     return rows.map((row) => ({
       draftRevision: row.draftRevision,
@@ -391,8 +393,6 @@ export const drizzleArticleRepository: ArticleRepository = {
         return { status: "not_found" as const };
       }
 
-      // 锁定并校验引用的资产行（FOR UPDATE），防止 cleanup 在校验后
-      // claim 为 deleting 并删除 Garage 对象。
       await lockAndValidateAssets(transaction, input.id, assetIds);
 
       const [updated] = await transaction
@@ -421,7 +421,6 @@ export const drizzleArticleRepository: ArticleRepository = {
         return { status: "ignored" as const };
       }
 
-      // 同步资产引用状态：引用的 → active，不再引用的 → pending_delete
       await syncAssetStatuses(transaction, input.id, assetIds);
 
       const detail = await readArticleDetail(transaction, input.id);
@@ -437,12 +436,8 @@ export const drizzleArticleRepository: ArticleRepository = {
     });
   },
 
-  async publish(
-    input: PublishArticleInput,
-  ): Promise<PublishArticleResult> {
+  async publish(input: PublishArticleInput): Promise<PublishArticleResult> {
     return getDatabase().transaction(async (transaction) => {
-      // 锁定文章行并读取当前草稿快照，确保资产校验与发布基于同一正文。
-      // 移除 revision 乐观锁后，FOR UPDATE 防止其他事务在两步之间修改草稿。
       const [locked] = await transaction
         .select({
           draftContent: article.draftContent,
@@ -502,17 +497,20 @@ export const drizzleArticleRepository: ArticleRepository = {
         return { status: "not_found" as const };
       }
 
+      // 这是更新文章标签的标准做法： 先删后插 （delete-all-then-reinsert）。
+      // 文章和标签是多对多关系（ articleTag 关联表）。发布时用户可能增删改标签，
+      // 计算差异（新增了哪些、删除了哪些）逻辑复杂且容易出错。
       await transaction
         .delete(articleTag)
         .where(eq(articleTag.articleId, input.id));
 
       if (tagIds.length > 0) {
-        await transaction.insert(articleTag).values(
-          tagIds.map((tagId) => ({ articleId: input.id, tagId })),
-        );
+        await transaction
+          .insert(articleTag)
+          .values(tagIds.map((tagId) => ({ articleId: input.id, tagId })));
       }
 
-      // 同步资产引用状态：发布时同样需要保持引用关系与资产状态一致
+      // 同步资产引用状态：发布时同样需要更新资产引用（封面图）
       await syncAssetStatuses(transaction, input.id, assetIds);
 
       const detail = await readArticleDetail(transaction, input.id);
@@ -553,7 +551,12 @@ export const drizzleArticleRepository: ArticleRepository = {
       .select({ articleId: articleTag.articleId, name: tag.name })
       .from(articleTag)
       .innerJoin(tag, eq(articleTag.tagId, tag.id))
-      .where(inArray(articleTag.articleId, rows.map((row) => row.id)))
+      .where(
+        inArray(
+          articleTag.articleId,
+          rows.map((row) => row.id),
+        ),
+      )
       .orderBy(asc(tag.name));
 
     const tagsByArticleId = new Map<string, string[]>();
