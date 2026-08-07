@@ -26,9 +26,6 @@ type SaveResult = "saved" | "error" | "not_found";
 
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 
-// 资源清理接口：页面退出时通过 sendBeacon 触发，清理无引用超过 24h 的资产。
-const ARTICLE_ASSET_CLEANUP_URL = "/api/admin/article-assets/cleanup";
-
 // 活动上传状态：参与 beforeunload 离开保护
 const ACTIVE_UPLOAD_STATUSES = new Set(["pending", "uploading", "retrying"]);
 
@@ -269,13 +266,10 @@ export function NoteEditor({
     function handleBeforeUnload(event: BeforeUnloadEvent) {
       if (shouldWarnBeforeUnload()) {
         event.preventDefault();
-      } else {
-        navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
       }
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    navigator.sendBeacon(ARTICLE_ASSET_CLEANUP_URL);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
