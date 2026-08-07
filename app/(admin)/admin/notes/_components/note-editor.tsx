@@ -15,7 +15,7 @@ import type {
   TagOption,
 } from "@/features/articles/article-dto";
 import type { ArticleCreateValues } from "@/features/articles/article-dto";
-import { stripUploadPlaceholders } from "@/features/articles/article-asset-reference";
+
 import { PublishNoteDialog } from "./publish-note-dialog";
 import { updateArticleAction } from "../[noteId]/actions";
 
@@ -31,17 +31,6 @@ const ARTICLE_ASSET_CLEANUP_URL = "/api/admin/article-assets/cleanup";
 
 // 活动上传状态：参与 beforeunload 离开保护
 const ACTIVE_UPLOAD_STATUSES = new Set(["pending", "uploading", "retrying"]);
-
-/**
- * 将编辑器原始值规范化为可持久化值：剔除上传占位符。
- * 占位符只存在于前端编辑器状态，不进入数据库。
- */
-function normalizeForPersistence(values: ArticleCreateValues): ArticleCreateValues {
-  return {
-    ...values,
-    bodyMarkdown: stripUploadPlaceholders(values.bodyMarkdown),
-  };
-}
 
 function valuesEqual(a: ArticleCreateValues, b: ArticleCreateValues): boolean {
   return a.title === b.title && a.bodyMarkdown === b.bodyMarkdown;
@@ -96,9 +85,7 @@ export function NoteEditor({
   // 订阅上传任务状态，用于 beforeunload 离开保护和发布前检查
   const allUploadTasks = useUploadTasks();
   const hasActiveUploads = allUploadTasks.some(
-    (t) =>
-      t.articleId === article.id &&
-      ACTIVE_UPLOAD_STATUSES.has(t.status),
+    (t) => t.articleId === article.id && ACTIVE_UPLOAD_STATUSES.has(t.status),
   );
   const hasActiveUploadsRef = useRef(hasActiveUploads);
 
@@ -127,11 +114,7 @@ export function NoteEditor({
    */
   const requestSave = useCallback(
     async (valuesToSave: ArticleCreateValues): Promise<SaveResult> => {
-      // 剔除占位符后比较，避免仅插入占位符就触发保存
-      const persisted = normalizeForPersistence(valuesToSave);
-
-      // 与已保存值相同则跳过
-      if (valuesEqual(persisted, latestLastSavedRef.current)) {
+      if (valuesEqual(valuesToSave, latestLastSavedRef.current)) {
         return "saved";
       }
 
@@ -145,8 +128,8 @@ export function NoteEditor({
 
       const formData = new FormData();
       formData.append("articleId", article.id);
-      formData.append("title", persisted.title);
-      formData.append("bodyMarkdown", persisted.bodyMarkdown);
+      formData.append("title", valuesToSave.title);
+      formData.append("bodyMarkdown", valuesToSave.bodyMarkdown);
       formData.append("sessionId", sessionIdRef.current);
       formData.append("sequence", String(sequence));
 
@@ -156,7 +139,7 @@ export function NoteEditor({
             fieldErrors: {},
             formError: null,
             status: "idle",
-            values: persisted,
+            values: valuesToSave,
           },
           formData,
         );
@@ -164,7 +147,11 @@ export function NoteEditor({
         // 只有最新请求的响应才能更新界面状态
         if (sequence !== latestSequenceRef.current) {
           // 旧请求响应：不回退界面状态
-          return result.status === "saved" ? "saved" : result.status === "not_found" ? "not_found" : "error";
+          return result.status === "saved"
+            ? "saved"
+            : result.status === "not_found"
+              ? "not_found"
+              : "error";
         }
 
         // ignored（同会话旧序号被拒）对用户等同 saved
@@ -172,8 +159,8 @@ export function NoteEditor({
           setFormError(null);
           setSaveStatus("saved");
           latestSaveStatusRef.current = "saved";
-          setLastSavedValues(persisted);
-          latestLastSavedRef.current = persisted;
+          setLastSavedValues(valuesToSave);
+          latestLastSavedRef.current = valuesToSave;
           return "saved";
         }
 
@@ -195,12 +182,10 @@ export function NoteEditor({
 
   // ─── 自动保存（2s debounce）──────────────────────────────────
 
-  // isDirty 基于可持久化值（已剔除占位符）比较
-  const persistedValues = normalizeForPersistence(values);
-  const isDirty = !valuesEqual(persistedValues, lastSavedValues);
+  const isDirty = !valuesEqual(values, lastSavedValues);
 
   useEffect(() => {
-    if (valuesEqual(persistedValues, lastSavedValues)) {
+    if (valuesEqual(values, lastSavedValues)) {
       return;
     }
     if (saveStatus === "not_found") {
@@ -221,7 +206,7 @@ export function NoteEditor({
         debounceTimerRef.current = null;
       }
     };
-  }, [values, persistedValues, lastSavedValues, saveStatus, requestSave]);
+  }, [values, values, lastSavedValues, saveStatus, requestSave]);
 
   // ─── 输入处理 ────────────────────────────────────────────────
 
@@ -273,7 +258,7 @@ export function NoteEditor({
   useEffect(() => {
     function shouldWarnBeforeUnload() {
       const dirty = !valuesEqual(
-        normalizeForPersistence(latestValuesRef.current),
+        latestValuesRef.current,
         latestLastSavedRef.current,
       );
       const saving = latestSaveStatusRef.current === "saving";
@@ -346,7 +331,7 @@ export function NoteEditor({
   function handlePublishSuccess() {
     setPublishDialogOpen(false);
     setOverlayMessage("发布成功，正在跳转…");
-    router.push("/admin/notes");
+    router.push(`/notes/${article.id}`);
   }
 
   // ─── 渲染 ────────────────────────────────────────────────────
@@ -399,41 +384,37 @@ export function NoteEditor({
           </div>
 
           <div className="flex w-full min-w-0 shrink-0 items-center gap-2 sm:w-auto">
-          <span
-            aria-live="polite"
-            className={cn(
-              "mr-auto min-w-0 truncate text-xs sm:mr-1 sm:max-w-52",
-              isStatusError
-                ? "text-destructive"
-                : saveStatus === "saving"
-                  ? "text-foreground"
-                  : "text-muted-foreground",
-            )}
-            role={isStatusError ? "alert" : "status"}
-          >
-            {statusLabel}
-          </span>
+            <span
+              aria-live="polite"
+              className={cn(
+                "mr-auto min-w-0 truncate text-xs sm:mr-1 sm:max-w-52",
+                isStatusError
+                  ? "text-destructive"
+                  : saveStatus === "saving"
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+              )}
+              role={isStatusError ? "alert" : "status"}
+            >
+              {statusLabel}
+            </span>
 
-          <Button
-            className="h-9 sm:h-7"
-            disabled={
-              hasActiveUploads ||
-              saveStatus === "saving" ||
-              saveStatus === "not_found" ||
-              saveStatus === "error"
-            }
-            onClick={handlePublishClick}
-            size="sm"
-            title={
-              hasActiveUploads
-                ? "请等待上传完成后发布"
-                : undefined
-            }
-            type="button"
-          >
-            <SendIcon aria-hidden="true" />
-            {isPublished ? "更新" : "发布"}
-          </Button>
+            <Button
+              className="h-9 sm:h-7"
+              disabled={
+                hasActiveUploads ||
+                saveStatus === "saving" ||
+                saveStatus === "not_found" ||
+                saveStatus === "error"
+              }
+              onClick={handlePublishClick}
+              size="sm"
+              title={hasActiveUploads ? "请等待上传完成后发布" : undefined}
+              type="button"
+            >
+              <SendIcon aria-hidden="true" />
+              {isPublished ? "更新" : "发布"}
+            </Button>
           </div>
         </div>
       </header>

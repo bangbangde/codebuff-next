@@ -7,7 +7,6 @@ import type {
   ArticlePublishFormState,
 } from "@/features/articles/article-edit-form-state";
 import { ArticleAssetUnavailableError } from "@/features/articles/article-errors";
-import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
   articleIdSchema,
@@ -15,7 +14,10 @@ import {
   readArticleValues,
   readPublishValues,
 } from "@/features/articles/article-validation";
-import { publishArticle, updateArticle } from "@/features/articles/server/article-service";
+import {
+  publishArticle,
+  updateArticle,
+} from "@/features/articles/server/article-service";
 import { requireAdmin } from "@/lib/auth/session";
 
 export async function updateArticleAction(
@@ -56,17 +58,6 @@ export async function updateArticleAction(
       sequence: Number(formData.get("sequence") ?? 0),
     });
   } catch (error) {
-    if (error instanceof ArticleAssetReferenceSyntaxError) {
-      return {
-        fieldErrors: {
-          bodyMarkdown: ["托管资产引用格式无效，请重新从资产插入。"],
-        },
-        formError: "笔记尚未保存，请检查 Markdown 正文。",
-        status: "error",
-        values: fields.data,
-      };
-    }
-
     if (error instanceof ArticleAssetUnavailableError) {
       return {
         fieldErrors: {
@@ -159,15 +150,6 @@ export async function publishArticleAction(
       return {
         fieldErrors: {},
         formError: "发布未完成：正文或封面引用了不属于本文或已不存在的资产。",
-        status: "error",
-        values: fields.data,
-      };
-    }
-
-    if (error instanceof ArticleAssetReferenceSyntaxError) {
-      return {
-        fieldErrors: {},
-        formError: "发布未完成：正文中的托管资产引用格式无效。",
         status: "error",
         values: fields.data,
       };

@@ -1,7 +1,4 @@
-import {
-  FileTextIcon,
-  PlusIcon,
-} from "lucide-react";
+import { FileTextIcon, PlusIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -13,7 +10,7 @@ import { createDraftAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Notes",
-  description: "查看与管理存储在 PostgreSQL 中的笔记。",
+  description: "查看与管理笔记。",
 };
 
 type ArticleTab = "drafts" | "published";
@@ -170,6 +167,7 @@ export default async function NotesPage({
                     <Link
                       className="rounded-sm underline-offset-4 transition-colors duration-(--motion-duration) ease-(--motion-easing) hover:text-brand-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
                       href={`/admin/notes/${article.id}`}
+                      target="_blank"
                     >
                       {article.draftTitle.length > 0
                         ? article.draftTitle

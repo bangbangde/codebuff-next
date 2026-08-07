@@ -4,19 +4,6 @@ import type { AcceptedAssetType } from "@/features/article-assets/article-asset-
 const canonicalAssetReferencePattern =
   /!?\[[^\]\r\n]*\]\(cq-asset:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\s*(?:"[^"]*"\s*)?\)/gi;
 
-// 匹配所有形如 [text](cq-asset://...) 的 Markdown 链接（可能 UUID 不合法），
-// 用于语法检查：只要存在 "cq-asset://" URL 但未被合法正则捕获，即视为语法错误。
-// 注意：不使用全局标志 g，避免 .test() 在多次调用间残留 lastIndex 导致漏检。
-const anyAssetLikeReferencePattern =
-  /!?\[[^\]\r\n]*\]\(cq-asset:\/\/[^)\s]+\s*(?:"[^"]*"\s*)?\)/i;
-
-export class ArticleAssetReferenceSyntaxError extends Error {
-  constructor() {
-    super("Article Markdown contains an invalid managed asset reference.");
-    this.name = "ArticleAssetReferenceSyntaxError";
-  }
-}
-
 export type AssetReferenceOption = Readonly<{
   id: string;
   mediaType: AcceptedAssetType;
@@ -28,15 +15,6 @@ export function parseCanonicalAssetReferenceIds(bodyMarkdown: string) {
 
   for (const match of bodyMarkdown.matchAll(canonicalAssetReferencePattern)) {
     ids.add(match[1].toLowerCase());
-  }
-
-  // 检查语法错误：先将所有合法引用替换掉，若仍残留 cq-asset:// 形式的 Markdown 链接，
-  // 说明存在 UUID 不合法的引用。字面文本（例如行内代码 `cq-asset://xxx`、
-  // 说明性文字中的 "cq-asset:// 协议"）不会匹配 anyAssetLikeReferencePattern，
-  // 因此不会被误报。
-  const replaced = bodyMarkdown.replaceAll(canonicalAssetReferencePattern, "");
-  if (anyAssetLikeReferencePattern.test(replaced)) {
-    throw new ArticleAssetReferenceSyntaxError();
   }
 
   return [...ids];
@@ -74,20 +52,4 @@ export const UPLOADING_SCHEME = "cq-upload";
  */
 export function formatUploadPlaceholder(taskId: string): string {
   return `<!-- ${UPLOADING_SCHEME}:${taskId} -->`;
-}
-
-// 匹配上传占位符注释，用于保存前从 bodyMarkdown 中剔除。
-// 占位符只存在于前端编辑器状态，不进入数据库。
-const uploadPlaceholderPattern =
-  new RegExp(`<!-- ${UPLOADING_SCHEME}:[0-9a-fA-F-]+ -->\\n?`, "g");
-
-/**
- * 从正文中剔除所有上传占位符注释。
- *
- * 保存前必须调用此函数，确保占位符不会持久化到数据库。
- * 上传完成后占位符已被替换为正式 cq-asset:// 引用，因此正常流程下
- * 不会残留；此函数作为保证手段，在客户端和服务端均执行。
- */
-export function stripUploadPlaceholders(bodyMarkdown: string): string {
-  return bodyMarkdown.replace(uploadPlaceholderPattern, "");
 }
