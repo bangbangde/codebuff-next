@@ -86,8 +86,10 @@ export function NoteEditor({
   );
   const hasActiveUploadsRef = useRef(hasActiveUploads);
   const hasBlockingPublishWorkRef = useRef(false);
-  const handleBlockingStateChange = (hasBlocking: boolean) =>
-    (hasBlockingPublishWorkRef.current = hasBlocking);
+  const handleBlockingStateChange = useCallback(
+    (hasBlocking: boolean) => (hasBlockingPublishWorkRef.current = hasBlocking),
+    [],
+  );
 
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   // 发布/删除全屏 loading

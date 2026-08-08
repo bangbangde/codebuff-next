@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { UploadIcon } from "lucide-react";
 
 import { NoteTaxonomyFields } from "./note-taxonomy-fields";
@@ -53,6 +53,7 @@ export function PublishNoteDialog({
   onFinalSave,
   onOpenChange,
   onPublishSuccess,
+  onBlockingStateChange,
   open,
   tags,
 }: {
@@ -129,6 +130,8 @@ export function PublishNoteDialog({
   const summaryErrorId = "publish-summary-error";
   const isUploading = uploadProgress !== null;
 
+  onBlockingStateChange(isUploading || isPublishing);
+
   function handleAutoExtractSummary() {
     const extracted = extractSummaryFromMarkdown(draftBody);
     if (extracted) {
@@ -202,7 +205,6 @@ export function PublishNoteDialog({
         xhr.onerror = () => reject(new Error("网络错误，上传失败。"));
         xhr.send(formData);
       });
-
       setExtraAssets((prev) => [...prev, asset]);
       setSelectedCoverId(asset.id);
     } catch (error) {
@@ -495,17 +497,17 @@ export function PublishNoteDialog({
         open={publishingOverlay.open}
       >
         <DialogContent
-          className="!max-w-xs border-none bg-transparent p-0 shadow-none ring-0"
+          className="max-w-xs! border-none bg-transparent p-0 shadow-none ring-0"
           showCloseButton={false}
         >
           <div className="flex flex-col items-center gap-3 text-center">
-            <Spinner aria-hidden="true" className="!size-8 text-foreground" />
+            <Spinner aria-hidden="true" className="size-8! text-foreground" />
             <DialogTitle className="sr-only">
               {publishingOverlay.open ? publishingOverlay.message : "发布中"}
             </DialogTitle>
             <DialogDescription
               aria-live="assertive"
-              className="!text-sm !font-medium !text-foreground"
+              className="text-sm! font-medium! text-foreground!"
               role="status"
             >
               {publishingOverlay.open ? publishingOverlay.message : ""}

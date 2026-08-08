@@ -1,6 +1,10 @@
 import "server-only";
 
+import { and, eq, isNull, lte, or, sql } from "drizzle-orm";
+
 import type { GarageObjectStore } from "@/lib/garage/garage-object-store";
+import { getDatabase } from "@/lib/db/client";
+import { maintenanceTask } from "@/lib/db/schema/maintenance-task";
 import * as repository from "./article-asset-repository";
 import { getArticleObjectStore } from "./article-storage-config";
 
@@ -14,7 +18,7 @@ function defaultDependencies(): ArticleAssetCleanupDependencies {
 
 export type ArticleAssetCleanupOptions = Readonly<{
   /** pending_delete 资产视为可清理前的最短停留时间，默认 24 小时。 */
-  pendingDeleteGraceMs?: number;
+  deleteGraceMs?: number;
   /** 单次运行最多处理的资产数量，默认 100。 */
   batchLimit?: number;
   /** 依赖注入（测试用）。 */
@@ -32,15 +36,19 @@ export type ArticleAssetCleanupOptions = Readonly<{
 export async function cleanupArticleAssets(
   options: ArticleAssetCleanupOptions = {},
 ): Promise<void> {
+  const success = await startMaintenanceTask();
+  if (!success) {
+    return;
+  }
   const {
-    pendingDeleteGraceMs = 24 * 60 * 60 * 1000,
+    deleteGraceMs = 24 * 60 * 60 * 1000,
     batchLimit = 100,
     dependencies = defaultDependencies(),
   } = options;
 
   const now = Date.now();
 
-  const pendingDeleteCutoff = new Date(now - pendingDeleteGraceMs);
+  const pendingDeleteCutoff = new Date(now - deleteGraceMs);
 
   const pendingDeleteAssets = await repository.markAssetsAsDeleted(
     pendingDeleteCutoff,
@@ -50,4 +58,43 @@ export async function cleanupArticleAssets(
   await dependencies.store.deleteBatch(
     pendingDeleteAssets.map((asset) => asset.objectKey),
   );
+  await endMaintenanceTask();
+}
+
+/**
+ * 尝试开启维护任务“article_asset_cleanup”
+ * 如果当前请求获得 cleanup 执行权返回 true，否则返回 false。
+ */
+export async function startMaintenanceTask() {
+  const [row] = await getDatabase()
+    .update(maintenanceTask)
+    .set({
+      nextEligibleAt: sql`now() + interval '10 minutes'`,
+      leaseUntil: sql`now() + interval '2 minutes'`,
+      lastStartedAt: sql`now()`,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(maintenanceTask.key, "article_asset_cleanup"),
+        lte(maintenanceTask.nextEligibleAt, sql`now()`),
+        or(
+          isNull(maintenanceTask.leaseUntil),
+          lte(maintenanceTask.leaseUntil, sql`now()`),
+        ),
+      ),
+    )
+    .returning({ key: maintenanceTask.key });
+
+  return row !== undefined;
+}
+
+export async function endMaintenanceTask() {
+  await getDatabase()
+    .update(maintenanceTask)
+    .set({
+      leaseUntil: null,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(maintenanceTask.key, "article_asset_cleanup"));
 }

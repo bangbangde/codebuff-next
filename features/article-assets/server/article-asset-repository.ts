@@ -95,7 +95,7 @@ export async function markAssetsAsDeleted(
       .from(articleAsset)
       .where(
         and(
-          eq(articleAsset.status, "pending_delete"),
+          inArray(articleAsset.status, ["pending_delete", "temporary"]),
           lte(articleAsset.statusUpdatedAt, olderThan),
         ),
       )
