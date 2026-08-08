@@ -33,8 +33,8 @@ export function getArticleById(id: string) {
   return drizzleArticleRepository.findById(id);
 }
 
-export function updateArticle(input: UpdateArticleInput) {
-  const result = drizzleArticleRepository.update(
+export async function updateArticle(input: UpdateArticleInput) {
+  const result = await drizzleArticleRepository.update(
     input,
     parseCanonicalAssetReferenceIds(input.bodyMarkdown),
   );
