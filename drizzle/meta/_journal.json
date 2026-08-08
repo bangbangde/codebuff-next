@@ -71,6 +71,41 @@
       "when": 1785484064696,
       "tag": "0009_double_slot_article",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785847280099,
+      "tag": "0010_clammy_eddie_brock",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786001246482,
+      "tag": "0011_slippery_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786001521263,
+      "tag": "0012_nasty_karma",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786122181477,
+      "tag": "0013_long_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786182424236,
+      "tag": "0014_woozy_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,2 @@
+ALTER TABLE "article_asset" DROP CONSTRAINT "article_asset_status_check";--> statement-breakpoint
+ALTER TABLE "article_asset" ADD CONSTRAINT "article_asset_status_check" CHECK ("article_asset"."status" in ('uploading', 'temporary', 'active', 'pending_delete', 'deleted'));

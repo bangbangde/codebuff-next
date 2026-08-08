@@ -24,7 +24,6 @@ export interface ArticleRepository {
   ): Promise<UpdateArticleResult>;
   publish(
     input: PublishArticleInput,
-    assetIds: readonly string[],
   ): Promise<PublishArticleResult>;
   listPublishedArticles(): Promise<readonly PublishedArticleSummary[]>;
   getPublishedArticle(id: string): Promise<PublishedArticleDetail | null>;

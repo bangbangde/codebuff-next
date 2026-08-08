@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/lib/db/client";
 import {
@@ -24,20 +24,13 @@ import type {
   UpdateArticleResult,
 } from "../article-dto";
 import { ArticleAssetUnavailableError } from "../article-errors";
+import { parseCanonicalAssetReferenceIds } from "../article-asset-reference";
 import type { ArticleRepository } from "../article-repository";
 
-async function readCurrentRevision(id: string) {
-  const [current] = await getDatabase()
-    .select({ revision: article.draftRevision })
-    .from(article)
-    .where(eq(article.id, id))
-    .limit(1);
-
-  return current?.revision ?? null;
-}
-
 async function resolveCategoryId(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   categoryName: string,
 ): Promise<string> {
   const lowerName = categoryName.toLowerCase();
@@ -77,7 +70,9 @@ async function resolveCategoryId(
 }
 
 async function resolveTagIds(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   tagNames: readonly string[],
 ): Promise<readonly string[]> {
   if (tagNames.length === 0) {
@@ -137,7 +132,9 @@ async function resolveTagIds(
 }
 
 async function readArticleDetail(
-  transaction: Parameters<Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]>[0],
+  transaction: Parameters<
+    Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+  >[0],
   id: string,
 ): Promise<ArticleDetail | null> {
   const [row] = await transaction
@@ -194,6 +191,131 @@ async function readArticleDetail(
   };
 }
 
+type DbTransaction = Parameters<
+  Parameters<ReturnType<typeof getDatabase>["transaction"]>[0]
+>[0];
+
+/**
+ * 在事务内锁定并校验被引用的资产行。
+ *
+ * 使用 SELECT ... FOR UPDATE 锁定资产行，防止 cleanup 在校验后、
+ * 事务提交前将资产 claim 为 `deleted` 并删除 Garage 对象。
+ *
+ * assetIds 会被去重并排序，保证多事务间的锁顺序一致，降低死锁概率。
+ *
+ * 校验规则：
+ * - 所有 assetId 必须存在且属于当前文章；
+ * - 资产状态不能是`deleted`
+ *
+ * @param requireImageAssetId 若提供，则校验该资产必须是图片类型（封面图）。
+ * @throws ArticleAssetUnavailableError 校验失败时抛出。
+ */
+async function lockAndValidateAssets(
+  transaction: DbTransaction,
+  articleId: string,
+  assetIds: readonly string[],
+  requireImageAssetId?: string | null,
+): Promise<void> {
+  if (assetIds.length === 0) {
+    return;
+  }
+
+  // 去重并排序，保证锁顺序一致
+  const sortedIds = [...new Set(assetIds)].sort();
+
+  const rows = await transaction
+    .select({
+      articleId: articleAsset.articleId,
+      id: articleAsset.id,
+      mediaType: articleAsset.mediaType,
+      status: articleAsset.status,
+    })
+    .from(articleAsset)
+    .where(inArray(articleAsset.id, sortedIds))
+    .for("update");
+
+  if (
+    rows.length !== sortedIds.length ||
+    rows.some((asset) => asset.articleId !== articleId) ||
+    rows.some((asset) => asset.status === "deleted")
+  ) {
+    throw new ArticleAssetUnavailableError();
+  }
+
+  if (requireImageAssetId) {
+    const coverAsset = rows.find((asset) => asset.id === requireImageAssetId);
+    if (coverAsset && !coverAsset.mediaType.startsWith("image/")) {
+      throw new ArticleAssetUnavailableError();
+    }
+  }
+}
+
+/**
+ * 同步文章资产引用状态：
+ * 1. 将被引用的资产从 temporary/pending_delete 提升为 active
+ * 2. 将不再被引用的 active 资产降级为 pending_delete
+ *
+ * "被引用"包括：草稿正文引用 + 线上正文引用 + 封面图引用。
+ * 必须在与文章更新同一事务内调用，保证引用关系与资产状态一致。
+ */
+async function syncAssetStatuses(
+  transaction: DbTransaction,
+  articleId: string,
+  referencedAssetIds: readonly string[],
+): Promise<void> {
+  // 合并线上槽位的引用（封面 + 已发布正文），确保草稿编辑不会误降级线上资产。
+  const [published] = await transaction
+    .select({ content: article.content, coverAssetId: article.coverAssetId })
+    .from(article)
+    .where(eq(article.id, articleId))
+    .limit(1);
+
+  const allReferencedIds = new Set<string>(referencedAssetIds);
+
+  if (published) {
+    if (published.coverAssetId) {
+      allReferencedIds.add(published.coverAssetId);
+    }
+    if (published.content) {
+      for (const id of parseCanonicalAssetReferenceIds(published.content)) {
+        allReferencedIds.add(id);
+      }
+    }
+  }
+
+  const referencedList = [...allReferencedIds];
+
+  if (referencedList.length > 0) {
+    await transaction
+      .update(articleAsset)
+      .set({ status: "active", statusUpdatedAt: new Date() })
+      .where(
+        and(
+          eq(articleAsset.articleId, articleId),
+          inArray(articleAsset.id, referencedList),
+          inArray(articleAsset.status, ["temporary", "pending_delete"]),
+        ),
+      );
+  }
+
+  const unreferencedActiveCondition =
+    referencedList.length > 0
+      ? and(
+          eq(articleAsset.articleId, articleId),
+          eq(articleAsset.status, "active"),
+          not(inArray(articleAsset.id, referencedList)),
+        )
+      : and(
+          eq(articleAsset.articleId, articleId),
+          eq(articleAsset.status, "active"),
+        );
+
+  await transaction
+    .update(articleAsset)
+    .set({ status: "pending_delete", statusUpdatedAt: new Date() })
+    .where(unreferencedActiveCondition);
+}
+
 export const drizzleArticleRepository: ArticleRepository = {
   async createDraft(): Promise<CreatedArticle> {
     const today = new Date().toISOString().slice(0, 10);
@@ -225,10 +347,7 @@ export const drizzleArticleRepository: ArticleRepository = {
         publishedAt: article.publishedAt,
       })
       .from(article)
-      .orderBy(
-        desc(article.draftUpdatedAt),
-        asc(article.draftTitle),
-      );
+      .orderBy(desc(article.draftUpdatedAt), asc(article.draftTitle));
 
     return rows.map((row) => ({
       draftRevision: row.draftRevision,
@@ -262,49 +381,47 @@ export const drizzleArticleRepository: ArticleRepository = {
     assetIds: readonly string[],
   ): Promise<UpdateArticleResult> {
     return getDatabase().transaction(async (transaction) => {
-      if (assetIds.length > 0) {
-        const referencedAssets = await transaction
-          .select({
-            articleId: articleAsset.articleId,
-            id: articleAsset.id,
-          })
-          .from(articleAsset)
-          .where(inArray(articleAsset.id, [...assetIds]));
+      // 锁定文章行，建立统一锁顺序（article → assets），防止与 cleanup/publish 死锁。
+      const [locked] = await transaction
+        .select({ id: article.id })
+        .from(article)
+        .where(eq(article.id, input.id))
+        .for("update")
+        .limit(1);
 
-        if (
-          referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id)
-        ) {
-          throw new ArticleAssetUnavailableError();
-        }
+      if (!locked) {
+        return { status: "not_found" as const };
       }
+
+      await lockAndValidateAssets(transaction, input.id, assetIds);
 
       const [updated] = await transaction
         .update(article)
         .set({
           draftContent: input.bodyMarkdown,
           draftRevision: sql`${article.draftRevision} + 1`,
+          draftSequence: input.sequence,
+          draftSessionId: input.sessionId,
           draftTitle: input.title,
           draftUpdatedAt: new Date(),
         })
         .where(
           and(
             eq(article.id, input.id),
-            eq(article.draftRevision, input.expectedRevision),
+            // 拒绝同一会话内的旧序号写入：若 DB 已记录该 session 的更高序号，
+            // 说明更新的请求已先到达，当前请求是过时的（如 pagehide 与
+            // autosave 乱序）。跨会话（sessionId 不同）恒允许，仍 last write wins。
+            sql`NOT (${article.draftSessionId} = ${input.sessionId} AND ${article.draftSequence} >= ${input.sequence})`,
           ),
         )
         .returning({ id: article.id });
 
       if (!updated) {
-        const currentRevision = await readCurrentRevision(input.id);
-
-        return currentRevision === null
-          ? { status: "not_found" as const }
-          : {
-              currentRevision,
-              status: "conflict" as const,
-            };
+        // 文章已锁定确认存在，WHERE 因序号条件未命中，视为 ignored。
+        return { status: "ignored" as const };
       }
+
+      await syncAssetStatuses(transaction, input.id, assetIds);
 
       const detail = await readArticleDetail(transaction, input.id);
 
@@ -319,40 +436,52 @@ export const drizzleArticleRepository: ArticleRepository = {
     });
   },
 
-  async publish(
-    input: PublishArticleInput,
-    assetIds: readonly string[],
-  ): Promise<PublishArticleResult> {
+  async publish(input: PublishArticleInput): Promise<PublishArticleResult> {
     return getDatabase().transaction(async (transaction) => {
-      if (assetIds.length > 0) {
-        const referencedAssets = await transaction
-          .select({
-            articleId: articleAsset.articleId,
-            id: articleAsset.id,
-          })
-          .from(articleAsset)
-          .where(inArray(articleAsset.id, [...assetIds]));
+      const [locked] = await transaction
+        .select({
+          draftContent: article.draftContent,
+          id: article.id,
+        })
+        .from(article)
+        .where(eq(article.id, input.id))
+        .for("update")
+        .limit(1);
 
-        if (
-          referencedAssets.length !== assetIds.length ||
-          referencedAssets.some((asset) => asset.articleId !== input.id)
-        ) {
-          throw new ArticleAssetUnavailableError();
-        }
+      if (!locked) {
+        return { status: "not_found" as const };
       }
 
-      const categoryId = await resolveCategoryId(
-        transaction,
-        input.categoryName,
-      );
+      // 在事务内从确切快照解析资产引用，避免事务外读取导致的过期校验。
+      const assetIds = [
+        ...new Set([
+          ...parseCanonicalAssetReferenceIds(locked.draftContent),
+          ...(input.coverAssetId ? [input.coverAssetId] : []),
+        ]),
+      ];
+
+      if (assetIds.length > 0) {
+        // 锁定并校验引用的资产行（FOR UPDATE），与 update 方法复用同一逻辑。
+        await lockAndValidateAssets(
+          transaction,
+          input.id,
+          assetIds,
+          input.coverAssetId,
+        );
+      }
+
+      const categoryId =
+        input.categoryName.length > 0
+          ? await resolveCategoryId(transaction, input.categoryName)
+          : null;
       const tagIds = await resolveTagIds(transaction, input.tagNames);
 
-      // 将当前草稿复制到线上槽位，publishedAt 仅在首次发布时写入。
+      // 将锁定的草稿快照复制到线上槽位，publishedAt 仅在首次发布时写入。
       // publishedFromRevision 记录发布时的草稿修订（与 draftRevision 相等）。
       const [updated] = await transaction
         .update(article)
         .set({
-          content: sql`${article.draftContent}`,
+          content: locked.draftContent,
           coverAssetId: input.coverAssetId,
           publishedAt: sql`coalesce(${article.publishedAt}, now())`,
           publishedFromRevision: sql`${article.draftRevision}`,
@@ -361,34 +490,28 @@ export const drizzleArticleRepository: ArticleRepository = {
           title: sql`${article.draftTitle}`,
           categoryId,
         })
-        .where(
-          and(
-            eq(article.id, input.id),
-            eq(article.draftRevision, input.expectedRevision),
-          ),
-        )
+        .where(eq(article.id, input.id))
         .returning({ id: article.id });
 
       if (!updated) {
-        const currentRevision = await readCurrentRevision(input.id);
-
-        return currentRevision === null
-          ? { status: "not_found" as const }
-          : {
-              currentRevision,
-              status: "conflict" as const,
-            };
+        return { status: "not_found" as const };
       }
 
+      // 这是更新文章标签的标准做法： 先删后插 （delete-all-then-reinsert）。
+      // 文章和标签是多对多关系（ articleTag 关联表）。发布时用户可能增删改标签，
+      // 计算差异（新增了哪些、删除了哪些）逻辑复杂且容易出错。
       await transaction
         .delete(articleTag)
         .where(eq(articleTag.articleId, input.id));
 
       if (tagIds.length > 0) {
-        await transaction.insert(articleTag).values(
-          tagIds.map((tagId) => ({ articleId: input.id, tagId })),
-        );
+        await transaction
+          .insert(articleTag)
+          .values(tagIds.map((tagId) => ({ articleId: input.id, tagId })));
       }
+
+      // 同步资产引用状态：发布时同样需要更新资产引用（封面图）
+      await syncAssetStatuses(transaction, input.id, assetIds);
 
       const detail = await readArticleDetail(transaction, input.id);
 
@@ -428,7 +551,12 @@ export const drizzleArticleRepository: ArticleRepository = {
       .select({ articleId: articleTag.articleId, name: tag.name })
       .from(articleTag)
       .innerJoin(tag, eq(articleTag.tagId, tag.id))
-      .where(inArray(articleTag.articleId, rows.map((row) => row.id)))
+      .where(
+        inArray(
+          articleTag.articleId,
+          rows.map((row) => row.id),
+        ),
+      )
       .orderBy(asc(tag.name));
 
     const tagsByArticleId = new Map<string, string[]>();

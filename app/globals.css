@@ -12,6 +12,23 @@
     color: var(--foreground);
   }
 
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, currentColor 12%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: shimmer 1.5s infinite linear;
+  }
+
   [data-product-surface] {
     background: var(--background);
     color: var(--foreground);

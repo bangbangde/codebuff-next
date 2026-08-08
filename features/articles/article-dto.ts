@@ -17,8 +17,10 @@ export type CreatedArticle = Readonly<{
 
 export type UpdateArticleInput = ArticleCreateValues &
   Readonly<{
-    expectedRevision: number;
     id: string;
+    // 编辑会话标识 + 单调序号，用于拒绝同会话内的旧序号保存请求。
+    sessionId: string;
+    sequence: number;
   }>;
 
 export type CategoryOption = Readonly<{
@@ -62,7 +64,7 @@ export type ArticleDetail = Readonly<{
 
 export type UpdateArticleResult =
   | Readonly<{ article: ArticleDetail; status: "updated" }>
-  | Readonly<{ currentRevision: number; status: "conflict" }>
+  | Readonly<{ status: "ignored" }>
   | Readonly<{ status: "not_found" }>;
 
 export type PublishArticleValues = Readonly<{
@@ -75,12 +77,10 @@ export type PublishArticleValues = Readonly<{
 export type PublishArticleInput = PublishArticleValues &
   Readonly<{
     id: string;
-    expectedRevision: number; // draftRevision，用于乐观锁
   }>;
 
 export type PublishArticleResult =
   | Readonly<{ article: ArticleDetail; status: "published" }>
-  | Readonly<{ currentRevision: number; status: "conflict" }>
   | Readonly<{ status: "not_found" }>;
 
 // ─── 公开只读视图（仅线上槽位字段，不暴露草稿） ───────────────────

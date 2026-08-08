@@ -139,28 +139,6 @@ export async function readArticleAsset(
   }
 }
 
-export async function deleteArticleAsset(
-  articleId: string,
-  assetId: string,
-  dependencies: ArticleAssetServiceDependencies = defaultDependencies(),
-): Promise<void> {
-  const deleted = await repository.deleteAssetById(articleId, assetId);
-
-  if (!deleted) {
-    throw new AssetNotFoundError();
-  }
-
-  try {
-    await dependencies.store.delete(deleted.objectKey);
-  } catch (error) {
-    console.error("Failed to delete article asset object after metadata removal.", {
-      articleId,
-      assetId,
-      cause: error instanceof Error ? error.name : "UnknownError",
-    });
-  }
-}
-
 export function listArticleAssets(articleId: string) {
   return repository.listAssetsByArticle(articleId);
 }

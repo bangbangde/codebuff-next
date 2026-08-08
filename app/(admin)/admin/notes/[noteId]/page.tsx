@@ -50,7 +50,6 @@ export default async function NoteEditorPage({
     <NoteEditor
       article={{
         id: article.id,
-        revision: article.draftRevision,
         publishedAt: article.publishedAt,
         publishedFromRevision: article.publishedFromRevision,
         coverAssetId: article.coverAssetId,

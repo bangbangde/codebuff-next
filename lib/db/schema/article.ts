@@ -24,6 +24,11 @@ export const article = pgTable(
     draftUpdatedAt: timestamp("draft_updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    // 编辑会话标识 + 单调序号，用于拒绝同一会话内的旧序号保存请求，
+    // 防止并发保存请求的网络乱序导致旧请求覆盖正文。
+    // 跨会话仍 last write wins（见 repository.update 的 WHERE 条件）。
+    draftSessionId: text("draft_session_id"),
+    draftSequence: integer("draft_sequence").default(0).notNull(),
     // 线上槽位（首次发布前为 null）
     // 显式返回 AnyPgColumn，保留循环外键的 schema 所有权并避免循环类型推导。
     title: text("title"),

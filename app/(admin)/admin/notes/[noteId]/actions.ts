@@ -7,33 +7,17 @@ import type {
   ArticlePublishFormState,
 } from "@/features/articles/article-edit-form-state";
 import { ArticleAssetUnavailableError } from "@/features/articles/article-errors";
-import { ArticleAssetReferenceSyntaxError } from "@/features/articles/article-asset-reference";
 import {
   articleCreateSchema,
-  articleMutationReferenceSchema,
+  articleIdSchema,
   publishArticleSchema,
   readArticleValues,
   readPublishValues,
 } from "@/features/articles/article-validation";
-import { publishArticle, updateArticle } from "@/features/articles/server/article-service";
-import type {
-  ArticleAssetDeleteFormState,
-  ArticleAssetUploadFormState,
-} from "@/features/article-assets/article-asset-form-state";
 import {
-  ArticleNotFoundError,
-  AssetNotFoundError,
-  AssetStorageError,
-  AssetValidationError,
-} from "@/features/article-assets/article-asset-errors";
-import {
-  assetIdParamSchema,
-  articleIdParamSchema,
-} from "@/features/article-assets/article-asset-validation";
-import {
-  deleteArticleAsset,
-  uploadArticleAsset,
-} from "@/features/article-assets/server/article-asset-service";
+  publishArticle,
+  updateArticle,
+} from "@/features/articles/server/article-service";
 import { requireAdmin } from "@/lib/auth/session";
 
 export async function updateArticleAction(
@@ -43,18 +27,13 @@ export async function updateArticleAction(
   await requireAdmin();
 
   const values = readArticleValues(formData);
-  const reference = articleMutationReferenceSchema.safeParse({
-    articleId: formData.get("articleId"),
-    expectedRevision: formData.get("expectedRevision"),
-  });
+  const articleId = articleIdSchema.safeParse(formData.get("articleId"));
   const fields = articleCreateSchema.safeParse(values);
 
-  if (!reference.success) {
+  if (!articleId.success) {
     return {
-      conflictRevision: null,
       fieldErrors: {},
-      formError: "笔记标识或版本无效，请重新载入后再试。",
-      savedRevision: null,
+      formError: "笔记标识无效，请重新载入后再试。",
       status: "error",
       values,
     };
@@ -62,10 +41,8 @@ export async function updateArticleAction(
 
   if (!fields.success) {
     return {
-      conflictRevision: null,
       fieldErrors: fields.error.flatten().fieldErrors,
       formError: "请检查标出的字段后再保存。",
-      savedRevision: null,
       status: "error",
       values,
     };
@@ -76,31 +53,17 @@ export async function updateArticleAction(
   try {
     result = await updateArticle({
       ...fields.data,
-      expectedRevision: reference.data.expectedRevision,
-      id: reference.data.articleId,
+      id: articleId.data,
+      sessionId: String(formData.get("sessionId") ?? ""),
+      sequence: Number(formData.get("sequence") ?? 0),
     });
   } catch (error) {
-    if (error instanceof ArticleAssetReferenceSyntaxError) {
-      return {
-        conflictRevision: null,
-        fieldErrors: {
-          bodyMarkdown: ["托管资产引用格式无效，请重新从资产插入。"],
-        },
-        formError: "笔记尚未保存，请检查 Markdown 正文。",
-        savedRevision: null,
-        status: "error",
-        values: fields.data,
-      };
-    }
-
     if (error instanceof ArticleAssetUnavailableError) {
       return {
-        conflictRevision: null,
         fieldErrors: {
           bodyMarkdown: ["正文引用了不属于本文或不存在的资产。"],
         },
         formError: "笔记尚未保存，请移除无效资产引用。",
-        savedRevision: null,
         status: "error",
         values: fields.data,
       };
@@ -109,46 +72,39 @@ export async function updateArticleAction(
     console.error("Failed to update note.", error);
 
     return {
-      conflictRevision: null,
       fieldErrors: {},
       formError: "笔记暂时无法保存，请稍后重试。",
-      savedRevision: null,
       status: "error",
-      values: fields.data,
-    };
-  }
-
-  if (result.status === "conflict") {
-    return {
-      conflictRevision: result.currentRevision,
-      fieldErrors: {},
-      formError:
-        "数据库中的笔记已被其他操作更新。你的输入仍保留在当前页面，重新载入前不会覆盖新版本。",
-      savedRevision: null,
-      status: "conflict",
       values: fields.data,
     };
   }
 
   if (result.status === "not_found") {
     return {
-      conflictRevision: null,
       fieldErrors: {},
       formError: "这篇笔记已不存在，当前内容未保存。",
-      savedRevision: null,
       status: "not_found",
       values: fields.data,
     };
   }
 
+  // ignored：同会话内更新的请求已先写入，当前旧序号请求被忽略。
+  // 对用户而言等同于已保存（最新内容已在服务端），返回 saved。
+  if (result.status === "ignored") {
+    return {
+      fieldErrors: {},
+      formError: null,
+      status: "saved",
+      values: fields.data,
+    };
+  }
+
   revalidatePath("/admin/notes");
-  revalidatePath(`/admin/notes/${reference.data.articleId}`);
+  revalidatePath(`/admin/notes/${articleId.data}`);
 
   return {
-    conflictRevision: null,
     fieldErrors: {},
     formError: null,
-    savedRevision: result.article.draftRevision,
     status: "saved",
     values: fields.data,
   };
@@ -161,17 +117,13 @@ export async function publishArticleAction(
   await requireAdmin();
 
   const values = readPublishValues(formData);
-  const reference = articleMutationReferenceSchema.safeParse({
-    articleId: formData.get("articleId"),
-    expectedRevision: formData.get("expectedRevision"),
-  });
+  const articleId = articleIdSchema.safeParse(formData.get("articleId"));
   const fields = publishArticleSchema.safeParse(values);
 
-  if (!reference.success) {
+  if (!articleId.success) {
     return {
-      conflictRevision: null,
       fieldErrors: {},
-      formError: "笔记标识或版本无效，请重新载入后再试。",
+      formError: "笔记标识无效，请重新载入后再试。",
       status: "error",
       values,
     };
@@ -179,7 +131,6 @@ export async function publishArticleAction(
 
   if (!fields.success) {
     return {
-      conflictRevision: null,
       fieldErrors: fields.error.flatten().fieldErrors,
       formError: "请检查发布信息后再提交。",
       status: "error",
@@ -192,25 +143,13 @@ export async function publishArticleAction(
   try {
     result = await publishArticle({
       ...fields.data,
-      expectedRevision: reference.data.expectedRevision,
-      id: reference.data.articleId,
+      id: articleId.data,
     });
   } catch (error) {
     if (error instanceof ArticleAssetUnavailableError) {
       return {
-        conflictRevision: null,
         fieldErrors: {},
         formError: "发布未完成：正文或封面引用了不属于本文或已不存在的资产。",
-        status: "error",
-        values: fields.data,
-      };
-    }
-
-    if (error instanceof ArticleAssetReferenceSyntaxError) {
-      return {
-        conflictRevision: null,
-        fieldErrors: {},
-        formError: "发布未完成：正文中的托管资产引用格式无效。",
         status: "error",
         values: fields.data,
       };
@@ -219,7 +158,6 @@ export async function publishArticleAction(
     console.error("Failed to publish note.", error);
 
     return {
-      conflictRevision: null,
       fieldErrors: {},
       formError: "笔记暂时无法发布，请稍后重试。",
       status: "error",
@@ -227,20 +165,8 @@ export async function publishArticleAction(
     };
   }
 
-  if (result.status === "conflict") {
-    return {
-      conflictRevision: result.currentRevision,
-      fieldErrors: {},
-      formError:
-        "数据库中的笔记草稿已被更新。请重新载入页面，确认最新草稿后再发布。",
-      status: "conflict",
-      values: fields.data,
-    };
-  }
-
   if (result.status === "not_found") {
     return {
-      conflictRevision: null,
       fieldErrors: {},
       formError: "这篇笔记已不存在，无法发布。",
       status: "not_found",
@@ -249,13 +175,12 @@ export async function publishArticleAction(
   }
 
   revalidatePath("/admin/notes");
-  revalidatePath(`/admin/notes/${reference.data.articleId}`);
+  revalidatePath(`/admin/notes/${articleId.data}`);
   revalidatePath("/");
   revalidatePath("/notes");
-  revalidatePath(`/notes/${reference.data.articleId}`);
+  revalidatePath(`/notes/${articleId.data}`);
 
   return {
-    conflictRevision: null,
     fieldErrors: {},
     formError: null,
     status: "published",
@@ -266,108 +191,4 @@ export async function publishArticleAction(
       tagNames: fields.data.tagNames,
     },
   };
-}
-
-export async function uploadArticleAssetAction(
-  _previousState: ArticleAssetUploadFormState,
-  formData: FormData,
-): Promise<ArticleAssetUploadFormState> {
-  await requireAdmin();
-
-  const route = articleIdParamSchema.safeParse(formData.get("articleId"));
-
-  if (!route.success) {
-    return {
-      formError: "笔记标识无效，请重新载入后再试。",
-      uploadedId: null,
-    };
-  }
-
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    return {
-      formError: "请选择要上传的文件。",
-      uploadedId: null,
-    };
-  }
-
-  try {
-    const asset = await uploadArticleAsset(route.data, file);
-
-    revalidatePath(`/admin/notes/${route.data}`);
-
-    return {
-      formError: null,
-      uploadedId: asset.id,
-    };
-  } catch (error) {
-    if (error instanceof AssetValidationError) {
-      return {
-        formError: error.message,
-        uploadedId: null,
-      };
-    }
-
-    if (error instanceof ArticleNotFoundError) {
-      return {
-        formError: "这篇笔记已不存在，无法上传资产。",
-        uploadedId: null,
-      };
-    }
-
-    if (error instanceof AssetStorageError) {
-      return {
-        formError: "资产存储暂时不可用，请稍后重试。",
-        uploadedId: null,
-      };
-    }
-
-    console.error("Failed to upload note asset.", error);
-
-    return {
-      formError: "资产暂时无法上传，请稍后重试。",
-      uploadedId: null,
-    };
-  }
-}
-
-export async function deleteArticleAssetAction(
-  _previousState: ArticleAssetDeleteFormState,
-  formData: FormData,
-): Promise<ArticleAssetDeleteFormState> {
-  await requireAdmin();
-
-  const articleRoute = articleIdParamSchema.safeParse(
-    formData.get("articleId"),
-  );
-  const assetRoute = assetIdParamSchema.safeParse(formData.get("assetId"));
-
-  if (!articleRoute.success || !assetRoute.success) {
-    return {
-      formError: "资产标识无效，删除已拒绝。",
-    };
-  }
-
-  try {
-    await deleteArticleAsset(articleRoute.data, assetRoute.data);
-
-    revalidatePath(`/admin/notes/${articleRoute.data}`);
-
-    return {
-      formError: null,
-    };
-  } catch (error) {
-    if (error instanceof AssetNotFoundError) {
-      return {
-        formError: "这个资产已不存在，没有执行删除。",
-      };
-    }
-
-    console.error("Failed to delete note asset.", error);
-
-    return {
-      formError: "资产暂时无法删除，请稍后重试。",
-    };
-  }
 }
