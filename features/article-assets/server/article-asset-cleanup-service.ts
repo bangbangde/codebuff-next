@@ -54,10 +54,11 @@ export async function cleanupArticleAssets(
     pendingDeleteCutoff,
     batchLimit,
   );
-
-  await dependencies.store.deleteBatch(
-    pendingDeleteAssets.map((asset) => asset.objectKey),
-  );
+  if (pendingDeleteAssets.length > 0) {
+    dependencies.store
+      .deleteBatch(pendingDeleteAssets.map((asset) => asset.objectKey))
+      .catch(() => {});
+  }
   await endMaintenanceTask();
 }
 

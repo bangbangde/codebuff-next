@@ -34,12 +34,12 @@ export function getArticleById(id: string) {
 }
 
 export function updateArticle(input: UpdateArticleInput) {
-  // 异步触发清理服务
-  cleanupArticleAssets();
-  return drizzleArticleRepository.update(
+  const result = drizzleArticleRepository.update(
     input,
     parseCanonicalAssetReferenceIds(input.bodyMarkdown),
   );
+  cleanupArticleAssets().catch(() => {});
+  return result;
 }
 
 export function publishArticle(

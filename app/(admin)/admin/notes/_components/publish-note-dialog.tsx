@@ -130,7 +130,9 @@ export function PublishNoteDialog({
   const summaryErrorId = "publish-summary-error";
   const isUploading = uploadProgress !== null;
 
-  onBlockingStateChange(isUploading || isPublishing);
+  useEffect(() => {
+    onBlockingStateChange(isUploading || isPublishing);
+  }, [isUploading, isPublishing, onBlockingStateChange]);
 
   function handleAutoExtractSummary() {
     const extracted = extractSummaryFromMarkdown(draftBody);
