@@ -7,6 +7,7 @@ export default defineConfig({
     "./lib/db/schema/article.ts",
     "./lib/db/schema/article-asset.ts",
     "./lib/db/schema/article-taxonomy.ts",
+    "./lib/db/schema/home-content.ts",
     "./lib/db/schema/maintenance-task.ts",
   ],
   out: "./drizzle",
