@@ -21,32 +21,23 @@ CQ’s Lab 的 Next.js 应用，使用 App Router、TypeScript、Tailwind CSS、
 
 ## 本地开发
 
-Compose 只提供 PostgreSQL 和 Garage；应用、迁移与首次账户初始化在宿主机显式运行：
+仓库为每个 checkout 或 Git worktree 生成独立的 Compose project、端口、PostgreSQL 数据卷和 Garage 数据卷。首次使用只需：
 
 ```powershell
-Copy-Item .env.runtime.example .env.local
-Copy-Item .env.dev.example .env.dev
 pnpm install --frozen-lockfile
-docker compose --env-file .env.dev -f docker-compose-dev.yml up --detach --wait
-pnpm db:migrate
-pnpm auth:bootstrap
-pnpm dev
+pnpm local:bootstrap
+pnpm local:dev
 ```
 
-`pnpm auth:bootstrap` 仅用于首次创建本地管理员。日常开发只需启动基础设施与应用：
+`local:bootstrap` 会生成被 Git 忽略的 `.dev/` 实例配置，启动并等待 PostgreSQL/Garage，执行完整 migration，并幂等初始化本地管理员。重复执行是安全的。
+
+Next.js 默认在宿主机运行，以避免 Windows/macOS Docker 文件系统对 HMR 的影响。需要完整容器环境时使用：
 
 ```powershell
-docker compose --env-file .env.dev -f docker-compose-dev.yml up --detach --wait
-pnpm dev
+pnpm local:container:dev
 ```
 
-`.env.local` 只保存应用运行时及宿主机数据库工具所需配置；Next.js 会自动读取它，`pnpm db:migrate` 也会显式加载它。`.env.dev` 只保存本地 Compose 与一次性管理员初始化配置，Compose 必须通过 `--env-file .env.dev` 显式读取，`pnpm auth:bootstrap` 会同时加载 `.env.local` 和 `.env.dev`。
-
-从旧配置升级时，把原 `.env` 中的应用运行时值迁入 `.env.local`，把 Compose 端口与 `AUTH_BOOTSTRAP_*` 迁入 `.env.dev`，确认新命令可用后再自行移除旧 `.env`。不要长期保留两份配置；Next.js 仍会读取 `.env`，同名变量可能掩盖分层错误。
-
-本地环境刻意让 `.env.dev` 的 `DEV_POSTGRES_USER` 同时承担数据库 owner、应用与迁移账号；`.env.local` 中的 `PG_USER` 和密码必须与之保持一致。生产环境必须拆分最小权限角色。PostgreSQL 官方镜像只在数据卷为空时应用初始化账号，修改环境文件不会重写已有卷内角色与密码。
-
-Garage 会幂等初始化 `.env.dev` 指定的私有桶与应用写入密钥。`.env.dev.example` 的固定凭据只适用于绑定 loopback 的本地环境；`.env.local` 中的 `OBJECT_STORAGE_BUCKET`、Access Key 和 Secret 必须与 Garage bootstrap 值保持一致。生产必须注入独立凭据，浏览器与 API 响应不得暴露访问密钥或 Garage endpoint。
+完整命令、运行模式、诊断和清理说明见 [`docs/local-development.md`](docs/local-development.md)。`.env.runtime.example` 与 `.env.dev.example` 只作为手工配置和变量参考；正常 worktree 流程不复制 `.env` 文件。
 
 ## 数据库与迁移
 

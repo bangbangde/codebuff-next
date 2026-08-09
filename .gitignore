@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# per-worktree local environment state
+/.dev/
+
 # next.js
 /.next/
 /out/

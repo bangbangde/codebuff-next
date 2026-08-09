@@ -1,6 +1,43 @@
-name: codebuff-local
-
 services:
+  app:
+    profiles: ["app"]
+    init: true
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command:
+      - sh
+      - -lc
+      - pnpm install --frozen-lockfile --offline --store-dir=/pnpm/store && pnpm exec next dev --hostname 0.0.0.0 --port 3000
+    working_dir: /workspace
+    environment:
+      PG_USER: ${DEV_POSTGRES_USER:-codebuff}
+      PG_PWD: ${DEV_POSTGRES_PASSWORD:-codebuff}
+      PG_DB: ${DEV_POSTGRES_DB:-codebuff_next}
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_POOL_MAX: 5
+      PG_CONNECTION_TIMEOUT_MS: 10000
+      BETTER_AUTH_URL: http://localhost:${APP_PORT:-3000}
+      PASSKEY_RP_ID: localhost
+      BETTER_AUTH_SECRETS: ${BETTER_AUTH_SECRETS}
+      OBJECT_STORAGE_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_REGION: garage
+      OBJECT_STORAGE_BUCKET: ${GARAGE_BOOTSTRAP_BUCKET}
+      OBJECT_STORAGE_ACCESS_KEY_ID: ${GARAGE_BOOTSTRAP_ACCESS_KEY_ID}
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: ${GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      - .:/workspace
+      - app_node_modules:/workspace/node_modules
+      - app_next_cache:/workspace/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+
   postgres:
     image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
@@ -49,6 +86,8 @@ services:
       retries: 3
 
 volumes:
+  app_node_modules:
+  app_next_cache:
   postgres_data:
   garage_data:
 
