@@ -37,7 +37,7 @@ Next.js 默认在宿主机运行，以避免 Windows/macOS Docker 文件系统�
 pnpm local:container:dev
 ```
 
-完整命令、运行模式、诊断和清理说明见 [`docs/local-development.md`](docs/local-development.md)。`.env.runtime.example` 与 `.env.dev.example` 只作为手工配置和变量参考；正常 worktree 流程不复制 `.env` 文件。
+完整命令、运行模式、诊断和清理说明见 [`docs/local-development.md`](docs/local-development.md)。正常 worktree 流程不复制 `.env` 文件；隔离所需的运行配置由本地工作区脚本生成。
 
 ## 数据库与迁移
 
