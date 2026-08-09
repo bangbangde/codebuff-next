@@ -3,8 +3,8 @@ services:
     profiles: ["app"]
     init: true
     build:
-      context: ../..
-      dockerfile: scripts/local/docker/app/Dockerfile
+      context: ..
+      dockerfile: local-development/docker/app/Dockerfile
     command:
       - sh
       - -lc
@@ -29,7 +29,7 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:
-      - ../..:/workspace
+      - ..:/workspace
       - app_node_modules:/workspace/node_modules
       - app_next_cache:/workspace/.next
     depends_on:
@@ -60,8 +60,8 @@ services:
 
   garage:
     build:
-      context: ../..
-      dockerfile: scripts/local/docker/garage/Dockerfile
+      context: ..
+      dockerfile: local-development/docker/garage/Dockerfile
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DEV_GARAGE_S3_PORT:-3900}:3900"

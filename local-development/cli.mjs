@@ -12,11 +12,11 @@ import {
   status,
   stop,
   verify,
-} from "./workspace/commands.mjs";
+} from "./commands.mjs";
 import {
   ensureWorkspaceInstance,
   requireWorkspaceInstance,
-} from "./workspace/instance.mjs";
+} from "./instance.mjs";
 
 const commands = {
   bootstrap: async () => bootstrap(await ensureWorkspaceInstance()),
@@ -40,7 +40,7 @@ async function main() {
 
   if (!command) {
     throw new Error(
-      `Usage: node scripts/local/workspace.mjs <${Object.keys(commands).join("|")}>`,
+      `Usage: node local-development/cli.mjs <${Object.keys(commands).join("|")}>`,
     );
   }
 

@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 
-import { getPostgresConfig } from "../../../lib/db/config";
+import { getPostgresConfig } from "../lib/db/config";
 
 const migrationsFolder = path.join(__dirname, "drizzle");
 

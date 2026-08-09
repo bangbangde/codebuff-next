@@ -6,7 +6,7 @@ import { build } from "esbuild";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
+  "..",
 );
 const runtimeToolsRoot = path.join(projectRoot, ".build", "runtime-tools");
 const authBuildRoot = path.join(runtimeToolsRoot, "auth");
@@ -34,13 +34,13 @@ const sharedBuildOptions = {
 await Promise.all([
   build({
     ...sharedBuildOptions,
-    entryPoints: ["scripts/src/db/migrate.ts"],
+    entryPoints: ["scripts/migrate.ts"],
     format: "cjs",
     outfile: path.join(databaseBuildRoot, "migrate.cjs"),
   }),
   build({
     ...sharedBuildOptions,
-    entryPoints: ["scripts/src/auth/bootstrap-user.mjs"],
+    entryPoints: ["scripts/bootstrap-user.mjs"],
     format: "cjs",
     outfile: path.join(authBuildRoot, "bootstrap-user.cjs"),
   }),

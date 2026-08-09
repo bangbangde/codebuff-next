@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const workspaceModuleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
-export const projectRoot = path.resolve(workspaceModuleDirectory, "../../..");
+export const projectRoot = path.resolve(workspaceModuleDirectory, "..");
 export const workspaceStateDirectory = path.join(projectRoot, ".dev");
 export const workspaceInstanceFile = path.join(
   workspaceStateDirectory,
@@ -15,7 +15,6 @@ export const workspaceEnvironmentFile = path.join(
 );
 export const localComposeFile = path.join(
   projectRoot,
-  "scripts",
-  "local",
+  "local-development",
   "compose.yml",
 );

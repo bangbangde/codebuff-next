@@ -99,7 +99,7 @@ pnpm local:status
 - migration 失败：检查 PostgreSQL health 和 `pnpm local:status`，不要直接修改已提交 migration。
 - Garage 失败：查看当前 Compose project 的 Garage 日志，不要把开发密钥输出到 Issue 或 PR。
 
-如需直接执行 Compose 调试，必须从 `pnpm local:status` 获取当前 Compose project 和 `.dev/environment.env`，始终同时传入 `-p`、`--env-file` 和 `-f scripts/local/compose.yml`，避免操作其他 worktree。
+如需直接执行 Compose 调试，必须从 `pnpm local:status` 获取当前 Compose project 和 `.dev/environment.env`，始终同时传入 `-p`、`--env-file` 和 `-f local-development/compose.yml`，避免操作其他 worktree。
 
 ## Codex Local Environment
 
