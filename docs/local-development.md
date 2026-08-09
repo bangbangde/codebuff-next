@@ -63,7 +63,7 @@ Next.js 的版本内文档建议 Windows/macOS 日常开发优先使用宿主机
 | `pnpm local:status` | 显示实例、端口、URL 和 Compose 状态 |
 | `pnpm local:doctor` | 检查 Node、pnpm、Docker、Compose 和渲染后的 Compose 配置 |
 | `pnpm local:verify` | 运行 lint、typecheck、production build 和 `git diff --check` |
-| `pnpm local:container:verify` | 在 app 容器运行 lint、typecheck 和 production build |
+| `pnpm local:container:verify` | 在 app 容器运行 lint、typecheck 和 production build；使用一次性 `.next` volume |
 | `pnpm local:stop` | 停止当前实例，保留数据卷和实例配置 |
 | `pnpm local:reset` | 删除当前实例的数据卷后重新 bootstrap |
 | `pnpm local:destroy` | 删除当前实例的 Compose 资源、数据卷和 `.dev/` 配置 |

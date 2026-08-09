@@ -537,6 +537,9 @@ async function containerVerify(instance) {
     "app",
     "run",
     "--rm",
+    "--no-deps",
+    "--volume",
+    "/workspace/.next",
     "app",
     "sh",
     "-lc",
@@ -546,7 +549,13 @@ async function containerVerify(instance) {
 }
 
 async function reset(instance) {
-  await runCompose(instance, ["down", "--volumes", "--remove-orphans"]);
+  await runCompose(instance, [
+    "--profile",
+    "app",
+    "down",
+    "--volumes",
+    "--remove-orphans",
+  ]);
   await bootstrap(instance);
 }
 
@@ -555,7 +564,13 @@ async function destroy(instance) {
     throw new Error("Refusing to destroy an unrecognized Compose project.");
   }
 
-  await runCompose(instance, ["down", "--volumes", "--remove-orphans"]);
+  await runCompose(instance, [
+    "--profile",
+    "app",
+    "down",
+    "--volumes",
+    "--remove-orphans",
+  ]);
   releaseReservation(instance.slot);
   const resolvedStateDirectory = path.resolve(stateDirectory);
   if (path.dirname(resolvedStateDirectory) !== projectRoot) {
