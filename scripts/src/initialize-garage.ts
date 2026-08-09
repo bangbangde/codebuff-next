@@ -7,6 +7,10 @@ type GarageKeyListEntry = {
   name?: string;
 };
 
+type GarageKeyInfo = {
+  secretAccessKey?: string;
+};
+
 type GarageBucketListEntry = {
   id: string;
   globalAliases?: string[];
@@ -22,6 +26,8 @@ type GarageAdminRequestOptions = {
 };
 
 const garageAdminRequestTimeoutMs = 15_000;
+const garageAccessKeyIdPattern = /^GK[0-9a-f]{24,64}$/;
+const garageSecretAccessKeyPattern = /^[0-9a-f]{64}$/;
 
 function requiredEnvironmentVariable(name: string): string {
   const value = process.env[name]?.trim();
@@ -55,6 +61,31 @@ function requiredBucketNames(): string[] {
       ),
     ),
   );
+}
+
+function runtimeCredentials(): {
+  accessKeyId: string;
+  secretAccessKey: string;
+} {
+  const accessKeyId = requiredEnvironmentVariable(
+    "OBJECT_STORAGE_ACCESS_KEY_ID",
+  );
+  const secretAccessKey = requiredEnvironmentVariable(
+    "OBJECT_STORAGE_SECRET_ACCESS_KEY",
+  );
+
+  if (!garageAccessKeyIdPattern.test(accessKeyId)) {
+    throw new Error(
+      "OBJECT_STORAGE_ACCESS_KEY_ID must be a Garage access key ID",
+    );
+  }
+  if (!garageSecretAccessKeyPattern.test(secretAccessKey)) {
+    throw new Error(
+      "OBJECT_STORAGE_SECRET_ACCESS_KEY must be a 64-character lowercase hexadecimal Garage secret",
+    );
+  }
+
+  return { accessKeyId, secretAccessKey };
 }
 
 function responseDescription(text: string): string {
@@ -134,6 +165,35 @@ async function ensureBucket(
   return bucket.id;
 }
 
+async function ensureRuntimeKey(
+  keys: GarageKeyListEntry[],
+  accessKeyId: string,
+  secretAccessKey: string,
+): Promise<void> {
+  if (!keys.some((key) => key.id === accessKeyId)) {
+    await garageAdminRequest<GarageKeyInfo>("key/import", {
+      body: {
+        accessKeyId,
+        name: "codebuff runtime key",
+        secretAccessKey,
+      },
+      method: "POST",
+    });
+    console.info("Garage runtime key imported");
+    return;
+  }
+
+  const key = await garageAdminRequest<GarageKeyInfo>(
+    `key?id=${encodeURIComponent(accessKeyId)}&showSecretKey=true`,
+  );
+  if (key.secretAccessKey !== secretAccessKey) {
+    throw new Error(
+      "OBJECT_STORAGE_SECRET_ACCESS_KEY does not match the existing Garage key",
+    );
+  }
+  console.info("Garage runtime key is already configured");
+}
+
 async function reconcileRuntimePermissions(
   bucketId: string,
   bucketAlias: string,
@@ -159,22 +219,18 @@ async function reconcileRuntimePermissions(
 }
 
 export async function initializeGarage(): Promise<void> {
-  const runtimeAccessKeyId = requiredEnvironmentVariable(
-    "OBJECT_STORAGE_ACCESS_KEY_ID",
-  );
+  const runtime = runtimeCredentials();
   const keys = await garageAdminRequest<GarageKeyListEntry[]>("key?list");
 
-  if (!keys.some((key) => key.id === runtimeAccessKeyId)) {
-    throw new Error(
-      "OBJECT_STORAGE_ACCESS_KEY_ID does not exist in Garage; " +
-        "provision the runtime key before running deployment initialization",
-    );
-  }
+  await ensureRuntimeKey(keys, runtime.accessKeyId, runtime.secretAccessKey);
 
-  await garageAdminRequest(`key?id=${encodeURIComponent(runtimeAccessKeyId)}`, {
-    body: { deny: { createBucket: true } },
-    method: "POST",
-  });
+  await garageAdminRequest(
+    `key?id=${encodeURIComponent(runtime.accessKeyId)}`,
+    {
+      body: { deny: { createBucket: true } },
+      method: "POST",
+    },
+  );
 
   const buckets = await garageAdminRequest<GarageBucketListEntry[]>(
     "bucket?list",
@@ -185,7 +241,7 @@ export async function initializeGarage(): Promise<void> {
     await reconcileRuntimePermissions(
       bucketId,
       bucketAlias,
-      runtimeAccessKeyId,
+      runtime.accessKeyId,
     );
   }
 }

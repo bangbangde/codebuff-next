@@ -2,7 +2,6 @@ import { rmSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import { ensureLocalGarageRuntimeKey } from "./garage.mjs";
 import { workspaceEnvironment } from "./instance.mjs";
 import {
   localComposeFile,
@@ -52,13 +51,12 @@ export async function startInfrastructure(instance) {
 export async function bootstrap(instance) {
   await doctor(instance, { includeStatus: false });
   await startInfrastructure(instance);
-  const readyInstance = await ensureLocalGarageRuntimeKey(instance);
-  const env = processEnvironment(readyInstance);
+  const env = processEnvironment(instance);
   await run("pnpm", ["build:scripts"], { env });
   await run("node", [".build/deploy.mjs", "prepare"], { env });
   await run("node", [".build/deploy.mjs", "auth:bootstrap"], { env });
   console.info("Local development workspace is ready.");
-  await status(readyInstance);
+  await status(instance);
 }
 
 export async function status(instance) {

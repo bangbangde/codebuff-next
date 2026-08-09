@@ -228,27 +228,3 @@ export function requireWorkspaceInstance() {
 
   return loadWorkspaceInstance();
 }
-
-export function updateWorkspaceGarageCredentials(
-  instance,
-  { accessKeyId, secretAccessKey },
-) {
-  if (!/^GK[0-9a-f]{24}$/.test(accessKeyId || "")) {
-    throw new Error("Garage returned an invalid runtime access key ID");
-  }
-  if (!/^[0-9a-f]{64}$/.test(secretAccessKey || "")) {
-    throw new Error("Garage returned an invalid runtime secret access key");
-  }
-
-  const updatedInstance = validateWorkspaceInstance({
-    ...instance,
-    secrets: {
-      ...instance.secrets,
-      garageAccessKeyId: accessKeyId,
-      garageSecretAccessKey: secretAccessKey,
-    },
-  });
-  writeWorkspaceInstance(updatedInstance);
-  writeWorkspaceEnvironment(updatedInstance);
-  return updatedInstance;
-}
