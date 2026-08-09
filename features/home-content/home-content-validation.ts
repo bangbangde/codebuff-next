@@ -37,7 +37,9 @@ export const updateHomeLatestNotesConfigSchema = z.object({
       const seen = new Set<string>();
 
       noteIds.forEach((noteId, index) => {
-        if (seen.has(noteId)) {
+        const normalizedNoteId = noteId.toLowerCase();
+
+        if (seen.has(normalizedNoteId)) {
           context.addIssue({
             code: "custom",
             message: "同一篇文章不能重复置顶。",
@@ -45,7 +47,7 @@ export const updateHomeLatestNotesConfigSchema = z.object({
           });
         }
 
-        seen.add(noteId);
+        seen.add(normalizedNoteId);
       });
     }),
   updatedBy: updatedBySchema,
