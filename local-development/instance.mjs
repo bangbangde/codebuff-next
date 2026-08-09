@@ -20,7 +20,7 @@ import {
 } from "./ports.mjs";
 import { objectStorageBuckets } from "../lib/object-storage/schema.mjs";
 
-const instanceSchemaVersion = 1;
+const instanceSchemaVersion = 2;
 
 const localDefaults = Object.freeze({
   postgresUser: "codebuff",
@@ -37,12 +37,53 @@ function readJson(file) {
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
+function writeWorkspaceInstance(instance) {
+  writeFileSync(
+    workspaceInstanceFile,
+    `${JSON.stringify(instance, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+}
+
+function migrateWorkspaceInstance(instance) {
+  if (instance?.schemaVersion !== 1) {
+    return { changed: false, instance };
+  }
+
+  return {
+    changed: true,
+    instance: {
+      ...instance,
+      schemaVersion: instanceSchemaVersion,
+      ports: {
+        ...instance.ports,
+        garageAdmin: instance.ports.app + 5,
+      },
+      secrets: {
+        ...instance.secrets,
+        garageAdminToken: randomBytes(32).toString("hex"),
+      },
+    },
+  };
+}
+
 function validateWorkspaceInstance(instance) {
   const canonicalRoot = normalizedPath(projectRoot);
+  const requiredPortNames = [
+    "app",
+    "postgres",
+    "garageS3",
+    "garageRpc",
+    "garageWeb",
+    "garageAdmin",
+  ];
   const validPorts =
     instance?.ports &&
-    Object.values(instance.ports).every(
-      (port) => Number.isSafeInteger(port) && port > 0 && port <= 65_535,
+    requiredPortNames.every(
+      (name) =>
+        Number.isSafeInteger(instance.ports[name]) &&
+        instance.ports[name] > 0 &&
+        instance.ports[name] <= 65_535,
     );
 
   if (
@@ -54,8 +95,9 @@ function validateWorkspaceInstance(instance) {
     !validPorts ||
     !instance?.secrets?.postgresPassword ||
     !instance?.secrets?.betterAuthSecret ||
-    !instance?.secrets?.garageAccessKeyId ||
-    !instance?.secrets?.garageSecretAccessKey
+    !/^[0-9a-f]{64}$/.test(instance?.secrets?.garageAdminToken || "") ||
+    !/^GK[0-9a-f]{24}$/.test(instance?.secrets?.garageAccessKeyId || "") ||
+    !/^[0-9a-f]{64}$/.test(instance?.secrets?.garageSecretAccessKey || "")
   ) {
     throw new Error(
       "Invalid local workspace state at .dev/instance.json. " +
@@ -72,6 +114,9 @@ export function workspaceEnvironment(instance, { container = false } = {}) {
   const objectStorageEndpoint = container
     ? "http://garage:3900"
     : `http://127.0.0.1:${instance.ports.garageS3}`;
+  const garageAdminEndpoint = container
+    ? "http://garage:3903"
+    : `http://127.0.0.1:${instance.ports.garageAdmin}`;
   const objectStorageBucketNames = Object.fromEntries(
     Object.entries(objectStorageBuckets).map(
       ([name, bucket]) => [
@@ -94,10 +139,9 @@ export function workspaceEnvironment(instance, { container = false } = {}) {
     DEV_GARAGE_S3_PORT: String(instance.ports.garageS3),
     DEV_GARAGE_RPC_PORT: String(instance.ports.garageRpc),
     DEV_GARAGE_WEB_PORT: String(instance.ports.garageWeb),
-    GARAGE_REQUIRED_BUCKETS: Object.values(objectStorageBucketNames).join(","),
-    GARAGE_RUNTIME_ACCESS_KEY_ID: instance.secrets.garageAccessKeyId,
-    GARAGE_RUNTIME_SECRET_ACCESS_KEY:
-      instance.secrets.garageSecretAccessKey,
+    DEV_GARAGE_ADMIN_PORT: String(instance.ports.garageAdmin),
+    GARAGE_ADMIN_ENDPOINT: garageAdminEndpoint,
+    GARAGE_ADMIN_TOKEN: instance.secrets.garageAdminToken,
     PG_USER: localDefaults.postgresUser,
     PG_PWD: instance.secrets.postgresPassword,
     PG_DB: localDefaults.postgresDatabase,
@@ -146,23 +190,24 @@ async function createWorkspaceInstance() {
     secrets: {
       postgresPassword: randomBytes(24).toString("base64url"),
       betterAuthSecret: randomBytes(32).toString("hex"),
+      garageAdminToken: randomBytes(32).toString("hex"),
       garageAccessKeyId: `GK${randomBytes(12).toString("hex")}`,
       garageSecretAccessKey: randomBytes(32).toString("hex"),
     },
   };
 
   mkdirSync(workspaceStateDirectory, { recursive: true });
-  writeFileSync(
-    workspaceInstanceFile,
-    `${JSON.stringify(instance, null, 2)}\n`,
-    { mode: 0o600 },
-  );
+  writeWorkspaceInstance(instance);
   writeWorkspaceEnvironment(instance);
   return instance;
 }
 
 function loadWorkspaceInstance() {
-  const instance = validateWorkspaceInstance(readJson(workspaceInstanceFile));
+  const migrated = migrateWorkspaceInstance(readJson(workspaceInstanceFile));
+  const instance = validateWorkspaceInstance(migrated.instance);
+  if (migrated.changed) {
+    writeWorkspaceInstance(instance);
+  }
   claimPortReservation(instance);
   writeWorkspaceEnvironment(instance);
   return instance;

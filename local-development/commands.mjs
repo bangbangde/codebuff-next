@@ -53,7 +53,7 @@ export async function bootstrap(instance) {
   await startInfrastructure(instance);
   const env = processEnvironment(instance);
   await run("pnpm", ["build:scripts"], { env });
-  await run("node", [".build/deploy.mjs", "migrate"], { env });
+  await run("node", [".build/deploy.mjs", "prepare"], { env });
   await run("node", [".build/deploy.mjs", "auth:bootstrap"], { env });
   console.info("Local development workspace is ready.");
   await status(instance);
@@ -65,6 +65,9 @@ export async function status(instance) {
   console.info(`Application: http://localhost:${instance.ports.app}`);
   console.info(`PostgreSQL: 127.0.0.1:${instance.ports.postgres}`);
   console.info(`Garage S3: http://127.0.0.1:${instance.ports.garageS3}`);
+  console.info(
+    `Garage Admin: http://127.0.0.1:${instance.ports.garageAdmin}`,
+  );
   await runCompose(instance, ["--profile", "app", "ps"], {
     allowFailure: true,
   });

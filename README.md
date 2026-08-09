@@ -37,21 +37,11 @@ Next.js 默认在宿主机运行，以避免 Windows/macOS Docker 文件系统�
 pnpm local:container:dev
 ```
 
-本地开发专属的 Compose、Docker 和编排代码集中在 [`local-development/`](local-development/)；跨环境使用的构建、迁移和初始化脚本位于 [`scripts/`](scripts/)。完整命令、运行模式、诊断和清理说明见 [`docs/local-development.md`](docs/local-development.md)。正常 worktree 流程不复制 `.env` 文件；隔离所需的运行配置由本地开发 CLI 生成。
+本地开发专属的 Compose、Docker 和编排代码集中在 [`local-development/`](local-development/)；跨环境使用的构建、迁移和初始化脚本位于 [`scripts/`](scripts/)。完整命令、运行模式、诊断和清理说明见 [`docs/local-development.md`](docs/local-development.md)，本地与生产的变量边界和部署命令矩阵见 [`docs/environment-variables.md`](docs/environment-variables.md)。正常 worktree 流程不复制 `.env` 文件；隔离所需的运行配置由本地开发 CLI 生成。
 
 ## 数据库与迁移
 
-数据库使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。应用与迁移器只在真正访问数据库时读取配置，所以构建不要求数据库连通性。
-
-| 环境变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `PG_USER` | 无 | 必填；本地复用全能账号，生产按阶段注入 |
-| `PG_PWD` | 无 | 必填；不得写入日志 |
-| `PG_HOST` | `postgres` | 非生产环境可覆盖 |
-| `PG_PORT` | `5432` | 非生产环境可覆盖 |
-| `PG_DB` | `codebuff_next` | 非生产环境可覆盖 |
-| `PG_POOL_MAX` | `5` | 应用连接池上限 |
-| `PG_CONNECTION_TIMEOUT_MS` | `10000` | 连接超时，单位毫秒 |
+数据库使用 Drizzle ORM、`pg` 连接池和 PostgreSQL 18。应用与迁移器只在真正访问数据库时读取配置，所以构建不要求数据库连通性。生产环境应为常驻应用和迁移任务分别注入所需数据库凭据，完整变量契约见 [`docs/environment-variables.md`](docs/environment-variables.md)。
 
 认证 schema 与 SQL migration 都是版本化产物：
 
@@ -69,19 +59,9 @@ pnpm db:migrate
 
 资产上传由服务端校验文件签名，单文件上限 10 MiB，接受 JPEG、PNG、WebP、GIF、AVIF 与 PDF。对象键由服务端生成，Garage 写入成功但数据库落库失败时会 best-effort 回滚。公开资产路由只为已发布 Note 提供其所属资产，不暴露存储凭据。
 
-对象存储运行时需要：
+业务所需 bucket 在 `lib/object-storage/schema.mjs` 中声明。`pnpm garage:initialize` 会先构建部署 CLI，再通过 Garage v1 Admin API 幂等导入外部配置的 `OBJECT_STORAGE_ACCESS_KEY_ID` 与 `OBJECT_STORAGE_SECRET_ACCESS_KEY`、创建这些 bucket，并将运行时 key 权限收敛为 read/write（显式禁止创建 bucket 和 owner 权限）。如果 key 已存在，初始化器会校验 secret 一致而不会覆盖。Garage 将 ImportKey 定位为迁移与备份恢复能力；这里只用于恢复部署系统持有的固定 Garage 格式凭据，不能当作任意 key ID 生成器，也不能跨集群复用凭据。
 
-| 环境变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `OBJECT_STORAGE_ENDPOINT` | 无 | 必填；服务端可访问的绝对 URL |
-| `OBJECT_STORAGE_REGION` | `garage` | S3 兼容区域标识 |
-| `OBJECT_STORAGE_BUCKET` | 无 | 必填；私有应用资产桶 |
-| `OBJECT_STORAGE_ACCESS_KEY_ID` | 无 | 必填；最小权限访问密钥 |
-| `OBJECT_STORAGE_SECRET_ACCESS_KEY` | 无 | 必填；不得写入日志或响应 |
-
-业务所需 bucket 在 `lib/object-storage/schema.mjs` 中声明。`pnpm garage:initialize` 会先构建部署 CLI，再通过 Garage 管理 CLI 幂等创建这些 bucket、导入运行时 key，并将其权限收敛为 read/write（显式禁止创建 bucket 和 owner 权限）。
-
-生产部署必须像数据库迁移一样隔离管理身份与应用身份：一次性部署任务通过 `GARAGE_CONFIG_FILE`（或 Garage CLI 自身的远程管理配置）取得管理权限，并通过 `GARAGE_RUNTIME_ACCESS_KEY_ID` / `GARAGE_RUNTIME_SECRET_ACCESS_KEY` 指定待授权的运行时 key；未单独指定时会复用 `OBJECT_STORAGE_ACCESS_KEY_ID` / `OBJECT_STORAGE_SECRET_ACCESS_KEY`。常驻应用只接收 `OBJECT_STORAGE_*`，不得挂载 Garage 管理配置。
+Garage Admin token 只注入一次性部署任务，常驻应用只接收最小权限的对象存储运行时凭据。各进程的精确变量集合、格式和轮换方式见 [`docs/environment-variables.md`](docs/environment-variables.md)。
 
 构建后的统一部署入口为 `.build/deploy.mjs`：
 
@@ -92,7 +72,7 @@ node .build/deploy.mjs garage:initialize
 node .build/deploy.mjs auth:bootstrap
 ```
 
-其中 `prepare` 适合应用切换前的一次性部署任务；首次管理员创建保持为显式命令，不属于每次生产部署。
+其中 `prepare` 适合应用切换前的一次性部署任务；Garage 运行时 key 的幂等导入属于 Garage 初始化，应用管理员创建仍是独立的凭据引导步骤，不属于每次生产部署。
 
 迁移期间应用仍兼容对应的 `ARTICLE_S3_*` 旧变量；新配置只应使用 `OBJECT_STORAGE_*`。实体 Bucket 不随变量改名而自动迁移。
 
@@ -102,15 +82,7 @@ node .build/deploy.mjs auth:bootstrap
 
 Passkey 注册与登录要求用户验证。密码登录可进入 TOTP/恢复码流程；Passkey 登录成功后不重复进入 TOTP。Passkey 管理要求最近 10 分钟内建立的 Session，且不能移除账户最后一个登录方式。
 
-认证运行时需要：
-
-| 环境变量 | 说明 |
-| --- | --- |
-| `BETTER_AUTH_URL` | 公开 origin；生产必须 HTTPS |
-| `PASSKEY_RP_ID` | 必须等于公开 hostname 或其可注册父域 |
-| `BETTER_AUTH_SECRETS` | 版本化密钥列表；首项写入新数据 |
-
-Home 与 Notes 会查询 PostgreSQL；`/me` 只执行静态重定向，`/sign-in` 的初始渲染不依赖数据库。认证 API、Admin Notes 编辑器与账户设置会初始化认证运行时。
+认证运行时变量和管理员引导变量必须分开注入，完整契约见 [`docs/environment-variables.md`](docs/environment-variables.md)。Home 与 Notes 会查询 PostgreSQL；`/me` 只执行静态重定向，`/sign-in` 的初始渲染不依赖数据库。认证 API、Admin Notes 编辑器与账户设置会初始化认证运行时。
 
 ## 校验基线
 

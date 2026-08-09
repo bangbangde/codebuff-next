@@ -24,8 +24,8 @@ services:
       OBJECT_STORAGE_ENDPOINT: http://garage:3900
       OBJECT_STORAGE_REGION: garage
       OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET}
-      OBJECT_STORAGE_ACCESS_KEY_ID: ${GARAGE_RUNTIME_ACCESS_KEY_ID}
-      OBJECT_STORAGE_SECRET_ACCESS_KEY: ${GARAGE_RUNTIME_SECRET_ACCESS_KEY}
+      OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID}
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_SECRET_ACCESS_KEY}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:
@@ -49,9 +49,10 @@ services:
       - "127.0.0.1:${DEV_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./docker/postgres/healthcheck.sh:/usr/local/bin/postgres-healthcheck.sh:ro
     healthcheck:
-      test: ["CMD", "/bin/sh", "/usr/local/bin/postgres-healthcheck.sh"]
+      test:
+        - CMD-SHELL
+        - pg_isready --username "$${POSTGRES_USER}" --dbname "$${POSTGRES_DB}"
       interval: 10s
       start_interval: 1s
       start_period: 30s
@@ -59,26 +60,24 @@ services:
       retries: 5
 
   garage:
-    build:
-      context: ..
-      dockerfile: local-development/docker/garage/Dockerfile
+    image: dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690
+    command:
+      - /garage
+      - server
+      - --single-node
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DEV_GARAGE_S3_PORT:-3900}:3900"
       - "127.0.0.1:${DEV_GARAGE_RPC_PORT:-3901}:3901"
       - "127.0.0.1:${DEV_GARAGE_WEB_PORT:-3902}:3902"
+      - "127.0.0.1:${DEV_GARAGE_ADMIN_PORT:-3903}:3903"
     volumes:
-      - garage_data:/var/lib/garage
+      - garage_v2_data:/var/lib/garage
     configs:
       - source: garage_config
-        target: /etc/garage/garage.toml
-    environment:
-      GARAGE_CONFIG_FILE: /etc/garage/garage.toml
-      GARAGE_REQUIRED_BUCKETS: ${GARAGE_REQUIRED_BUCKETS:-codebuff-next-article}
-      GARAGE_RUNTIME_ACCESS_KEY_ID: ${GARAGE_RUNTIME_ACCESS_KEY_ID:-GK0123456789abcdef01234567}
-      GARAGE_RUNTIME_SECRET_ACCESS_KEY: ${GARAGE_RUNTIME_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+        target: /etc/garage.toml
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/garage-layout-ready && /garage status"]
+      test: ["CMD", "/garage", "status"]
       interval: 30s
       start_interval: 1s
       start_period: 30s
@@ -89,8 +88,33 @@ volumes:
   app_node_modules:
   app_next_cache:
   postgres_data:
+  # Garage 1.x data is intentionally not mounted into Garage 2.x. Keeping the
+  # legacy volume declared lets local reset/destroy remove it explicitly.
   garage_data:
+  garage_v2_data:
 
 configs:
   garage_config:
-    file: ./docker/garage/garage.toml
+    content: |
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+      db_engine = "lmdb"
+      replication_factor = 1
+
+      # Fixed development-only secret. Production must inject a generated secret.
+      rpc_secret = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      rpc_bind_addr = "[::]:3901"
+      rpc_public_addr = "garage:3901"
+
+      [s3_api]
+      s3_region = "garage"
+      api_bind_addr = "[::]:3900"
+      root_domain = ".s3.garage.localhost"
+
+      [s3_web]
+      bind_addr = "[::]:3902"
+      root_domain = ".web.garage.localhost"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
+      admin_token = "${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}"
