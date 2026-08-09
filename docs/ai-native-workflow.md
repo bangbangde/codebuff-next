@@ -1,204 +1,58 @@
 # AI-native Workflow
 
-## Purpose
+This file contains only project-specific workflow rules. Use the lightest process that preserves the relevant product boundary.
 
-This document defines the AI-native development process used in this repository. Product direction belongs in `docs/project.md`; phase scope belongs in the description of an owner-approved open GitHub Milestone.
+## Sources
 
-The workflow should make work stable, reviewable, and easy to continue across human and AI sessions without allowing process or documentation to become the main product output.
+- `docs/project.md`: stable product and technical direction.
+- Current task or GitHub Issue: deliverable and acceptance criteria.
+- Assigned GitHub Milestone: phase boundary.
+- Pull request: delivery evidence and review record.
 
-## Source Responsibilities
+The work item cannot override its Milestone or authorize a phase-boundary change.
 
-| Source | Responsibility |
-| --- | --- |
-| `AGENTS.md` | Context-loading and change-boundary instructions for agents |
-| `docs/project.md` | Stable product and technical direction |
-| `docs/ai-native-workflow.md` | Milestone lifecycle and collaboration process |
-| GitHub Milestone | Phase objective, scope, non-goals, constraints, closure criteria, consequential decision links, and closure |
-| GitHub Issue or current task | Focused outcome, requirements, and acceptance criteria |
-| Pull request | Delivery record, evidence, review context, and milestone impact |
+## Work Paths
 
-A work item is normally a GitHub Issue. A current task may be used for small, ad hoc, offline, or maintenance work that does not change product scope. Repository task files must not duplicate an Issue or conversation.
+- **Current task:** small ad hoc, offline, diagnostic, or maintenance work that does not change product scope.
+- **Standalone Issue:** a bounded one-off change with explicit outcome, exclusions, acceptance criteria, and independence from the active Milestone.
+- **Milestone Issue:** product, UI, or architecture work contributing to an approved phase.
 
-The repository does not maintain milestone pointers, Contracts, Tracking, Closure Summaries, or milestone archives. When instructions conflict, use the work item for the deliverable, its GitHub Milestone when assigned for the phase boundary, and `docs/project.md` for long-term direction. A standalone Issue owns only its explicitly bounded deliverable and must remain independent of any active Milestone boundary. Changing the phase boundary requires explicit owner approval through the process below.
+Before implementing a standalone Issue while a product Milestone is active, inspect that Milestone. The Issue must not change its boundary, consume a required phase decision, or become necessary for its closure. If this stops being true, pause the conflicting work and move it into the Milestone or `milestone-change` process.
 
-## Delivery Model
+An explicit owner request starts local work; creating or labeling an Issue does not. If required live context is missing, stop only the affected implementation.
 
-```text
-Project direction
-  -> GitHub Milestone -> Milestone Issue -> Change
-  -> Standalone Issue --------------------> Change
-                                             -> Review, evidence, and decision
-```
+## Milestones
 
-A milestone is a phase boundary, not a single task. Work items may proceed in parallel when they fit the same milestone and do not depend on unresolved owner decisions.
+Keep at most one product Milestone open. Use one for a multi-item product or architecture phase or for decisions affecting later work; otherwise prefer a current task or standalone Issue.
 
-A standalone Issue may also proceed alongside an active Milestone. It is a separate delivery track: it must define a bounded outcome, requirements, exclusions, and acceptance criteria; state why it is independent; and neither change nor depend on the active Milestone boundary. It is not assigned to the Milestone and does not contribute to Milestone progress or closure. Concurrency alone does not make work part of the active phase.
-
-Attach normal milestone work to the Milestone through its Issue. A pull request should close or link that Issue but should not also be assigned to the Milestone, because assigning both would count the same work twice in GitHub's milestone progress. A pull request without an Issue may be assigned directly only as an explicit exception.
-
-## Product-slice-first UI Work
-
-Do not establish a UI foundation, design system, component catalog, or prototype infrastructure in isolation. Start with a concrete, reviewable product surface and create only the styles, components, and supporting structure that surface needs.
-
-Promote a pattern into shared UI only after current product work demonstrates repeated use or a meaningful shared semantic or behavioral need. Early UI milestones should optimize for product learning before infrastructure completeness.
-
-## Starting Local Agent Work
-
-Creating or labeling an Issue does not start a local AI agent. The default trigger is an explicit owner instruction such as `Implement Issue #12`; the agent then reads the Issue, its associated GitHub Milestone when assigned, the active Milestone for an independence check when the Issue is standalone, and the required repository context. The owner should not copy the Issue body into the conversation.
-
-Milestone-dependent product, UI, or architecture implementation requires an owner-approved open GitHub Milestone and an associated work item. If the associated Milestone is unavailable or ambiguous, the agent must stop that implementation and report the missing context.
-
-A standalone Issue may start independently, including while a product Milestone is open, when the Issue explicitly identifies itself as independent and contains enough context to execute and verify without inheriting Milestone scope. Before work, the agent must inspect the active Milestone when one exists and confirm that the standalone outcome does not change its boundary, consume one of its required decisions, or become necessary for its closure. If independence cannot be established, assign or propose the work through the appropriate Milestone process instead. A bounded current task remains available for small ad hoc, offline, or maintenance work. Polling or automatic execution remains outside the baseline workflow.
-
-## Status and Bounded Operations
-
-Before reporting project status or choosing the next work item, inspect the stable project and workflow documents, the local branch and worktree, the relevant Issue, and its open GitHub Milestone. Distinguish live GitHub state from local or remembered context.
-
-An exact owner instruction to change a named Issue, pull request, branch, or other GitHub object authorizes only that target. Do not infer adjacent cleanup, Milestone edits, or broader workflow changes from a bounded operation.
-
-Before dependency, setup, or tooling changes, inspect the repository's existing package and configuration wiring. Change or reinstall only after confirming a real gap.
-
-## GitHub Milestone Model
-
-An owner-approved open GitHub Milestone is the only active phase Contract. Keep at most one product Milestone open at a time. A proposed phase is discussed in an unassigned Issue and becomes active only when the owner approves its boundary and the Milestone is created or opened.
-
-Use this compact structure in the Milestone description:
+Use this description:
 
 ```md
 ## Objective
-
 ## Scope
-
 ## Non-goals
-
 ## Constraints
-
 ## Closure criteria
-
 ## Decisions
-
 ## Closure
 ```
 
-The first five sections define the phase boundary. Closure criteria describe when the phase can end; they do not restate the completion checks for each Issue. `Decisions` links only consequential Issue or pull-request decisions that affect later work. `Closure` remains empty until owner-led closure.
+The first five sections are the phase boundary. `Decisions` contains links to consequential decisions; `Closure` stays empty until closure.
 
-### When to use a Milestone
+Creating, opening, editing, or closing a Milestone requires explicit owner authorization. Description edits are limited to approved boundary changes, consequential decision links, and owner-led closure. A boundary change requires an Issue labeled `milestone-change` that records the change, consequences, reason it cannot wait, and owner approval.
 
-Create a Milestone when work represents an owner-approved product or architecture phase, is likely to need more than one implementation or review Issue, or requires decisions that affect multiple work items or later phases. Use a standalone Issue for maintenance, bugs, and bounded one-off changes that do not need a phase boundary or owner-led closure and can remain independent of any active Milestone.
+To activate a phase: propose it in an unassigned Issue, obtain owner approval, open the Milestone, then create only the first ready work items. Do not begin phase implementation earlier.
 
-### Progress and decisions
+To close a phase: review the evidence and running product or UI, obtain owner acceptance, resolve or defer remaining Issues, fill `Closure`, and close the Milestone. Propose the next phase separately.
 
-GitHub's open and closed Issue counts provide routine progress. Do not reproduce task lists, implementation steps, commit lists, or activity logs in the Milestone description.
+Assign Milestone work through its Issue. Link the pull request to that Issue, but do not also assign the pull request to the Milestone because that double-counts progress.
 
-Keep task-level discussion and evidence in the nearest Issue or pull request. When a decision affects the whole milestone or later phases, record it in an Issue labeled `decision` and link the result from `Decisions`.
+## Records and Delivery
 
-A Milestone Issue inherits the phase boundary by association. It must not copy the Milestone objective, scope, non-goals, constraints, or closure criteria. Repeat a phase decision only when translating it into task-specific behavior; for example, the Milestone may require multilingual text while an Issue defines the concrete languages, control, and verification.
+- A Milestone Issue adds task-specific requirements and evidence without copying the phase boundary.
+- A pull request links its work item and records the change, verification, exclusions, Milestone impact, and unresolved follow-up.
+- Record a phase-wide decision in an Issue labeled `decision`; use `experiment` for reversible work whose primary result is learning.
+- Keep routine progress in Issues and pull requests. Do not maintain repository copies of Milestone descriptions, tracking, closure summaries, or Git history.
+- Start UI work from a concrete product surface. Extract shared UI only after repeated use or a clear shared need.
 
-### Scope changes
-
-Normal delivery must not change the phase boundary. A revision requires an Issue labeled `milestone-change` that:
-
-- states what changes and why it cannot wait;
-- describes the consequence for current and later work;
-- records explicit owner approval; and
-- links to the revised Milestone description.
-
-## Proportional Workflow
-
-Use the lightest process appropriate to the risk:
-
-| Work type | Default path |
-| --- | --- |
-| Maintenance | Current task or standalone Issue -> change -> verification |
-| Independent one-off change | Standalone Issue -> change -> verification -> Issue closure |
-| Experiment | Milestone Issue -> reviewable implementation -> findings -> decision |
-| Product or architecture commitment | Milestone Issue -> pull request -> verification -> owner decision -> carry-forward |
-
-Standalone work may run alongside a Milestone when it satisfies the independence rules above. Work that changes, depends on, or becomes required for the active phase must instead join the Milestone or use an approved `milestone-change` Issue. A standalone Issue must not be used to bypass phase constraints or split a coherent phase commitment into untracked work.
-
-## Milestone Lifecycle
-
-### Propose and activate
-
-1. Review `docs/project.md` and the most recent closed GitHub Milestone.
-2. Create an unassigned proposal Issue with the intended phase boundary and unresolved owner choices.
-3. Obtain explicit owner approval.
-4. Create or open the GitHub Milestone with the approved description. Open means active; closed means inactive.
-5. Create only the first ready work items and assign them to the Milestone.
-
-Do not begin milestone feature work before the Milestone can guide it.
-
-### Execute
-
-- Keep focused Issues within the Milestone boundary.
-- Keep exploratory material separate from binding requirements.
-- Keep evidence in the Issue, pull request, checks, or review artifact closest to the work.
-- Add only consequential, milestone-wide decision links to the Milestone description.
-- Create later work items in response to findings rather than preparing a complete speculative backlog.
-
-### Revise
-
-Use the `milestone-change` process above. An edited description without a linked, owner-approved change Issue is not an authorized phase revision.
-
-### Close
-
-1. Review completed work and evidence; zero open Issues is necessary but not sufficient for acceptance.
-2. For product or UI work, complete an agent-led live review in which the agent presents the running result, explains key code and tradeoffs, answers owner questions, and verifies agreed revisions.
-3. Obtain explicit owner acceptance, then resolve, move, or explicitly defer every open Issue.
-4. Fill `Closure` with the outcome, selected or rejected directions, unresolved questions, carry-forward decisions, and links to evidence without duplicating delivery history.
-5. Close the GitHub Milestone.
-6. Propose the next phase separately; do not silently drift into it.
-
-## Work Item and Pull Request Guidance
-
-A work item is ready when it describes a bounded outcome that can be reviewed and closed. Research, design exploration, technical spikes, features, maintenance, and bugs can all be Issues.
-
-A standalone Issue should additionally state its independence from the active Milestone, any known interaction with concurrent work, and the evidence that can close it without a Milestone decision. If those claims stop being true during implementation, pause the conflicting portion and reclassify the work through the Milestone process.
-
-A Milestone Issue should link to its Milestone and contain only the incremental information needed to execute and verify that work item:
-
-- a bounded task outcome;
-- task-specific requirements and exclusions not already owned by the Milestone;
-- observable Issue acceptance criteria;
-- relevant verification and evidence; and
-- whether a phase-boundary revision is explicitly authorized.
-
-Milestone closure criteria judge whether the phase achieved its purpose. Issue acceptance criteria judge whether one executable work item is complete. Do not use either section to duplicate the other.
-
-A pull request should link the work item and record what changed, what remained out of scope, relevant evidence, milestone impact, and unresolved follow-up. Normal delivery pull requests must not change the Milestone boundary.
-
-Create a repository supporting file only when its research, decision record, reference material, or review result remains useful independently of a Milestone. Link to it rather than copying it.
-
-## Labels
-
-Keep workflow labels small:
-
-- `decision`: an owner-level product or architecture decision;
-- `milestone-change`: an explicit request to revise an active phase boundary; and
-- `experiment`: reversible work whose primary output is learning.
-
-Open and closed state, Milestone assignment, and pull-request linkage should express routine status without additional labels.
-
-## Documentation Discipline
-
-- Do not create or maintain milestone documents in the repository.
-- Do not document activity already preserved by Issues, pull requests, GitHub Milestones, and Git.
-- Give each decision one authoritative home and link to it elsewhere.
-- Prefer evidence links over repeated acceptance-criteria narratives.
-- If deleting a proposed file after task closure would lose no durable knowledge, do not create it.
-
-## Responsibilities
-
-The project owner defines direction, approves and closes GitHub Milestones, approves scope changes, selects ready work, makes product and design decisions, and chooses what carries forward.
-
-AI agents follow repository instructions, work within an associated GitHub Milestone or the explicit boundary of a standalone Issue, check concurrent work for boundary conflicts, keep changes reviewable, preserve proportionate evidence, and explain tradeoffs. They may propose owner-level choices but must not silently make them.
-
-## Guiding Principles
-
-- Externalize durable context instead of relying on conversational memory.
-- Keep project direction, milestone scope, and task requirements at their respective sources.
-- Start early UI work from reviewable product slices, then extract only proven patterns.
-- Keep exploration reversible and separate from production commitments.
-- Match process weight to the risk and learning value of the work.
-- Record decisions and evidence, not every action taken.
-- Let agents execute and propose; let the owner decide direction, scope, and taste.
+The owner decides direction and phase boundaries. Agents execute within them, surface conflicts and tradeoffs, and preserve proportionate evidence.
