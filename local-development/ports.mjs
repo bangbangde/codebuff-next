@@ -61,6 +61,7 @@ function portsForSlot(slot) {
     garageS3: base + 2,
     garageRpc: base + 3,
     garageWeb: base + 4,
+    garageAdmin: base + 5,
   };
 }
 

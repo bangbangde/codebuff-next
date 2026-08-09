@@ -10,16 +10,9 @@ const projectRoot = path.resolve(
 );
 const buildRoot = path.join(projectRoot, ".build");
 const migrationsSource = path.join(projectRoot, "drizzle");
-const garageInitializerSource = path.join(
-  projectRoot,
-  "scripts",
-  "initialize-garage.sh",
-);
 
-for (const requiredPath of [migrationsSource, garageInitializerSource]) {
-  if (!existsSync(requiredPath)) {
-    throw new Error(`Required deployment source is missing: ${requiredPath}`);
-  }
+if (!existsSync(migrationsSource)) {
+  throw new Error(`Required deployment source is missing: ${migrationsSource}`);
 }
 
 rmSync(buildRoot, { force: true, recursive: true });
@@ -48,7 +41,3 @@ await build({
 cpSync(migrationsSource, path.join(buildRoot, "drizzle"), {
   recursive: true,
 });
-cpSync(
-  garageInitializerSource,
-  path.join(buildRoot, "initialize-garage.sh"),
-);

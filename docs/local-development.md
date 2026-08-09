@@ -25,10 +25,11 @@ pnpm local:bootstrap
 
 1. 在 `.dev/instance.json` 中创建稳定实例身份、端口分配和本地开发密钥。
 2. 生成 `.dev/environment.env` 供 Compose 使用。
-3. 使用唯一 Compose project 启动 PostgreSQL 和 Garage。
-4. 等待服务健康并执行完整 Drizzle migration。
-5. 幂等创建本地管理员和 Garage bucket/key。
-6. 输出实例 ID、应用 URL 和服务状态，不输出密钥。
+3. 使用唯一 Compose project 启动 PostgreSQL 和 Garage，并只在 loopback 暴露独立的 Garage Admin API 端口。
+4. 通过 Admin API 创建或恢复 Garage 生成的运行时 key，并把凭据保存回 `.dev/`。
+5. 通过与生产相同的部署 CLI 执行完整 Drizzle migration、幂等创建业务 bucket 并收敛运行时权限。
+6. 幂等创建本地管理员。
+7. 输出实例 ID、应用 URL 和服务状态，不输出密钥。
 
 `.dev/` 被 Git 忽略。不要在 worktree 之间复制 `.env` 或 `.dev/`；每个 worktree 必须拥有自己的实例、端口、凭据和数据卷。
 
@@ -76,11 +77,11 @@ Next.js 的版本内文档建议 Windows/macOS 日常开发优先使用宿主机
 
 - 唯一 `codebuff-<instance-id>` Compose project；
 - 独立 PostgreSQL 和 Garage volume；
-- 独立 app、PostgreSQL、Garage S3/RPC/Web 宿主机端口；
-- 独立 PostgreSQL 密码、Better Auth secret、Garage key 和 bucket；
+- 独立 app、PostgreSQL、Garage S3/RPC/Web/Admin 宿主机端口；
+- 独立 PostgreSQL 密码、Better Auth secret、Garage Admin token、运行时 key 和 bucket；
 - 固定的本地管理员邮箱 `admin@codebuff.local` 和开发密码 `Local-Dev-Bootstrap-Password`。
 
-管理员凭据只适用于绑定 loopback 的本地实例，不能用于生产。
+本地管理员凭据和 Garage Admin token 只适用于绑定 loopback 的本地实例，不能用于生产。app 容器只接收 `OBJECT_STORAGE_*` 运行时凭据，不接收 Garage Admin token。
 
 ## 故障诊断
 
@@ -97,7 +98,7 @@ pnpm local:status
 - Compose 配置错误：检查 `.dev/environment.env` 是否由当前脚本生成，不要手工编辑。
 - 端口被占用：保留的实例端口不会自动漂移；先停止占用程序，或销毁当前实例后重新 bootstrap。
 - migration 失败：检查 PostgreSQL health 和 `pnpm local:status`，不要直接修改已提交 migration。
-- Garage 失败：查看当前 Compose project 的 Garage 日志，不要把开发密钥输出到 Issue 或 PR。
+- Garage 失败：检查 `pnpm local:status` 输出的 Admin endpoint 和当前 Compose project 的 Garage 日志，不要把 Admin token、运行时 key 或 secret 输出到 Issue/PR。
 
 如需直接执行 Compose 调试，必须从 `pnpm local:status` 获取当前 Compose project 和 `.dev/environment.env`，始终同时传入 `-p`、`--env-file` 和 `-f local-development/compose.yml`，避免操作其他 worktree。
 

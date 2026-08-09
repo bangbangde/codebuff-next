@@ -2,7 +2,17 @@
 set -eu
 
 config_file="${GARAGE_CONFIG_FILE:-/etc/garage/garage.toml}"
+config_template_file="${GARAGE_CONFIG_TEMPLATE_FILE:-/etc/garage/garage.template.toml}"
+admin_token="${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}"
 ready_file="/tmp/garage-layout-ready"
+
+if [ "${#admin_token}" -ne 64 ] || printf '%s' "$admin_token" | grep -q '[^0-9a-f]'; then
+  echo "GARAGE_ADMIN_TOKEN must be a 64-character lowercase hexadecimal value" >&2
+  exit 1
+fi
+
+sed "s/__GARAGE_ADMIN_TOKEN__/$admin_token/g" "$config_template_file" >"$config_file"
+chmod 600 "$config_file"
 
 rm -f "$ready_file"
 
@@ -68,12 +78,8 @@ else
   echo "Garage layout version $next_version applied"
 fi
 
-GARAGE_BIN=/garage \
-  GARAGE_CONFIG_FILE="$config_file" \
-  /bin/sh /usr/local/bin/initialize-garage.sh
-
 touch "$ready_file"
-echo "Garage is ready"
+echo "Garage layout and Admin API are ready"
 
 trap - INT TERM EXIT
 wait "$server_pid"

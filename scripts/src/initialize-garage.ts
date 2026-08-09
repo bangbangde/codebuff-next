@@ -1,8 +1,27 @@
-import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import process from "node:process";
 
 import { objectStorageBuckets } from "../../lib/object-storage/schema.mjs";
+
+type GarageKeyListEntry = {
+  id: string;
+  name?: string;
+};
+
+type GarageBucketListEntry = {
+  id: string;
+  globalAliases?: string[];
+};
+
+type GarageBucketInfo = {
+  id: string;
+};
+
+type GarageAdminRequestOptions = {
+  body?: unknown;
+  method?: "GET" | "POST";
+};
+
+const garageAdminRequestTimeoutMs = 15_000;
 
 function requiredEnvironmentVariable(name: string): string {
   const value = process.env[name]?.trim();
@@ -14,64 +33,159 @@ function requiredEnvironmentVariable(name: string): string {
   return value;
 }
 
-function runtimeCredential(
-  deploymentVariable: string,
-  applicationVariable: string,
-): string {
-  return (
-    process.env[deploymentVariable]?.trim() ||
-    requiredEnvironmentVariable(applicationVariable)
-  );
+function garageAdminBaseUrl(): URL {
+  const endpoint = new URL(requiredEnvironmentVariable("GARAGE_ADMIN_ENDPOINT"));
+
+  if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") {
+    throw new Error("GARAGE_ADMIN_ENDPOINT must use http or https");
+  }
+
+  const path = endpoint.pathname.replace(/\/+$/, "");
+  endpoint.pathname = `${path.endsWith("/v1") ? path : `${path}/v1`}/`;
+  endpoint.search = "";
+  endpoint.hash = "";
+  return endpoint;
 }
 
 function requiredBucketNames(): string[] {
-  return Object.values(objectStorageBuckets).map(({ environmentVariable }) =>
-    requiredEnvironmentVariable(environmentVariable),
+  return Array.from(
+    new Set(
+      Object.values(objectStorageBuckets).map(({ environmentVariable }) =>
+        requiredEnvironmentVariable(environmentVariable),
+      ),
+    ),
   );
 }
 
+function responseDescription(text: string): string {
+  if (!text) {
+    return "empty response";
+  }
+
+  try {
+    const value = JSON.parse(text) as { error?: unknown; message?: unknown };
+    const message = value.message ?? value.error;
+    return typeof message === "string" ? message : "JSON error response";
+  } catch {
+    return text.slice(0, 300);
+  }
+}
+
+async function garageAdminRequest<T>(
+  path: string,
+  { body, method = "GET" }: GarageAdminRequestOptions = {},
+): Promise<T> {
+  const url = new URL(path, garageAdminBaseUrl());
+  const response = await fetch(url, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${requiredEnvironmentVariable("GARAGE_ADMIN_TOKEN")}`,
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    method,
+    signal: AbortSignal.timeout(garageAdminRequestTimeoutMs),
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Garage Admin API ${method} ${url.pathname}${url.search} failed ` +
+        `with HTTP ${response.status}: ${responseDescription(text)}`,
+    );
+  }
+
+  if (!text) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(
+      `Garage Admin API ${method} ${url.pathname}${url.search} returned invalid JSON`,
+      { cause: error },
+    );
+  }
+}
+
+function bucketIdByAlias(
+  buckets: GarageBucketListEntry[],
+  alias: string,
+): string | undefined {
+  return buckets.find((bucket) => bucket.globalAliases?.includes(alias))?.id;
+}
+
+async function ensureBucket(
+  buckets: GarageBucketListEntry[],
+  alias: string,
+): Promise<string> {
+  const existingBucketId = bucketIdByAlias(buckets, alias);
+  if (existingBucketId) {
+    console.info(`Garage bucket ${alias} is already configured`);
+    return existingBucketId;
+  }
+
+  const bucket = await garageAdminRequest<GarageBucketInfo>("bucket", {
+    body: { globalAlias: alias },
+    method: "POST",
+  });
+  console.info(`Garage bucket ${alias} created`);
+  return bucket.id;
+}
+
+async function reconcileRuntimePermissions(
+  bucketId: string,
+  bucketAlias: string,
+  accessKeyId: string,
+): Promise<void> {
+  await garageAdminRequest(`bucket/allow`, {
+    body: {
+      accessKeyId,
+      bucketId,
+      permissions: { owner: false, read: true, write: true },
+    },
+    method: "POST",
+  });
+  await garageAdminRequest(`bucket/deny`, {
+    body: {
+      accessKeyId,
+      bucketId,
+      permissions: { owner: true, read: false, write: false },
+    },
+    method: "POST",
+  });
+  console.info(`Garage runtime permissions reconciled for ${bucketAlias}`);
+}
+
 export async function initializeGarage(): Promise<void> {
-  const scriptPath = fileURLToPath(
-    new URL("./initialize-garage.sh", import.meta.url),
-  );
-  const shell =
-    process.env.GARAGE_INIT_SHELL?.trim() ||
-    (process.platform === "win32" ? "sh" : "/bin/sh");
-  const runtimeAccessKeyId = runtimeCredential(
-    "GARAGE_RUNTIME_ACCESS_KEY_ID",
+  const runtimeAccessKeyId = requiredEnvironmentVariable(
     "OBJECT_STORAGE_ACCESS_KEY_ID",
   );
-  const runtimeSecretAccessKey = runtimeCredential(
-    "GARAGE_RUNTIME_SECRET_ACCESS_KEY",
-    "OBJECT_STORAGE_SECRET_ACCESS_KEY",
+  const keys = await garageAdminRequest<GarageKeyListEntry[]>("key?list");
+
+  if (!keys.some((key) => key.id === runtimeAccessKeyId)) {
+    throw new Error(
+      "OBJECT_STORAGE_ACCESS_KEY_ID does not exist in Garage; " +
+        "provision the runtime key before running deployment initialization",
+    );
+  }
+
+  await garageAdminRequest(`key?id=${encodeURIComponent(runtimeAccessKeyId)}`, {
+    body: { deny: { createBucket: true } },
+    method: "POST",
+  });
+
+  const buckets = await garageAdminRequest<GarageBucketListEntry[]>(
+    "bucket?list",
   );
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(shell, [scriptPath], {
-      env: {
-        ...process.env,
-        GARAGE_REQUIRED_BUCKETS: requiredBucketNames().join(","),
-        GARAGE_RUNTIME_ACCESS_KEY_ID: runtimeAccessKeyId,
-        GARAGE_RUNTIME_SECRET_ACCESS_KEY: runtimeSecretAccessKey,
-      },
-      stdio: "inherit",
-      windowsHide: true,
-    });
-
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(
-        new Error(
-          `Garage initialization failed with ${
-            signal ? `signal ${signal}` : `exit code ${code}`
-          }`,
-        ),
-      );
-    });
-  });
+  for (const bucketAlias of requiredBucketNames()) {
+    const bucketId = await ensureBucket(buckets, bucketAlias);
+    await reconcileRuntimePermissions(
+      bucketId,
+      bucketAlias,
+      runtimeAccessKeyId,
+    );
+  }
 }
