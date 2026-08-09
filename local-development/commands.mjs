@@ -52,8 +52,9 @@ export async function bootstrap(instance) {
   await doctor(instance, { includeStatus: false });
   await startInfrastructure(instance);
   const env = processEnvironment(instance);
-  await run("pnpm", ["db:migrate"], { env });
-  await run("pnpm", ["auth:bootstrap"], { env });
+  await run("pnpm", ["build:scripts"], { env });
+  await run("node", [".build/deploy.mjs", "migrate"], { env });
+  await run("node", [".build/deploy.mjs", "auth:bootstrap"], { env });
   console.info("Local development workspace is ready.");
   await status(instance);
 }

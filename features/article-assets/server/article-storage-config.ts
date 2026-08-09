@@ -5,6 +5,7 @@ import {
   type GarageObjectStore,
   type GarageObjectStoreConfig,
 } from "@/lib/garage/garage-object-store";
+import { objectStorageBuckets } from "@/lib/object-storage/schema.mjs";
 
 type RequiredObjectStorageVariable =
   | "OBJECT_STORAGE_ACCESS_KEY_ID"
@@ -43,7 +44,9 @@ export function getArticleStorageConfig(): GarageObjectStoreConfig {
 
   return {
     accessKeyId: requiredEnvironmentVariable("OBJECT_STORAGE_ACCESS_KEY_ID"),
-    bucket: requiredEnvironmentVariable("OBJECT_STORAGE_BUCKET"),
+    bucket: requiredEnvironmentVariable(
+      objectStorageBuckets.articleAssets.environmentVariable,
+    ),
     endpoint,
     region:
       process.env.OBJECT_STORAGE_REGION?.trim() ||

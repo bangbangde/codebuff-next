@@ -18,6 +18,7 @@ import {
   reservePortBlock,
   workspaceInstanceId,
 } from "./ports.mjs";
+import { objectStorageBuckets } from "../lib/object-storage/schema.mjs";
 
 const instanceSchemaVersion = 1;
 
@@ -71,7 +72,15 @@ export function workspaceEnvironment(instance, { container = false } = {}) {
   const objectStorageEndpoint = container
     ? "http://garage:3900"
     : `http://127.0.0.1:${instance.ports.garageS3}`;
-  const objectStorageBucket = `codebuff-${instance.instanceId}-article`;
+  const objectStorageBucketNames = Object.fromEntries(
+    Object.entries(objectStorageBuckets).map(
+      ([name, bucket]) => [
+        name,
+        `codebuff-${instance.instanceId}-${bucket.localNameSuffix}`,
+      ],
+    ),
+  );
+  const articleAssetsBucket = objectStorageBucketNames.articleAssets;
 
   return {
     DEV_INSTANCE_ID: instance.instanceId,
@@ -85,9 +94,9 @@ export function workspaceEnvironment(instance, { container = false } = {}) {
     DEV_GARAGE_S3_PORT: String(instance.ports.garageS3),
     DEV_GARAGE_RPC_PORT: String(instance.ports.garageRpc),
     DEV_GARAGE_WEB_PORT: String(instance.ports.garageWeb),
-    GARAGE_BOOTSTRAP_BUCKET: objectStorageBucket,
-    GARAGE_BOOTSTRAP_ACCESS_KEY_ID: instance.secrets.garageAccessKeyId,
-    GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY:
+    GARAGE_REQUIRED_BUCKETS: Object.values(objectStorageBucketNames).join(","),
+    GARAGE_RUNTIME_ACCESS_KEY_ID: instance.secrets.garageAccessKeyId,
+    GARAGE_RUNTIME_SECRET_ACCESS_KEY:
       instance.secrets.garageSecretAccessKey,
     PG_USER: localDefaults.postgresUser,
     PG_PWD: instance.secrets.postgresPassword,
@@ -101,7 +110,7 @@ export function workspaceEnvironment(instance, { container = false } = {}) {
     BETTER_AUTH_SECRETS: `0:${instance.secrets.betterAuthSecret}`,
     OBJECT_STORAGE_ENDPOINT: objectStorageEndpoint,
     OBJECT_STORAGE_REGION: localDefaults.objectStorageRegion,
-    OBJECT_STORAGE_BUCKET: objectStorageBucket,
+    OBJECT_STORAGE_BUCKET: articleAssetsBucket,
     OBJECT_STORAGE_ACCESS_KEY_ID: instance.secrets.garageAccessKeyId,
     OBJECT_STORAGE_SECRET_ACCESS_KEY:
       instance.secrets.garageSecretAccessKey,

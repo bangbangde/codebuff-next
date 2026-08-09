@@ -61,7 +61,7 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-提交结构变更时需共同审查 `lib/db/schema/`、`drizzle/*.sql` 与 `drizzle/meta/`。生产禁止使用 `drizzle-kit push`，迁移由镜像内的 `runtime-tools/db/migrate.cjs` 在应用切换前执行。
+提交结构变更时需共同审查 `lib/db/schema/`、`drizzle/*.sql` 与 `drizzle/meta/`。生产禁止使用 `drizzle-kit push`，迁移由镜像内的 `.build/deploy.mjs migrate` 在应用切换前执行。
 
 ## Notes 与资产
 
@@ -78,6 +78,21 @@ pnpm db:migrate
 | `OBJECT_STORAGE_BUCKET` | 无 | 必填；私有应用资产桶 |
 | `OBJECT_STORAGE_ACCESS_KEY_ID` | 无 | 必填；最小权限访问密钥 |
 | `OBJECT_STORAGE_SECRET_ACCESS_KEY` | 无 | 必填；不得写入日志或响应 |
+
+业务所需 bucket 在 `lib/object-storage/schema.mjs` 中声明。`pnpm garage:initialize` 会先构建部署 CLI，再通过 Garage 管理 CLI 幂等创建这些 bucket、导入运行时 key，并将其权限收敛为 read/write（显式禁止创建 bucket 和 owner 权限）。
+
+生产部署必须像数据库迁移一样隔离管理身份与应用身份：一次性部署任务通过 `GARAGE_CONFIG_FILE`（或 Garage CLI 自身的远程管理配置）取得管理权限，并通过 `GARAGE_RUNTIME_ACCESS_KEY_ID` / `GARAGE_RUNTIME_SECRET_ACCESS_KEY` 指定待授权的运行时 key；未单独指定时会复用 `OBJECT_STORAGE_ACCESS_KEY_ID` / `OBJECT_STORAGE_SECRET_ACCESS_KEY`。常驻应用只接收 `OBJECT_STORAGE_*`，不得挂载 Garage 管理配置。
+
+构建后的统一部署入口为 `.build/deploy.mjs`：
+
+```bash
+node .build/deploy.mjs prepare             # 数据库迁移 + Garage 初始化
+node .build/deploy.mjs migrate
+node .build/deploy.mjs garage:initialize
+node .build/deploy.mjs auth:bootstrap
+```
+
+其中 `prepare` 适合应用切换前的一次性部署任务；首次管理员创建保持为显式命令，不属于每次生产部署。
 
 迁移期间应用仍兼容对应的 `ARTICLE_S3_*` 旧变量；新配置只应使用 `OBJECT_STORAGE_*`。实体 Bucket 不随变量改名而自动迁移。
 

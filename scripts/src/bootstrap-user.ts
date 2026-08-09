@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 import process from "node:process";
 
 import { hashPassword } from "better-auth/crypto";
-import pg from "pg";
+import { Client } from "pg";
 
-const { Client } = pg;
-
-function requiredEnvironmentVariable(name, { trim = true } = {}) {
+function requiredEnvironmentVariable(
+  name: string,
+  { trim = true }: { trim?: boolean } = {},
+): string {
   const rawValue = process.env[name];
   const value = trim ? rawValue?.trim() : rawValue;
 
@@ -17,7 +18,10 @@ function requiredEnvironmentVariable(name, { trim = true } = {}) {
   return value;
 }
 
-function positiveIntegerEnvironmentVariable(name, fallback) {
+function positiveIntegerEnvironmentVariable(
+  name: string,
+  fallback: number,
+): number {
   const rawValue = process.env[name]?.trim();
 
   if (!rawValue) {
@@ -33,7 +37,7 @@ function positiveIntegerEnvironmentVariable(name, fallback) {
   return value;
 }
 
-function booleanEnvironmentVariable(name, fallback = false) {
+function booleanEnvironmentVariable(name: string, fallback = false): boolean {
   const rawValue = process.env[name]?.trim();
 
   if (!rawValue) {
@@ -51,26 +55,7 @@ function booleanEnvironmentVariable(name, fallback = false) {
   throw new Error(`${name} must be either true or false`);
 }
 
-function redactSecrets(value, secrets) {
-  let message = value instanceof Error ? value.message : String(value);
-
-  for (const secret of secrets) {
-    if (secret) {
-      message = message.replaceAll(secret, "[redacted]");
-    }
-  }
-
-  return message;
-}
-
-const secretsToRedact = [
-  process.env.AUTH_BOOTSTRAP_PASSWORD,
-  process.env.PG_PWD,
-  process.env.BETTER_AUTH_SECRET,
-  process.env.BETTER_AUTH_SECRETS,
-];
-
-async function bootstrapAuthUser() {
+export async function bootstrapAuthUser(): Promise<void> {
   const password = requiredEnvironmentVariable("AUTH_BOOTSTRAP_PASSWORD", {
     trim: false,
   });
@@ -128,25 +113,26 @@ async function bootstrapAuthUser() {
 
       await client.query("ROLLBACK");
       console.info("Authentication account already exists; skipping.");
-    } else {
-      const userId = randomUUID();
-      const passwordHash = await hashPassword(password);
-
-      await client.query(
-        `INSERT INTO "user" (id, name, email, role)
-         VALUES ($1, $2, $3, 'admin')`,
-        [userId, name, email],
-      );
-      await client.query(
-        `INSERT INTO "account"
-          (id, account_id, provider_id, user_id, password, updated_at)
-         VALUES ($1, $2, 'credential', $2, $3, now())`,
-        [randomUUID(), userId, passwordHash],
-      );
-
-      await client.query("COMMIT");
-      console.info("Authentication account created.");
+      return;
     }
+
+    const userId = randomUUID();
+    const passwordHash = await hashPassword(password);
+
+    await client.query(
+      `INSERT INTO "user" (id, name, email, role)
+       VALUES ($1, $2, $3, 'admin')`,
+      [userId, name, email],
+    );
+    await client.query(
+      `INSERT INTO "account"
+        (id, account_id, provider_id, user_id, password, updated_at)
+       VALUES ($1, $2, 'credential', $2, $3, now())`,
+      [randomUUID(), userId, passwordHash],
+    );
+
+    await client.query("COMMIT");
+    console.info("Authentication account created.");
   } catch (error) {
     try {
       await client.query("ROLLBACK");
@@ -159,19 +145,3 @@ async function bootstrapAuthUser() {
     await client.end().catch(() => {});
   }
 }
-
-async function main() {
-  try {
-    await bootstrapAuthUser();
-  } catch (error) {
-    console.error(
-      `Authentication account bootstrap failed: ${redactSecrets(
-        error,
-        secretsToRedact,
-      )}`,
-    );
-    process.exitCode = 1;
-  }
-}
-
-void main();

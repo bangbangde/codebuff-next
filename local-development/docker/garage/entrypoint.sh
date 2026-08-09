@@ -3,9 +3,6 @@ set -eu
 
 config_file="${GARAGE_CONFIG_FILE:-/etc/garage/garage.toml}"
 ready_file="/tmp/garage-layout-ready"
-application_bucket="$GARAGE_BOOTSTRAP_BUCKET"
-application_access_key_id="$GARAGE_BOOTSTRAP_ACCESS_KEY_ID"
-application_secret_access_key="$GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY"
 
 rm -f "$ready_file"
 
@@ -71,29 +68,9 @@ else
   echo "Garage layout version $next_version applied"
 fi
 
-if /garage -c "$config_file" key info "$application_access_key_id" >/dev/null 2>&1; then
-  echo "Garage application key is already configured"
-else
-  /garage -c "$config_file" key import \
-    --yes \
-    -n "$application_bucket" \
-    "$application_access_key_id" \
-    "$application_secret_access_key"
-  echo "Garage application key imported"
-fi
-
-if /garage -c "$config_file" bucket info "$application_bucket" >/dev/null 2>&1; then
-  echo "Garage application bucket is already configured"
-else
-  /garage -c "$config_file" bucket create "$application_bucket"
-  echo "Garage application bucket created"
-fi
-
-/garage -c "$config_file" bucket allow \
-  --read \
-  --write \
-  "$application_bucket" \
-  --key "$application_access_key_id"
+GARAGE_BIN=/garage \
+  GARAGE_CONFIG_FILE="$config_file" \
+  /bin/sh /usr/local/bin/initialize-garage.sh
 
 touch "$ready_file"
 echo "Garage is ready"
