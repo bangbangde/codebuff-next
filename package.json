@@ -7,10 +7,10 @@
     "dev": "next dev",
     "build": "next build && pnpm build:runtime-tools",
     "build:runtime-tools": "node scripts/build-runtime-tools.mjs",
-    "auth:bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-auth-user.mjs",
+    "auth:bootstrap": "node --env-file-if-exists=.env.local --env-file-if-exists=.env.dev scripts/bootstrap-auth-user.mjs",
     "auth:schema": "auth generate --config ./lib/auth/schema-config.ts --output ./lib/db/schema/auth.generated.ts --adapter drizzle --dialect postgresql --yes",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "pnpm build:runtime-tools && node --env-file-if-exists=.env .build/runtime-tools/db/migrate.cjs",
+    "db:migrate": "pnpm build:runtime-tools && node --env-file-if-exists=.env.local .build/runtime-tools/db/migrate.cjs",
     "start": "next start",
     "lint": "eslint"
   },

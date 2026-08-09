@@ -5,11 +5,11 @@ services:
     image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${PG_USER:-codebuff}
-      POSTGRES_PASSWORD: ${PG_PWD:-codebuff}
-      POSTGRES_DB: ${PG_DB:-codebuff_next}
+      POSTGRES_USER: ${DEV_POSTGRES_USER:-codebuff}
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:-codebuff}
+      POSTGRES_DB: ${DEV_POSTGRES_DB:-codebuff_next}
     ports:
-      - "127.0.0.1:${PG_PORT:-5432}:5432"
+      - "127.0.0.1:${DEV_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./docker/postgres-healthcheck.sh:/usr/local/bin/postgres-healthcheck.sh:ro
@@ -27,9 +27,9 @@ services:
       dockerfile: Dockerfile.garage
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${GARAGE_S3_PORT:-3900}:3900"
-      - "127.0.0.1:${GARAGE_RPC_PORT:-3901}:3901"
-      - "127.0.0.1:${GARAGE_WEB_PORT:-3902}:3902"
+      - "127.0.0.1:${DEV_GARAGE_S3_PORT:-3900}:3900"
+      - "127.0.0.1:${DEV_GARAGE_RPC_PORT:-3901}:3901"
+      - "127.0.0.1:${DEV_GARAGE_WEB_PORT:-3902}:3902"
     volumes:
       - garage_data:/var/lib/garage
     configs:
@@ -37,9 +37,9 @@ services:
         target: /etc/garage/garage.toml
     environment:
       GARAGE_CONFIG_FILE: /etc/garage/garage.toml
-      ARTICLE_S3_BUCKET: ${ARTICLE_S3_BUCKET:-codebuff-next-article}
-      ARTICLE_S3_ACCESS_KEY_ID: ${ARTICLE_S3_ACCESS_KEY_ID:-GK0123456789abcdef01234567}
-      ARTICLE_S3_SECRET_ACCESS_KEY: ${ARTICLE_S3_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      GARAGE_BOOTSTRAP_BUCKET: ${GARAGE_BOOTSTRAP_BUCKET:-codebuff-next-article}
+      GARAGE_BOOTSTRAP_ACCESS_KEY_ID: ${GARAGE_BOOTSTRAP_ACCESS_KEY_ID:-GK0123456789abcdef01234567}
+      GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY: ${GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/garage-layout-ready && /garage status"]
       interval: 30s

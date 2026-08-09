@@ -6,18 +6,26 @@ import {
   type GarageObjectStoreConfig,
 } from "@/lib/garage/garage-object-store";
 
-type RequiredArticleStorageVariable =
-  | "ARTICLE_S3_ACCESS_KEY_ID"
-  | "ARTICLE_S3_BUCKET"
-  | "ARTICLE_S3_ENDPOINT"
-  | "ARTICLE_S3_SECRET_ACCESS_KEY";
+type RequiredObjectStorageVariable =
+  | "OBJECT_STORAGE_ACCESS_KEY_ID"
+  | "OBJECT_STORAGE_BUCKET"
+  | "OBJECT_STORAGE_ENDPOINT"
+  | "OBJECT_STORAGE_SECRET_ACCESS_KEY";
 
-function requiredEnvironmentVariable(name: RequiredArticleStorageVariable) {
-  const value = process.env[name]?.trim();
+const legacyObjectStorageVariables = {
+  OBJECT_STORAGE_ACCESS_KEY_ID: "ARTICLE_S3_ACCESS_KEY_ID",
+  OBJECT_STORAGE_BUCKET: "ARTICLE_S3_BUCKET",
+  OBJECT_STORAGE_ENDPOINT: "ARTICLE_S3_ENDPOINT",
+  OBJECT_STORAGE_SECRET_ACCESS_KEY: "ARTICLE_S3_SECRET_ACCESS_KEY",
+} as const satisfies Record<RequiredObjectStorageVariable, string>;
+
+function requiredEnvironmentVariable(name: RequiredObjectStorageVariable) {
+  const legacyName = legacyObjectStorageVariables[name];
+  const value = process.env[name]?.trim() || process.env[legacyName]?.trim();
 
   if (!value) {
     throw new Error(
-      `Missing required article storage environment variable: ${name}`,
+      `Missing required object storage environment variable: ${name}`,
     );
   }
 
@@ -25,21 +33,24 @@ function requiredEnvironmentVariable(name: RequiredArticleStorageVariable) {
 }
 
 export function getArticleStorageConfig(): GarageObjectStoreConfig {
-  const endpoint = requiredEnvironmentVariable("ARTICLE_S3_ENDPOINT");
+  const endpoint = requiredEnvironmentVariable("OBJECT_STORAGE_ENDPOINT");
 
   try {
     new URL(endpoint);
   } catch {
-    throw new Error("ARTICLE_S3_ENDPOINT must be an absolute URL.");
+    throw new Error("OBJECT_STORAGE_ENDPOINT must be an absolute URL.");
   }
 
   return {
-    accessKeyId: requiredEnvironmentVariable("ARTICLE_S3_ACCESS_KEY_ID"),
-    bucket: requiredEnvironmentVariable("ARTICLE_S3_BUCKET"),
+    accessKeyId: requiredEnvironmentVariable("OBJECT_STORAGE_ACCESS_KEY_ID"),
+    bucket: requiredEnvironmentVariable("OBJECT_STORAGE_BUCKET"),
     endpoint,
-    region: process.env.ARTICLE_S3_REGION?.trim() || "garage",
+    region:
+      process.env.OBJECT_STORAGE_REGION?.trim() ||
+      process.env.ARTICLE_S3_REGION?.trim() ||
+      "garage",
     secretAccessKey: requiredEnvironmentVariable(
-      "ARTICLE_S3_SECRET_ACCESS_KEY",
+      "OBJECT_STORAGE_SECRET_ACCESS_KEY",
     ),
   };
 }

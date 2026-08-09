@@ -3,9 +3,9 @@ set -eu
 
 config_file="${GARAGE_CONFIG_FILE:-/etc/garage/garage.toml}"
 ready_file="/tmp/garage-layout-ready"
-article_bucket="$ARTICLE_S3_BUCKET"
-article_access_key_id="$ARTICLE_S3_ACCESS_KEY_ID"
-article_secret_access_key="$ARTICLE_S3_SECRET_ACCESS_KEY"
+application_bucket="$GARAGE_BOOTSTRAP_BUCKET"
+application_access_key_id="$GARAGE_BOOTSTRAP_ACCESS_KEY_ID"
+application_secret_access_key="$GARAGE_BOOTSTRAP_SECRET_ACCESS_KEY"
 
 rm -f "$ready_file"
 
@@ -71,29 +71,29 @@ else
   echo "Garage layout version $next_version applied"
 fi
 
-if /garage -c "$config_file" key info "$article_access_key_id" >/dev/null 2>&1; then
-  echo "Garage article application key is already configured"
+if /garage -c "$config_file" key info "$application_access_key_id" >/dev/null 2>&1; then
+  echo "Garage application key is already configured"
 else
   /garage -c "$config_file" key import \
     --yes \
-    -n "$article_bucket" \
-    "$article_access_key_id" \
-    "$article_secret_access_key"
-  echo "Garage article application key imported"
+    -n "$application_bucket" \
+    "$application_access_key_id" \
+    "$application_secret_access_key"
+  echo "Garage application key imported"
 fi
 
-if /garage -c "$config_file" bucket info "$article_bucket" >/dev/null 2>&1; then
-  echo "Garage article bucket is already configured"
+if /garage -c "$config_file" bucket info "$application_bucket" >/dev/null 2>&1; then
+  echo "Garage application bucket is already configured"
 else
-  /garage -c "$config_file" bucket create "$article_bucket"
-  echo "Garage article bucket created"
+  /garage -c "$config_file" bucket create "$application_bucket"
+  echo "Garage application bucket created"
 fi
 
 /garage -c "$config_file" bucket allow \
   --read \
   --write \
-  "$article_bucket" \
-  --key "$article_access_key_id"
+  "$application_bucket" \
+  --key "$application_access_key_id"
 
 touch "$ready_file"
 echo "Garage is ready"
