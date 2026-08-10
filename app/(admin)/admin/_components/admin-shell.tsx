@@ -83,6 +83,7 @@ export function AdminShell({
           </span>
         </Link>
         <Link
+          aria-label="在新标签页打开公开网站"
           className={buttonVariants({
             className: "ml-1",
             size: "sm",
@@ -91,7 +92,9 @@ export function AdminShell({
           href="/"
           target="_blank"
         >
-          <span lang="en">Site</span>
+          <span className="hidden sm:inline" lang="en">
+            Site
+          </span>
           <ExternalLinkIcon aria-hidden="true" />
         </Link>
 
@@ -118,7 +121,7 @@ export function AdminShell({
               <TabsTrigger
                 className="h-11 min-h-11 min-w-11 px-3"
                 key={item.href}
-                lang="en"
+                lang={item.lang}
                 value={item.href}
               >
                 {item.label}
