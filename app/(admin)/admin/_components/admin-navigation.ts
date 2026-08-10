@@ -1,7 +1,13 @@
 export const adminNavigationItems = [
   {
+    href: "/admin/home",
+    label: "首页内容",
+    lang: "zh-CN",
+  },
+  {
     href: "/admin/notes",
     label: "Notes",
+    lang: "en",
   },
 ] as const;
 
